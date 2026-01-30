@@ -1,0 +1,24 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: mesync-cloud
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/mesync
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/mesync
+    username: mesync_user
+    password: mesync_pass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+    open-in-view: false
