@@ -1,0 +1,20 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080/realms/mesync}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mesync}
+    username: ${DB_USER:mesync_user}
+    password: ${DB_PASSWORD:mesync_pass}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
