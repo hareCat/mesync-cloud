@@ -22,7 +22,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     boolean existsActiveByUser(User user);
 
     @Query("""
-            select d.publicKey 
+            select d.publicKey
             from Device d 
             where d.publicId = :deviceId 
             and d.revokedAt is null

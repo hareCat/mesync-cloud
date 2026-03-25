@@ -94,12 +94,12 @@ public class DeviceService {
         device.setKeyCreatedAt(now);
         device.setLastSeenAt(now);
 
-        for (int i = 0; i < 3; i++) {
+        for (int attempt = 1; attempt <= 2; attempt++) {
             try {
                 deviceRepository.save(device);
                 break;
             } catch (DataIntegrityViolationException e) {
-                if (i == 2) {
+                if (attempt == 2) {
                     throw DeviceRegistrationException.saveFailed(e);
                 }
                 device.setName(generateDeviceName(request.name()));

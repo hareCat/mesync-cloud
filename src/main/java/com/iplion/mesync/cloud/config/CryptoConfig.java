@@ -10,7 +10,7 @@ import java.security.spec.InvalidKeySpecException;
 @Configuration
 public class CryptoConfig {
     @Bean
-    public KeyFactory ed25519KeyFactory() throws NoSuchAlgorithmException, InvalidKeySpecException {
+    public KeyFactory ed25519KeyFactory() throws NoSuchAlgorithmException {
         return KeyFactory.getInstance("Ed25519");
     }
 }
