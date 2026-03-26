@@ -4,7 +4,7 @@ import com.iplion.mesync.cloud.controller.dto.DeviceInviteRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceInviteResponseDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
-import com.iplion.mesync.cloud.service.DeviceService;
+import com.iplion.mesync.cloud.service.DeviceRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/devices")
 @RequiredArgsConstructor
 public class DeviceController {
-    private final DeviceService deviceService;
+    private final DeviceRegistrationService deviceRegistrationService;
 
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
@@ -29,7 +29,7 @@ public class DeviceController {
         @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody DeviceRegisterRequestDto request
     ) {
-        return deviceService.registerDevice(jwt, request);
+        return deviceRegistrationService.registerDevice(jwt, request);
     }
 
     @PostMapping("/invite")
@@ -39,6 +39,6 @@ public class DeviceController {
         @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody DeviceInviteRequestDto request
     ) {
-        return deviceService.saveInviteToken(jwt, request);
+        return deviceRegistrationService.saveInviteToken(jwt, request);
     }
 }

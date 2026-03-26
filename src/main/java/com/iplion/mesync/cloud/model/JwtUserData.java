@@ -6,6 +6,6 @@ public record JwtUserData(
     UUID id,
     String clientId,
     String email,
-    boolean isEmailVerified
+    boolean emailVerified
 ) {
 }

@@ -23,8 +23,8 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     @Query("""
             select d.publicKey
-            from Device d 
-            where d.publicId = :deviceId 
+            from Device d
+            where d.publicId = :deviceId
             and d.revokedAt is null
         """)
     Optional<byte[]> findActivePublicKeyByPublicId(UUID deviceId);

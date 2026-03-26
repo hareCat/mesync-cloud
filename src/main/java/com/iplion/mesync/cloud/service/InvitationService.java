@@ -15,22 +15,11 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class RegistrationService {
+public class InvitationService {
     private static final String LOCK_VALUE = "1";
 
     private final RedisSecurityStore redisSecurityStore;
     private final RegistrationProperties props;
-
-    public void enforceRegistrationRateLimit(UUID sub) {
-        Long attemptCount = redisSecurityStore.incrementWithTtl(
-            RedisKeys.registrationRateLimitKey(sub),
-            props.registrationTtl()
-        );
-
-        if (attemptCount == null || attemptCount > props.registrationAttempts()) {
-            throw DeviceRegistrationException.rateLimit();
-        }
-    }
 
     public Instant createInvite(UUID sub, UUID inviteToken, String encryptedMaster, DeviceType deviceType) {
         Duration cooldown = props.inviteCooldown();
@@ -65,7 +54,7 @@ public class RegistrationService {
             throw DeviceRegistrationException.invalidInvite("Invite token expired. userId=" + sub);
         }
 
-        if (!deviceInviteData.deviceType().equals(deviceType)) {
+        if (deviceInviteData.deviceType() != deviceType) {
             throw DeviceRegistrationException.invalidInvite(
                 String.format("Invalid device type into invite. userId=%s, deviceType=%s", sub, deviceType.name())
             );

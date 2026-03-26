@@ -9,7 +9,7 @@ public class DeviceRegistrationSignaturePayloadBuilder {
     private DeviceRegistrationSignaturePayloadBuilder() {}
 
     public static byte[] build(DeviceRegisterRequestDto context) {
-        return String.join("\n",
+        return String.join("\nv1",
             context.name(),
             context.deviceType().name(),
             context.base64PublicKey(),

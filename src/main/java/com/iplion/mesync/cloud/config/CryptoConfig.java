@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 
 @Configuration
 public class CryptoConfig {

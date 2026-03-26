@@ -26,19 +26,15 @@ public class DevicePublicKeyService {
     }
 
     private PublicKey loadPublicKey(UUID deviceId) {
-        byte[] encodedPublicKey = deviceRepository.findActivePublicKeyByPublicId(deviceId)
+        byte[] decodedPublicKey = deviceRepository.findActivePublicKeyByPublicId(deviceId)
             .orElseThrow(() -> new DeviceNotFoundException(deviceId));
 
-        return createPublicKeyFromBytes(encodedPublicKey);
+        return createPublicKey(decodedPublicKey);
     }
 
-    public PublicKey createPublicKeyFromBase64(String base64PublicKey) {
-        return createPublicKeyFromBytes(decodePublicKey(base64PublicKey));
-    }
-
-    public PublicKey createPublicKeyFromBytes(byte[] encodedPublicKey) {
+    public PublicKey createPublicKey(byte[] decodedPublicKey) {
         try {
-            return keyFactory.generatePublic(new X509EncodedKeySpec(encodedPublicKey));
+            return keyFactory.generatePublic(new X509EncodedKeySpec(decodedPublicKey));
         } catch (GeneralSecurityException e) {
             throw new InvalidPublicKeyException("Public key generation error", e);
         }

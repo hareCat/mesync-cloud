@@ -64,4 +64,12 @@ public class DeviceRegistrationException extends ApiException {
             e
         );
     }
+
+    public static DeviceRegistrationException deviceTypeMismatch() {
+        return new DeviceRegistrationException(
+            HttpStatus.BAD_REQUEST,
+            "Device type mismatch for additional device",
+            "Unable to complete device registration. Please try again."
+        );
+    }
 }
