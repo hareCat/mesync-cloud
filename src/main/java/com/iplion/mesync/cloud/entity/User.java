@@ -22,8 +22,8 @@ public class User {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "keycloak_sub", unique = true, nullable = false)
-    private UUID keycloakSub;
+    @Column(name = "auth_id", unique = true, nullable = false)
+    private UUID authId;
 
     @Column(name = "email")
     private String email;

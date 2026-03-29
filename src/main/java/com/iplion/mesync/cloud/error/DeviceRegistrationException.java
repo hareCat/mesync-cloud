@@ -48,11 +48,12 @@ public class DeviceRegistrationException extends ApiException {
         );
     }
 
-    public static DeviceRegistrationException invalidSignature(UUID userId) {
+    public static DeviceRegistrationException invalidSignature(UUID authId, Throwable cause) {
         return new DeviceRegistrationException(
             HttpStatus.FORBIDDEN,
-            "Invalid signature. Keycloak userId=" + userId,
-            "Your signature is not valid"
+            "Invalid signature. AuthId=" + authId,
+            "Your signature is not valid",
+            cause
         );
     }
 

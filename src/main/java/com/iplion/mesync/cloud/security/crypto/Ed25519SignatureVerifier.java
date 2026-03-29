@@ -2,28 +2,31 @@ package com.iplion.mesync.cloud.security.crypto;
 
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
+import org.springframework.stereotype.Component;
 
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.Signature;
-import java.util.Base64;
 
-public final class Ed25519SignatureVerifier {
-    private static final int ED25519_SIGNATURE_LENGTH = 64;
+@Component
+public final class Ed25519SignatureVerifier implements SignatureVerifier {
 
-    private Ed25519SignatureVerifier() {}
+    private static final String ALGORITHM = "Ed25519";
+    private static final int ALGORITHM_SIGNATURE_LENGTH = 64;
 
-    public static boolean verify(PublicKey publicKey, byte[] payloadBytes, String base64Signature) {
-        return verify(publicKey, payloadBytes, parseSignature(base64Signature));
-    }
+    @Override
+    public boolean verify(PublicKey publicKey, byte[] payloadBytes, byte[] signatureBytes) {
 
-    public static boolean verify(PublicKey publicKey, byte[] payloadBytes, byte[] signatureBytes) {
-        if (!"Ed25519".equals(publicKey.getAlgorithm())) {
+        if (!ALGORITHM.equals(publicKey.getAlgorithm())) {
             throw new InvalidPublicKeyException("Expected Ed25519 key");
         }
 
+        if (signatureBytes.length != ALGORITHM_SIGNATURE_LENGTH) {
+            throw new CryptoException("Wrong signature length");
+        }
+
         try {
-            Signature signature = Signature.getInstance("Ed25519");
+            Signature signature = Signature.getInstance(ALGORITHM);
             signature.initVerify(publicKey);
             signature.update(payloadBytes);
 
@@ -31,21 +34,5 @@ public final class Ed25519SignatureVerifier {
         } catch (GeneralSecurityException e) {
             throw new CryptoException("Signature verification process failed", e);
         }
-    }
-
-    public static byte[] parseSignature(String base64Signature) {
-        byte[] signatureBytes;
-
-        try {
-            signatureBytes = Base64.getDecoder().decode(base64Signature);
-        } catch (IllegalArgumentException e) {
-            throw new CryptoException("Invalid base64 signature", e);
-        }
-
-        if (signatureBytes.length != ED25519_SIGNATURE_LENGTH) {
-            throw new CryptoException("Wrong signature length");
-        }
-
-        return signatureBytes;
     }
 }

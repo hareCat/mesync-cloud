@@ -7,6 +7,7 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
@@ -14,8 +15,6 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.JwtUtils;
-import com.iplion.mesync.cloud.security.crypto.DeviceRegistrationSignaturePayloadBuilder;
-import com.iplion.mesync.cloud.security.crypto.Ed25519SignatureVerifier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -36,12 +35,13 @@ public class DeviceRegistrationService {
     private final DevicePublicKeyService devicePublicKeyService;
     private final RedisSecurityStore redisSecurityStore;
     private final RegistrationProperties props;
+    private final SignatureVerificationService signatureVerificationService;
 
     public DeviceInviteResponseDto saveInviteToken(Jwt jwt, DeviceInviteRequestDto request) {
-        UUID keycloakSub = JwtUtils.extractSubjectUuid(jwt);
+        UUID authId = JwtUtils.extractSubjectUuid(jwt);
 
         Instant expiresAt = invitationService.createInvite(
-            keycloakSub,
+            authId,
             request.inviteToken(),
             request.encryptedMasterKey(),
             request.deviceType()
@@ -55,13 +55,13 @@ public class DeviceRegistrationService {
     @Transactional
     public DeviceRegisterResponseDto registerDevice(Jwt jwt, DeviceRegisterRequestDto request) {
         JwtUserData jwtUserData = JwtUtils.extractUserData(jwt);
-        UUID keycloakSub = jwtUserData.id();
+        UUID authId = jwtUserData.id();
         DeviceType jwtDeviceType = DeviceType.fromClientId(jwtUserData.clientId());
 
-        enforceRegistrationRateLimit(keycloakSub);
+        enforceRegistrationRateLimit(authId);
 
         User user = userService.syncOrCreateUser(
-            keycloakSub,
+            authId,
             jwtUserData.email(),
             jwtUserData.emailVerified()
         );
@@ -74,21 +74,26 @@ public class DeviceRegistrationService {
             hasDevices
         );
 
+        byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
+
+        try {
+            signatureVerificationService.deviceRegistrationVerify(
+                devicePublicKeyService.createPublicKey(decodedPublicKey),
+                request.name(),
+                jwtDeviceType,
+                request.base64PublicKey(),
+                request.inviteToken(),
+                request.base64Signature()
+            );
+        } catch (CryptoException e) {
+            throw DeviceRegistrationException.invalidSignature(authId, e);
+        }
+
         String encryptedMasterKey = resolveEncryptedMasterKey(
             hasDevices,
             request.inviteToken(),
-            keycloakSub,
+            authId,
             jwtDeviceType
-        );
-
-
-        byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
-
-        verifySignature(
-            decodedPublicKey,
-            DeviceRegistrationSignaturePayloadBuilder.build(request),
-            request.base64Signature(),
-            keycloakSub
         );
 
         Device device = buildDevice(
@@ -110,7 +115,7 @@ public class DeviceRegistrationService {
     private String resolveEncryptedMasterKey(
         boolean hasDevices,
         UUID inviteToken,
-        UUID keycloakSub,
+        UUID authId,
         DeviceType jwtDeviceType
     ) {
         if (!hasDevices) {
@@ -124,7 +129,7 @@ public class DeviceRegistrationService {
         }
 
         return invitationService.consumeInviteAndGetEncryptedMasterKey(
-            keycloakSub,
+            authId,
             jwtDeviceType,
             inviteToken
         );
@@ -186,31 +191,14 @@ public class DeviceRegistrationService {
         }
     }
 
-    private void verifySignature(
-        byte[] decodedPublicKey,
-        byte[] payloadBytes,
-        String base64Signature,
-        UUID userId
-    ) {
-        boolean valid = Ed25519SignatureVerifier.verify(
-            devicePublicKeyService.createPublicKey(decodedPublicKey),
-            payloadBytes,
-            base64Signature
-        );
-
-        if (!valid) {
-            throw DeviceRegistrationException.invalidSignature(userId);
-        }
-    }
-
     private String generateDeviceName(String baseName) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return baseName + "-" + suffix;
     }
 
-    public void enforceRegistrationRateLimit(UUID sub) {
+    public void enforceRegistrationRateLimit(UUID authId) {
         Long attemptCount = redisSecurityStore.incrementWithTtl(
-            RedisKeys.registrationRateLimitKey(sub),
+            RedisKeys.registrationRateLimitKey(authId),
             props.registrationTtl()
         );
 
@@ -218,6 +206,4 @@ public class DeviceRegistrationService {
             throw DeviceRegistrationException.rateLimit();
         }
     }
-
-
 }

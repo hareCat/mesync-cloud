@@ -21,10 +21,10 @@ public class InvitationService {
     private final RedisSecurityStore redisSecurityStore;
     private final RegistrationProperties props;
 
-    public Instant createInvite(UUID sub, UUID inviteToken, String encryptedMaster, DeviceType deviceType) {
+    public Instant createInvite(UUID authId, UUID inviteToken, String encryptedMaster, DeviceType deviceType) {
         Duration cooldown = props.inviteCooldown();
         if (!redisSecurityStore.setIfAbsent(
-            RedisKeys.registrationInviteCooldownKey(sub),
+            RedisKeys.registrationInviteCooldownKey(authId),
             LOCK_VALUE,
             cooldown)
         ) {
@@ -33,7 +33,7 @@ public class InvitationService {
 
         Duration ttl = props.inviteTtl();
         redisSecurityStore.set(
-            RedisKeys.registrationInviteKey(sub, inviteToken),
+            RedisKeys.registrationInviteKey(authId, inviteToken),
             new DeviceInviteData(
                 encryptedMaster,
                 deviceType
@@ -44,19 +44,19 @@ public class InvitationService {
         return Instant.now().plus(ttl);
     }
 
-    public String consumeInviteAndGetEncryptedMasterKey(UUID sub, DeviceType deviceType, UUID inviteToken) {
+    public String consumeInviteAndGetEncryptedMasterKey(UUID authId, DeviceType deviceType, UUID inviteToken) {
         DeviceInviteData deviceInviteData = redisSecurityStore.getAndDelete(
-            RedisKeys.registrationInviteKey(sub, inviteToken),
+            RedisKeys.registrationInviteKey(authId, inviteToken),
             DeviceInviteData.class
         );
 
         if (deviceInviteData == null) {
-            throw DeviceRegistrationException.invalidInvite("Invite token expired. userId=" + sub);
+            throw DeviceRegistrationException.invalidInvite("Invite token expired. authId=" + authId);
         }
 
         if (deviceInviteData.deviceType() != deviceType) {
             throw DeviceRegistrationException.invalidInvite(
-                String.format("Invalid device type into invite. userId=%s, deviceType=%s", sub, deviceType.name())
+                String.format("Invalid device type into invite. authId=%s, deviceType=%s", authId, deviceType.name())
             );
         }
 

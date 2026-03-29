@@ -15,8 +15,8 @@ public class UserService {
     private final UserRepository userRepository;
 
     @Transactional
-    public User syncOrCreateUser(UUID keycloakSub, String email, boolean isEmailVerified) {
-        return userRepository.findByKeycloakSub(keycloakSub)
+    public User syncOrCreateUser(UUID authId, String email, boolean isEmailVerified) {
+        return userRepository.findByAuthId(authId)
             .map(existingUser -> {
                 if (isEmailVerified && email != null && !email.equals(existingUser.getEmail())) {
                     existingUser.setEmail(email);
@@ -26,11 +26,11 @@ public class UserService {
             .orElseGet(() -> {
                 try {
                     User user = new User();
-                    user.setKeycloakSub(keycloakSub);
+                    user.setAuthId(authId);
                     user.setEmail(isEmailVerified ? email : null);
                     return userRepository.save(user);
                 } catch (DataIntegrityViolationException e) {
-                    return userRepository.findByKeycloakSub(keycloakSub)
+                    return userRepository.findByAuthId(authId)
                         .orElseThrow(() ->
                             new IllegalStateException("User missing after unique constraint violation")
                         );

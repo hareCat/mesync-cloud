@@ -7,24 +7,24 @@ public enum DeviceType {
     BROWSER("mesync-browser"),
     DESKTOP("mesync-desktop");
 
-    private final String keycloakClientId;
+    private final String clientId;
 
-    DeviceType(String keycloakClientId) {
-        this.keycloakClientId = keycloakClientId;
+    DeviceType(String clientId) {
+        this.clientId = clientId;
     }
 
-    public static DeviceType fromClientId(String keycloakClientId) {
-        if (keycloakClientId == null || keycloakClientId.isBlank()) {
+    public static DeviceType fromClientId(String authClientId) {
+        if (authClientId == null || authClientId.isBlank()) {
             throw new InvalidDeviceTypeException("ClientId is null or blank");
         }
 
-        String clientId = keycloakClientId.trim().toLowerCase();
+        String clientId = authClientId.trim().toLowerCase();
         for (DeviceType deviceType : DeviceType.values()) {
-            if (deviceType.keycloakClientId.equals(clientId)) {
+            if (deviceType.clientId.equals(clientId)) {
                 return deviceType;
             }
         }
 
-        throw new InvalidDeviceTypeException("Unknown clientId: " + keycloakClientId);
+        throw new InvalidDeviceTypeException("Unknown clientId: " + authClientId);
     }
 }
