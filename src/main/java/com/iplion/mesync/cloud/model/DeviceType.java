@@ -1,7 +1,9 @@
 package com.iplion.mesync.cloud.model;
 
 import com.iplion.mesync.cloud.error.InvalidDeviceTypeException;
+import lombok.Getter;
 
+@Getter
 public enum DeviceType {
     MOBILE("mesync-mobile"),
     BROWSER("mesync-browser"),

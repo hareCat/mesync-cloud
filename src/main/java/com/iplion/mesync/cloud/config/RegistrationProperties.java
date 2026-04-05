@@ -15,7 +15,7 @@ public record RegistrationProperties(
     @NotNull Duration inviteCooldown,
 
     @NotNull Duration registrationTtl,
-    @Min(1) int registrationAttempts
+    @Min(1) long registrationAttempts
 
 ) {
 }

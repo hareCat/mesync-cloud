@@ -31,7 +31,7 @@ public final class RedisSecurityStore {
         return execute(() -> redisTemplate.expire(redisKey, ttl));
     }
 
-    public Long incrementWithTtl(String key, Duration ttl) {
+    public long incrementWithTtl(String key, Duration ttl) {
         Long value = execute(() -> redisTemplate.execute(
             rateLimitScript,
             List.of(key),

@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record DeviceRegisterResponseDto(
     UUID deviceId,
+    String deviceName,
     String encryptedMasterKey
 ) {
 }

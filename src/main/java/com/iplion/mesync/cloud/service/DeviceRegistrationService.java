@@ -11,6 +11,7 @@ import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.model.DeviceRegistrationVerificationData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -77,14 +78,14 @@ public class DeviceRegistrationService {
         byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
 
         try {
-            signatureVerificationService.deviceRegistrationVerify(
+            signatureVerificationService.deviceRegistrationVerify(new DeviceRegistrationVerificationData(
                 devicePublicKeyService.createPublicKey(decodedPublicKey),
                 request.name(),
                 jwtDeviceType,
                 request.base64PublicKey(),
                 request.inviteToken(),
                 request.base64Signature()
-            );
+            ));
         } catch (CryptoException e) {
             throw DeviceRegistrationException.invalidSignature(authId, e);
         }
@@ -108,6 +109,7 @@ public class DeviceRegistrationService {
 
         return new DeviceRegisterResponseDto(
             device.getPublicId(),
+            device.getName(),
             encryptedMasterKey
         );
     }
@@ -174,7 +176,7 @@ public class DeviceRegistrationService {
     }
 
     private void saveWithRetry(Device device) {
-        final int attempts = 2;
+        final int attempts = 3;
         final String baseName = device.getName();
 
         for (int attempt = 1; attempt <= attempts; attempt++) {
@@ -186,7 +188,12 @@ public class DeviceRegistrationService {
                 if (attempt == attempts) {
                     throw DeviceRegistrationException.saveFailed(e);
                 }
-                device.setName(generateDeviceName(baseName));
+                if (attempt == 1) {
+                    device.setName(baseName + "-" + device.getDeviceType().name());
+                }
+                if (attempt > 1) {
+                    device.setName(generateDeviceName(baseName));
+                }
             }
         }
     }
@@ -197,7 +204,7 @@ public class DeviceRegistrationService {
     }
 
     public void enforceRegistrationRateLimit(UUID authId) {
-        Long attemptCount = redisSecurityStore.incrementWithTtl(
+        long attemptCount = redisSecurityStore.incrementWithTtl(
             RedisKeys.registrationRateLimitKey(authId),
             props.registrationTtl()
         );
