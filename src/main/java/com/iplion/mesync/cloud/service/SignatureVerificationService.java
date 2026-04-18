@@ -28,7 +28,7 @@ public class SignatureVerificationService {
         try {
             decodedSignature = Base64.getDecoder().decode(data.base64Signature());
         } catch (IllegalArgumentException e) {
-            throw new CryptoException("Invalid signature");
+            throw new CryptoException("Invalid signature", e);
         }
 
         if (!signatureVerifier.verify(

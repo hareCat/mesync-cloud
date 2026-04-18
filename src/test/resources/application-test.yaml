@@ -1,0 +1,23 @@
+logging:
+  level:
+    org.hibernate.SQL: debug
+    root: INFO
+    com.iplion.mesync.cloud: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+spring:
+  cache:
+    type: none
+  flyway:
+    enabled: true
+    clean-disabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+app:
+  registration:
+    invite-ttl: 10m
+    invite-cooldown: 1m
+    registration-ttl: 10m
+    registration-attempts: 10

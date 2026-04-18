@@ -1,0 +1,120 @@
+{
+  "realm": "mesync",
+  "enabled": true,
+
+  "roles": {
+    "realm": [
+      { "name": "devices.invite" },
+      { "name": "devices.remove" },
+      { "name": "messages.read" },
+      { "name": "messages.write" }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "mesync-mobile",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["profile", "email", "roles"]
+    },
+    {
+      "clientId": "mesync-device-manager",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["roles"]
+    },
+    {
+      "clientId": "mesync-desktop",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["profile", "email", "roles"]
+    },
+    {
+      "clientId": "mesync-browser",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["profile", "email", "roles"]
+    }
+  ],
+
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "username": "test",
+      "enabled": true,
+      "email": "test@test.com",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password"
+        }
+      ],
+      "realmRoles": ["messages.read", "messages.write"]
+    }
+  ],
+
+  "scopeMappings": [
+    {
+      "client": "mesync-mobile",
+      "roles": ["messages.read", "messages.write"]
+    },
+    {
+      "client": "mesync-device-manager",
+      "roles": ["devices.invite", "devices.remove"]
+    },
+    {
+      "client": "mesync-desktop",
+      "roles": ["messages.read"]
+    },
+    {
+      "client": "mesync-browser",
+      "roles": ["messages.read"]
+    }
+  ]
+}

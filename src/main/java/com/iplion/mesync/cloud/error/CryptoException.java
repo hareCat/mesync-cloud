@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.error;
 
 import org.springframework.http.HttpStatus;
 
-public class CryptoException extends ApiException {
+public class CryptoException extends ApplicationException {
     private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
     private static final String CLIENT_MESSAGE = "Signature verification failed";
 

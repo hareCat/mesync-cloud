@@ -3,7 +3,7 @@ package com.iplion.mesync.cloud.security;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
-import com.iplion.mesync.cloud.textUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -20,7 +20,7 @@ class JwtUtilsTest {
     void extractSubjectUuid_returnsParsedUuid() {
         Jwt jwt = TestJwtBuilder.custom()
             .withSubject(TEST_SUBJECT_UUID)
-            .build();
+            .buildJwt();
 
         assertThat(JwtUtils.extractSubjectUuid(jwt))
             .isEqualTo(TEST_SUBJECT_UUID);
@@ -28,7 +28,7 @@ class JwtUtilsTest {
 
     @Test
     void extractSubjectUuid_throwsForMissingSubject() {
-        Jwt jwt = TestJwtBuilder.custom().build();
+        Jwt jwt = TestJwtBuilder.custom().buildJwt();
 
         assertThatThrownBy(() -> JwtUtils.extractSubjectUuid(jwt))
             .isInstanceOf(InvalidTokenException.class);
@@ -36,7 +36,7 @@ class JwtUtilsTest {
 
     @Test
     void extractSubjectUuid_throwsForBlankSubject() {
-        Jwt jwt = TestJwtBuilder.custom().subject("  ").build();
+        Jwt jwt = TestJwtBuilder.custom().subject("  ").buildJwt();
 
         assertThatThrownBy(() -> JwtUtils.extractSubjectUuid(jwt))
             .isInstanceOf(InvalidTokenException.class);
@@ -44,7 +44,7 @@ class JwtUtilsTest {
 
     @Test
     void extractSubjectUuid_throwsForInvalidUuid() {
-        Jwt jwt = TestJwtBuilder.custom().subject("not-uuid").build();
+        Jwt jwt = TestJwtBuilder.custom().subject("not-uuid").buildJwt();
 
         assertThatThrownBy(() -> JwtUtils.extractSubjectUuid(jwt))
             .isInstanceOf(InvalidTokenException.class)
@@ -61,7 +61,7 @@ class JwtUtilsTest {
             .withEmail(email)
             .withEmailVerified(true)
             .withDeviceType(TEST_DEVICE_TYPE)
-            .build();
+            .buildJwt();
 
         JwtUserData result = JwtUtils.extractUserData(jwt);
 
@@ -76,7 +76,7 @@ class JwtUtilsTest {
         Jwt jwt = TestJwtBuilder.custom()
             .withSubject(TEST_SUBJECT_UUID)
             .withDeviceType(TEST_DEVICE_TYPE)
-            .build();
+            .buildJwt();
 
         JwtUserData result = JwtUtils.extractUserData(jwt);
 
@@ -90,7 +90,7 @@ class JwtUtilsTest {
             .withSubject(TEST_SUBJECT_UUID)
             .withDeviceType(TEST_DEVICE_TYPE)
             .withEmailVerified(false)
-            .build();
+            .buildJwt();
 
         JwtUserData result = JwtUtils.extractUserData(jwt);
 
@@ -102,7 +102,7 @@ class JwtUtilsTest {
         Jwt jwt = TestJwtBuilder.custom()
             .withSubject(TEST_SUBJECT_UUID)
             .claim("azp", "  ")
-            .build();
+            .buildJwt();
 
         assertThatThrownBy(() -> JwtUtils.extractUserData(jwt))
             .isInstanceOf(InvalidTokenException.class);
@@ -112,7 +112,7 @@ class JwtUtilsTest {
     void extractUserData_throwsForMissingClientId() {
         Jwt jwt = TestJwtBuilder.custom()
             .withSubject(TEST_SUBJECT_UUID)
-            .build();
+            .buildJwt();
 
         assertThatThrownBy(() -> JwtUtils.extractUserData(jwt))
             .isInstanceOf(InvalidTokenException.class);

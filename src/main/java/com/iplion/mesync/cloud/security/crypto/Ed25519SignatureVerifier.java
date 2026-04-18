@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.interfaces.EdECPublicKey;
 
 @Component
 public final class Ed25519SignatureVerifier implements SignatureVerifier {
@@ -17,7 +18,8 @@ public final class Ed25519SignatureVerifier implements SignatureVerifier {
     @Override
     public boolean verify(PublicKey publicKey, byte[] payloadBytes, byte[] signatureBytes) {
 
-        if (!ALGORITHM.equals(publicKey.getAlgorithm())) {
+        if (!(publicKey instanceof EdECPublicKey)) {
+            System.out.println(publicKey.getAlgorithm() + "-----------------------------");
             throw new InvalidPublicKeyException("Expected Ed25519 key");
         }
 

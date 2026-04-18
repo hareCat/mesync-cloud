@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.error;
 
 import org.springframework.http.HttpStatus;
 
-public class InvalidPublicKeyException extends ApiException {
+public class InvalidPublicKeyException extends ApplicationException {
     private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
     private static final String MESSAGE = "Invalid device public key";
 

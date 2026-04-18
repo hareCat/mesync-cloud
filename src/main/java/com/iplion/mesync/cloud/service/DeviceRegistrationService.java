@@ -61,18 +61,12 @@ public class DeviceRegistrationService {
 
         enforceRegistrationRateLimit(authId);
 
-        User user = userService.syncOrCreateUser(
-            authId,
-            jwtUserData.email(),
-            jwtUserData.emailVerified()
-        );
-
-        boolean hasDevices = deviceRepository.existsActiveByUser(user);
+        boolean hasActiveDevices = deviceRepository.existsActiveByUserAuthId(authId);
 
         DeviceType deviceType = resolveDeviceType(
             jwtDeviceType,
             request.deviceType(),
-            hasDevices
+            hasActiveDevices
         );
 
         byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
@@ -91,10 +85,16 @@ public class DeviceRegistrationService {
         }
 
         String encryptedMasterKey = resolveEncryptedMasterKey(
-            hasDevices,
+            hasActiveDevices,
             request.inviteToken(),
             authId,
             jwtDeviceType
+        );
+
+        User user = userService.syncOrCreateUser(
+            authId,
+            jwtUserData.email(),
+            jwtUserData.emailVerified()
         );
 
         Device device = buildDevice(
@@ -154,7 +154,7 @@ public class DeviceRegistrationService {
         device.setUser(user);
         device.setDeviceType(deviceType);
         device.setKeyCreatedAt(now);
-        device.setLastSeenAt(now);
+        device.setLastActiveAt(now);
 
         return device;
     }
@@ -175,7 +175,7 @@ public class DeviceRegistrationService {
         return jwtDeviceType;
     }
 
-    private void saveWithRetry(Device device) {
+    public void saveWithRetry(Device device) {
         final int attempts = 3;
         final String baseName = device.getName();
 
@@ -189,7 +189,7 @@ public class DeviceRegistrationService {
                     throw DeviceRegistrationException.saveFailed(e);
                 }
                 if (attempt == 1) {
-                    device.setName(baseName + "-" + device.getDeviceType().name());
+                    device.setName(baseName + "-" + device.getDeviceType().name().toLowerCase());
                 }
                 if (attempt > 1) {
                     device.setName(generateDeviceName(baseName));

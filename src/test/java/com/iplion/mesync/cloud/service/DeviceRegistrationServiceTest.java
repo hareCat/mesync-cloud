@@ -10,7 +10,7 @@ import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
-import com.iplion.mesync.cloud.textUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -61,11 +61,11 @@ class DeviceRegistrationServiceTest {
         var ctx = createContext(deviceType);
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
-        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
             .thenReturn(ctx.encryptedMasterKey());
-        when(deviceRepository.existsActiveByUser(eq(ctx.user()))).thenReturn(true);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
         when(devicePublicKeyService.decodePublicKey(any())).thenReturn(ctx.decodedPublicKey());
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
 
         DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
 
@@ -91,8 +91,8 @@ class DeviceRegistrationServiceTest {
 
         var ctx = createContext(deviceType);
 
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(deviceRepository.existsActiveByUser(eq(ctx.user()))).thenReturn(false);
 
         DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
 
@@ -133,7 +133,7 @@ class DeviceRegistrationServiceTest {
 
         Jwt jwt = TestJwtBuilder
             .forDevice(ctx.authId(), DeviceType.MOBILE)
-            .build();
+            .buildJwt();
 
         assertThatThrownBy(() -> ctx.service().registerDevice(jwt, ctx.request()))
             .isInstanceOf(DeviceRegistrationException.class)
@@ -150,7 +150,7 @@ class DeviceRegistrationServiceTest {
     void registerDevice_whenDeviceTypeMismatch_shouldThrowDeviceRegistrationExceptionWithFirstDeviceType() throws NoSuchAlgorithmException {
         var ctx = createContext(DeviceType.BROWSER);
 
-        when(deviceRepository.existsActiveByUser(any())).thenReturn(false);
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
             .isInstanceOf(DeviceRegistrationException.class)
@@ -194,7 +194,7 @@ class DeviceRegistrationServiceTest {
             "base64Signature"
         );
 
-        when(deviceRepository.existsActiveByUser(any())).thenReturn(true);
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), request))
             .isInstanceOf(DeviceRegistrationException.class)
@@ -210,7 +210,7 @@ class DeviceRegistrationServiceTest {
     void registerDevice_saveWithRetry_shouldThrowDeviceRegistrationExceptionWithSaveFailedThreeTimes() throws NoSuchAlgorithmException {
         var ctx = createContext(DeviceType.MOBILE);
 
-        when(deviceRepository.existsActiveByUser(any())).thenReturn(true);
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
         when(deviceRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
@@ -231,7 +231,7 @@ class DeviceRegistrationServiceTest {
 
         var ctx = createContext(deviceType);
 
-        when(deviceRepository.existsActiveByUser(any())).thenReturn(true);
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
         when(deviceRepository.save(any()))
             .thenThrow(DataIntegrityViolationException.class)
             .thenAnswer(inv -> inv.<Device>getArgument(0));
@@ -243,7 +243,7 @@ class DeviceRegistrationServiceTest {
         String savedDeviceName = captor.getValue().getName();
 
         assertThat(savedDeviceName)
-            .isEqualTo(ctx.request().name() + "-" + deviceType.name())
+            .isEqualTo(ctx.request().name() + "-" + deviceType.name().toLowerCase())
             .isEqualTo(response.deviceName());
     }
 
@@ -253,7 +253,7 @@ class DeviceRegistrationServiceTest {
 
         var ctx = createContext(deviceType);
 
-        when(deviceRepository.existsActiveByUser(any())).thenReturn(true);
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
         when(deviceRepository.save(any()))
             .thenThrow(DataIntegrityViolationException.class)
             .thenThrow(DataIntegrityViolationException.class)
@@ -326,7 +326,7 @@ class DeviceRegistrationServiceTest {
 
         Jwt jwt = TestJwtBuilder
             .forDevice(authId, deviceType)
-            .build();
+            .buildJwt();
 
         return new TestContext(service, request, user, authId, decodedPublicKey, encryptedMasterKey, props, jwt);
     }

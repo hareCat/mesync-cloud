@@ -25,6 +25,7 @@ public class DeviceController {
 
     @PostMapping("/register")
     @PreAuthorize("isAuthenticated()")
+    @ResponseStatus(HttpStatus.CREATED)
     public DeviceRegisterResponseDto register(
         @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody DeviceRegisterRequestDto request

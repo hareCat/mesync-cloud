@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import java.time.Duration;
 import java.util.UUID;
 
-public class DeviceRegistrationException extends ApiException {
+public class DeviceRegistrationException extends ApplicationException {
     private DeviceRegistrationException(HttpStatus status, String internalMessage, String clientMessage) {
         super(status, internalMessage, clientMessage);
     }
@@ -52,7 +52,7 @@ public class DeviceRegistrationException extends ApiException {
         return new DeviceRegistrationException(
             HttpStatus.FORBIDDEN,
             "Invalid signature. AuthId=" + authId,
-            "Your signature is not valid",
+            "Signature is not valid",
             cause
         );
     }

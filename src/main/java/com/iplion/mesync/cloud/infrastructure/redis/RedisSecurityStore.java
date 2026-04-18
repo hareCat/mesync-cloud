@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.infrastructure.redis;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.function.Supplier;
 public final class RedisSecurityStore {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisScript<Long> rateLimitScript;
+    private final ObjectMapper objectMapper;
 
     public <T> void set(String redisKey, T value, Duration ttl) {
         execute(() -> redisTemplate.opsForValue().set(redisKey, value, ttl));
@@ -32,10 +34,14 @@ public final class RedisSecurityStore {
     }
 
     public long incrementWithTtl(String key, Duration ttl) {
+        if (ttl.isZero() || ttl.isNegative()) {
+            throw new RedisOperationException("TTL must be positive");
+        }
+
         Long value = execute(() -> redisTemplate.execute(
             rateLimitScript,
             List.of(key),
-            String.valueOf(ttl.getSeconds())
+            ttl.getSeconds()
         ));
 
         if (value == null) {
@@ -45,18 +51,28 @@ public final class RedisSecurityStore {
         return value;
     }
 
+    private <T> T convert(Object data, Class<T> clazz) {
+        if (data == null) {
+            return null;
+        }
+
+        try {
+            return objectMapper.convertValue(data, clazz);
+        } catch (IllegalArgumentException e) {
+            throw new RedisOperationException(
+                "Failed to convert Redis value to " + clazz.getSimpleName(), e
+            );
+        }
+    }
+
     @Nullable
     public <T> T get(String key, Class<T> clazz) {
-        return clazz.cast(
-            execute(() -> redisTemplate.opsForValue().get(key))
-        );
+        return convert(execute(() -> redisTemplate.opsForValue().get(key)), clazz);
     }
 
     @Nullable
     public <T> T getAndDelete(String key, Class<T> clazz) {
-        return clazz.cast(
-            execute(() -> redisTemplate.opsForValue().getAndDelete(key))
-        );
+        return convert(execute(() -> redisTemplate.opsForValue().getAndDelete(key)), clazz);
     }
 
     public boolean setIfAbsent(String key, String value, Duration ttl) {
@@ -67,7 +83,7 @@ public final class RedisSecurityStore {
         try {
             return supplier.get();
         } catch (DataAccessException e) {
-            throw new RedisOperationException(e);
+            throw new RedisOperationException("Supplier method error: " + e.getMessage(), e);
         }
     }
 
@@ -75,7 +91,7 @@ public final class RedisSecurityStore {
         try {
             action.run();
         } catch (DataAccessException e) {
-            throw new RedisOperationException(e);
+            throw new RedisOperationException("Runnable method error: " + e.getMessage(), e);
         }
     }
 }

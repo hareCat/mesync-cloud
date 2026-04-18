@@ -49,7 +49,7 @@ public class Device {
     @Column(name = "public_key", nullable = false, unique = true)
     private byte[] publicKey;
 
-    @Column(name = "key_created_at")
+    @Column(name = "key_created_at", nullable = false)
     private Instant keyCreatedAt;
 
     @Column(name = "revoked_at")
@@ -62,8 +62,8 @@ public class Device {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private Instant updatedAt;
 
-    @Column(name = "last_seen_at", nullable = false)
-    private Instant lastSeenAt = Instant.now();
+    @Column(name = "last_active_at", nullable = false)
+    private Instant lastActiveAt = Instant.now();
 
     //extra
     @JdbcTypeCode(SqlTypes.JSON)

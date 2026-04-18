@@ -41,12 +41,16 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
+    // Source: https://mvnrepository.com/artifact/com.github.dasniko/testcontainers-keycloak
+    testImplementation("com.github.dasniko:testcontainers-keycloak:4.1.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     // Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.15")
     // Source: https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis:3.5.10")
     implementation("com.github.ben-manes.caffeine:caffeine:3.2.3")
+    // Source: https://mvnrepository.com/artifact/com.github.database-rider/rider-spring
+    implementation("com.github.database-rider:rider-spring:1.44.0")
 }
 
 tasks.withType<Test> {
