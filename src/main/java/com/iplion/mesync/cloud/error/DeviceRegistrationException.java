@@ -57,20 +57,28 @@ public class DeviceRegistrationException extends ApplicationException {
         );
     }
 
-    public static DeviceRegistrationException saveFailed(Throwable e) {
+    public static DeviceRegistrationException saveFailed() {
         return new DeviceRegistrationException(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to persist device",
-            "Unable to complete device registration. Please try again.",
-            e
+            "Unable to complete device registration. Please try again."
         );
     }
 
-    public static DeviceRegistrationException deviceTypeMismatch() {
+    public static DeviceRegistrationException deviceTypeMismatch(String internalMessage) {
         return new DeviceRegistrationException(
             HttpStatus.BAD_REQUEST,
-            "Device type mismatch for additional device",
+            internalMessage,
             "Unable to complete device registration. Please try again."
+        );
+    }
+
+    public static DeviceRegistrationException wrongRegisterData(String internalMessage, Throwable e) {
+        return new DeviceRegistrationException(
+            HttpStatus.BAD_REQUEST,
+            internalMessage,
+            "Unable to complete device registration. Please try again.",
+            e
         );
     }
 }

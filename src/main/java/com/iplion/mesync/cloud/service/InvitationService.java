@@ -55,8 +55,13 @@ public class InvitationService {
         }
 
         if (deviceInviteData.deviceType() != deviceType) {
-            throw DeviceRegistrationException.invalidInvite(
-                String.format("Invalid device type into invite. authId=%s, deviceType=%s", authId, deviceType.name())
+            throw DeviceRegistrationException.deviceTypeMismatch(
+                String.format(
+                    "Device type mismatch. authId=%s, JwtDeviceType=%s InviteDeviceType=%s",
+                    authId,
+                    deviceType.name(),
+                    deviceInviteData.deviceType().name()
+                )
             );
         }
 

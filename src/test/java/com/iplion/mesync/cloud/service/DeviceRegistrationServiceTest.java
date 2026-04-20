@@ -1,12 +1,14 @@
 package com.iplion.mesync.cloud.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
-import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -16,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -24,6 +25,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -31,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -53,6 +57,10 @@ class DeviceRegistrationServiceTest {
     RedisSecurityStore redisSecurityStore;
     @Mock
     SignatureVerificationService signatureVerificationService;
+    @Mock
+    ObjectMapper objectMapper;
+
+    private final ObjectMapper testObjectMapper = new ObjectMapper();
 
     @Test
     void registerDevice_whenUserAlreadyHaveActiveDevice_shouldRegisterAnotherOne() throws Exception {
@@ -61,24 +69,28 @@ class DeviceRegistrationServiceTest {
         var ctx = createContext(deviceType);
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
-        when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
-            .thenReturn(ctx.encryptedMasterKey());
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
         when(devicePublicKeyService.decodePublicKey(any())).thenReturn(ctx.decodedPublicKey());
+        when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
+            .thenReturn(ctx.encryptedMasterKey());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(objectMapper.writeValueAsString(any()))
+            .thenReturn(testObjectMapper.writeValueAsString(ctx.request().extras()));
+
+        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(1);
 
         DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
 
-        ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
-        verify(deviceRepository, times(1)).save(captor.capture());
-        Device savedDevice = captor.getValue();
-        String savedDeviceName = savedDevice.getName();
-
-        assertThat(savedDevice.getExtras()).isEqualTo(ctx.request().extras());
-        assertThat(savedDevice.getPublicKey()).isEqualTo(ctx.decodedPublicKey());
-        assertThat(savedDevice.getUser()).isEqualTo(ctx.user());
-        assertThat(savedDevice.getDeviceType()).isEqualTo(deviceType);
-        assertThat(savedDeviceName).isEqualTo(ctx.request().name());
+        verify(deviceRepository, times(1)).trySave(
+            any(),
+            eq(ctx.user().getId()),
+            eq(deviceType.name()),
+            eq(ctx.request().name()),
+            argThat(bytes -> Arrays.equals(bytes, ctx.decodedPublicKey())),
+            any(), any(),
+            argThat(json -> json.contains("platform"))
+        );
 
         assertThat(response.deviceId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(ctx.request().name());
@@ -93,16 +105,19 @@ class DeviceRegistrationServiceTest {
 
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(1);
 
         DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
 
         verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
 
-        ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
-        verify(deviceRepository, times(1)).save(captor.capture());
-        Device savedDevice = captor.getValue();
+        verify(deviceRepository, times(1)).trySave(
+            any(), any(),
+            eq(deviceType.name()),
+            any(), any(), any(), any(), any()
+        );
 
-        assertThat(savedDevice.getDeviceType()).isEqualTo(deviceType);
         assertThat(response.deviceId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(ctx.request().name());
         assertThat(response.encryptedMasterKey()).isNull();
@@ -211,7 +226,9 @@ class DeviceRegistrationServiceTest {
         var ctx = createContext(DeviceType.MOBILE);
 
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
-        when(deviceRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(0);
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
             .isInstanceOf(DeviceRegistrationException.class)
@@ -222,57 +239,111 @@ class DeviceRegistrationServiceTest {
                 assertThat(e.getMessage()).contains("device");
             });
 
-        verify(deviceRepository, times(3)).save(any());
+        verify(deviceRepository, times(3)).trySave(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void registerDevice_saveWithRetry_shouldSaveDeviceWithNewNameWithDeviceType() throws NoSuchAlgorithmException {
         DeviceType deviceType = DeviceType.MOBILE;
-
         var ctx = createContext(deviceType);
+        String generatedDeviceName = ctx.request().name() + "-" + deviceType.name().toLowerCase();
 
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
-        when(deviceRepository.save(any()))
-            .thenThrow(DataIntegrityViolationException.class)
-            .thenAnswer(inv -> inv.<Device>getArgument(0));
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(0)
+            .thenReturn(1);
 
         DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
 
-        ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
-        verify(deviceRepository, times(2)).save(captor.capture());
-        String savedDeviceName = captor.getValue().getName();
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(deviceRepository, times(2)).trySave(
+            any(), any(), any(),
+            captor.capture(),
+            any(), any(), any(), any()
+        );
+        List<String> names = captor.getAllValues();
 
-        assertThat(savedDeviceName)
-            .isEqualTo(ctx.request().name() + "-" + deviceType.name().toLowerCase())
+        assertThat(names.get(0)).isEqualTo(ctx.request().name());
+        assertThat(names.get(1))
+            .isEqualTo(generatedDeviceName)
             .isEqualTo(response.deviceName());
     }
 
     @Test
     void registerDevice_saveWithRetry_shouldSaveDeviceWithNewRandomName() throws NoSuchAlgorithmException {
-        DeviceType deviceType = DeviceType.DESKTOP;
-
+        DeviceType deviceType = DeviceType.MOBILE;
         var ctx = createContext(deviceType);
 
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
-        when(deviceRepository.save(any()))
-            .thenThrow(DataIntegrityViolationException.class)
-            .thenThrow(DataIntegrityViolationException.class)
-            .thenAnswer(inv -> inv.<Device>getArgument(0));
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(0)
+            .thenReturn(0)
+            .thenReturn(1);
 
         DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
 
-        ArgumentCaptor<Device> captor = ArgumentCaptor.forClass(Device.class);
-        verify(deviceRepository, times(3)).save(captor.capture());
-        String savedDeviceName = captor.getValue().getName();
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(deviceRepository, times(3)).trySave(
+            any(), any(), any(),
+            captor.capture(),
+            any(), any(), any(), any()
+        );
+        List<String> names = captor.getAllValues();
 
-        assertThat(savedDeviceName)
-            .isNotEqualTo(ctx.request().name() + "-" + deviceType.name())
+        assertThat(names.get(2))
+            .isNotEqualTo(ctx.request().name())
             .startsWith(ctx.request().name())
             .hasSizeGreaterThan(ctx.request().name().length())
             .isEqualTo(response.deviceName());
     }
 
-    // helpers
+    @Test
+    void registerDevice_whenRequestPublicKeyWrong_shouldThrowDeviceRegistrationExceptionWithDecodeError() throws Exception {
+        var ctx = createContext(DeviceType.DESKTOP);
+
+        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
+
+        doThrow(InvalidPublicKeyException.class).when(devicePublicKeyService).decodePublicKey(any());
+
+        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
+            .isInstanceOf(DeviceRegistrationException.class)
+            .satisfies(deviceRegistrationException -> {
+                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
+
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e.getMessage()).contains("public");
+            });
+
+        verify(devicePublicKeyService).decodePublicKey(any());
+    }
+
+    @Test
+    void registerDevice_whenRequestExtrasWrong_shouldThrowDeviceRegistrationExceptionWithDecodeError() throws Exception {
+        var ctx = createContext(DeviceType.DESKTOP);
+
+        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
+        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(ctx.decodedPublicKey());
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+
+        doThrow(JsonProcessingException.class).when(objectMapper).writeValueAsString(any());
+
+        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
+            .isInstanceOf(DeviceRegistrationException.class)
+            .satisfies(deviceRegistrationException -> {
+                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
+
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e.getMessage()).contains("Extras");
+            });
+
+        verify(objectMapper).writeValueAsString(any());
+    }
+
+    // --------------------- helpers ---------------------
 
     private record TestContext(
         DeviceRegistrationService service,
@@ -301,7 +372,8 @@ class DeviceRegistrationServiceTest {
             devicePublicKeyService,
             redisSecurityStore,
             props,
-            signatureVerificationService
+            signatureVerificationService,
+            objectMapper
         );
 
         UUID authId = UUID.randomUUID();
@@ -309,6 +381,7 @@ class DeviceRegistrationServiceTest {
         String email = "test@mail.com";
 
         User user = new User();
+        user.setId(1L);
         user.setEmail(email);
 
         KeyPairGenerator generator = KeyPairGenerator.getInstance("Ed25519");

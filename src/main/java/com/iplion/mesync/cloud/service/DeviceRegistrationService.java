@@ -1,5 +1,7 @@
 package com.iplion.mesync.cloud.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.controller.dto.DeviceInviteRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceInviteResponseDto;
@@ -9,6 +11,7 @@ import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceRegistrationVerificationData;
@@ -17,7 +20,6 @@ import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,7 @@ public class DeviceRegistrationService {
     private final RedisSecurityStore redisSecurityStore;
     private final RegistrationProperties props;
     private final SignatureVerificationService signatureVerificationService;
+    private final ObjectMapper  objectMapper;
 
     public DeviceInviteResponseDto saveInviteToken(Jwt jwt, DeviceInviteRequestDto request) {
         UUID authId = JwtUtils.extractSubjectUuid(jwt);
@@ -69,7 +72,12 @@ public class DeviceRegistrationService {
             hasActiveDevices
         );
 
-        byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
+        byte[] decodedPublicKey;
+        try {
+            decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
+        } catch (InvalidPublicKeyException e) {
+            throw DeviceRegistrationException.wrongRegisterData("Invalid public key format", e);
+        }
 
         try {
             signatureVerificationService.deviceRegistrationVerify(new DeviceRegistrationVerificationData(
@@ -165,7 +173,7 @@ public class DeviceRegistrationService {
         boolean hasDevices
     ) {
         if (jwtDeviceType != requestDeviceType) {
-            throw DeviceRegistrationException.deviceTypeMismatch();
+            throw DeviceRegistrationException.deviceTypeMismatch("Request device type mismatch for additional device");
         }
 
         if (!hasDevices && jwtDeviceType != DeviceType.MOBILE) {
@@ -180,21 +188,42 @@ public class DeviceRegistrationService {
         final String baseName = device.getName();
 
         for (int attempt = 1; attempt <= attempts; attempt++) {
-            try {
-                deviceRepository.save(device);
-
+            if (trySaveDevice(device)) {
                 return;
-            } catch (DataIntegrityViolationException e) {
-                if (attempt == attempts) {
-                    throw DeviceRegistrationException.saveFailed(e);
-                }
-                if (attempt == 1) {
-                    device.setName(baseName + "-" + device.getDeviceType().name().toLowerCase());
-                }
-                if (attempt > 1) {
-                    device.setName(generateDeviceName(baseName));
-                }
             }
+
+            if (attempt == attempts) {
+                throw DeviceRegistrationException.saveFailed();
+            }
+            if (attempt == 1) {
+                device.setName(baseName + "-" + device.getDeviceType().name().toLowerCase());
+            }
+            if (attempt > 1) {
+                device.setName(generateDeviceName(baseName));
+            }
+        }
+    }
+
+    private boolean trySaveDevice(Device device) {
+        int result = deviceRepository.trySave(
+            device.getPublicId(),
+            device.getUser().getId(),
+            device.getDeviceType().name(),
+            device.getName(),
+            device.getPublicKey(),
+            device.getKeyCreatedAt(),
+            device.getLastActiveAt(),
+            toJson(device.getExtras())
+        );
+
+        return result == 1;
+    }
+
+    private String toJson(Map<String, Object> extras) {
+        try {
+            return objectMapper.writeValueAsString(extras);
+        } catch (JsonProcessingException e) {
+            throw DeviceRegistrationException.wrongRegisterData("Extras wrong data for saving device", e);
         }
     }
 

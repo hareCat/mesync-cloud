@@ -19,7 +19,7 @@ import java.time.Instant;
 
 @Slf4j
 @RestControllerAdvice
-public class AplicationExceptionHandler {
+public class ApplicationExceptionHandler {
     private static final String SAFE_5XX_MESSAGE = "Request could not be processed. Please try again later.";
 
     private ProblemDetail problemDetail(HttpStatus status, String clientMessage, HttpServletRequest request) {
@@ -36,7 +36,7 @@ public class AplicationExceptionHandler {
         if (e.getHttpStatus().is5xxServerError()) {
             log.error(e.getMessage(), e);
         } else {
-            log.warn(e.getMessage());
+            log.warn(e.getMessage(), e);
         }
 
         return problemDetail(e.getHttpStatus(), e.getClientMessage(), request);
@@ -109,8 +109,8 @@ public class AplicationExceptionHandler {
     }
 
      // === fallback ===
-    @ExceptionHandler(RuntimeException.class)
-    public ProblemDetail handleGenericException(RuntimeException e, HttpServletRequest request) {
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGenericException(Exception e, HttpServletRequest request) {
         log.error("Unexpected error", e);
 
         return problemDetail(HttpStatus.INTERNAL_SERVER_ERROR,
