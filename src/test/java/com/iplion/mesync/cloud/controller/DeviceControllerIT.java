@@ -87,8 +87,8 @@ class DeviceControllerIT extends BaseIT {
     @BeforeAll
     static void init() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("Ed25519");
-        byte[] publicKey = generator.generateKeyPair().getPublic().getEncoded();
-        base64PublicKey = Base64.getEncoder().encodeToString(publicKey);
+        byte[] publicKeyBytes = generator.generateKeyPair().getPublic().getEncoded();
+        base64PublicKey = Base64.getEncoder().encodeToString(publicKeyBytes);
     }
 
     @BeforeEach
@@ -200,7 +200,7 @@ class DeviceControllerIT extends BaseIT {
     }
 
     @Test
-    @DataSet(value = "datasets/deviceController/register/no-invite/before.yaml", cleanBefore = true)
+    @DataSet(value = "datasets/deviceController/register/before.yaml", cleanBefore = true)
     void registerDevice_shouldReturn201Created_andGenerateNewName_whenNameAlreadyExists() throws Exception {
         UUID authId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         UUID inviteToken = UUID.randomUUID();
@@ -307,7 +307,7 @@ class DeviceControllerIT extends BaseIT {
     }
 
     @Test
-    @DataSet(value = "datasets/deviceController/register/no-invite/before.yaml", cleanBefore = true)
+    @DataSet(value = "datasets/deviceController/register/before.yaml", cleanBefore = true)
     void registerDevice_shouldReturn400BadRequest_whenInviteNotExist() throws Exception {
         DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
             "test device",
@@ -327,7 +327,7 @@ class DeviceControllerIT extends BaseIT {
     }
 
     @Test
-    @DataSet(value = "datasets/deviceController/register/no-invite/before.yaml", cleanBefore = true)
+    @DataSet(value = "datasets/deviceController/register/before.yaml", cleanBefore = true)
     void registerDevice_shouldReturn400BadRequest_whenInviteDeviceAndJwtDeviceMismatch() throws Exception {
         UUID authId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
         UUID inviteToken = UUID.randomUUID();
