@@ -8,14 +8,16 @@ import com.iplion.mesync.cloud.security.crypto.SignatureVerifier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.security.PublicKey;
 import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
-public class SignatureVerificationService {
+public class RegistrationCryptoService {
     private final SignatureVerifier signatureVerifier;
+    private final DevicePublicKeyService devicePublicKeyService;
 
-    public void deviceRegistrationVerify(DeviceRegistrationVerificationData data) {
+    public byte[] verifyAngExtractPublicKeyBytes(DeviceRegistrationVerificationData data) {
         byte[] payload = DeviceRegistrationSignaturePayloadBuilder.build(new DeviceRegistrationPayload(
             data.deviceName(),
             data.deviceType(),
@@ -23,20 +25,25 @@ public class SignatureVerificationService {
             data.inviteToken()
         ));
 
-        byte[] decodedSignature;
-
-        try {
-            decodedSignature = Base64.getDecoder().decode(data.base64Signature());
-        } catch (IllegalArgumentException e) {
-            throw new CryptoException("Invalid signature", e);
-        }
+        byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(data.base64PublicKey());
+        PublicKey publicKey = devicePublicKeyService.createPublicKey(decodedPublicKey);
 
         if (!signatureVerifier.verify(
-            data.publicKey(),
+            publicKey,
             payload,
-            decodedSignature
+            decodedSignature(data.base64Signature())
         )) {
             throw new CryptoException("Signature verification failed");
+        }
+
+        return decodedPublicKey;
+    }
+
+    private byte[] decodedSignature(String base64Signature) {
+        try {
+            return Base64.getDecoder().decode(base64Signature);
+        } catch (IllegalArgumentException e) {
+            throw new CryptoException("Invalid signature", e);
         }
     }
 }

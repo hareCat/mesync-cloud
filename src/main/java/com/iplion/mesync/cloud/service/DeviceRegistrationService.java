@@ -35,11 +35,10 @@ public class DeviceRegistrationService {
     private final DeviceRepository deviceRepository;
     private final UserService userService;
     private final InvitationService invitationService;
-    private final DevicePublicKeyService devicePublicKeyService;
     private final RedisSecurityStore redisSecurityStore;
     private final RegistrationProperties props;
-    private final SignatureVerificationService signatureVerificationService;
-    private final ObjectMapper  objectMapper;
+    private final RegistrationCryptoService registrationCryptoService;
+    private final ObjectMapper objectMapper;
 
     public DeviceInviteResponseDto saveInviteToken(Jwt jwt, DeviceInviteRequestDto request) {
         UUID authId = JwtUtils.extractSubjectUuid(jwt);
@@ -74,14 +73,7 @@ public class DeviceRegistrationService {
 
         byte[] decodedPublicKey;
         try {
-            decodedPublicKey = devicePublicKeyService.decodePublicKey(request.base64PublicKey());
-        } catch (InvalidPublicKeyException e) {
-            throw DeviceRegistrationException.wrongRegisterData("Invalid public key format", e);
-        }
-
-        try {
-            signatureVerificationService.deviceRegistrationVerify(new DeviceRegistrationVerificationData(
-                devicePublicKeyService.createPublicKey(decodedPublicKey),
+            decodedPublicKey = registrationCryptoService.verifyAngExtractPublicKeyBytes(new DeviceRegistrationVerificationData(
                 request.name(),
                 jwtDeviceType,
                 request.base64PublicKey(),
@@ -90,6 +82,8 @@ public class DeviceRegistrationService {
             ));
         } catch (CryptoException e) {
             throw DeviceRegistrationException.invalidSignature(authId, e);
+        } catch (InvalidPublicKeyException e) {
+            throw DeviceRegistrationException.wrongRegisterData("Invalid public key format", e);
         }
 
         String encryptedMasterKey = resolveEncryptedMasterKey(

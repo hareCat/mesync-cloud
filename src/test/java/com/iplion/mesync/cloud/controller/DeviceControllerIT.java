@@ -1,9 +1,7 @@
 package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.database.rider.core.api.configuration.DBUnit;
 import com.github.database.rider.core.api.dataset.DataSet;
-import com.github.database.rider.spring.api.DBRider;
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.controller.dto.DeviceInviteRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
@@ -16,7 +14,7 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.service.InvitationService;
-import com.iplion.mesync.cloud.service.SignatureVerificationService;
+import com.iplion.mesync.cloud.service.RegistrationCryptoService;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +39,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,8 +47,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@DBRider
-@DBUnit(caseSensitiveTableNames = true)
+//@DBRider
+//@DBUnit(caseSensitiveTableNames = true)
 class DeviceControllerIT extends BaseIT {
     @Autowired
     MockMvc mockMvc;
@@ -77,7 +75,7 @@ class DeviceControllerIT extends BaseIT {
     JwtDecoder jwtDecoder;
 
     @MockitoBean
-    SignatureVerificationService signatureVerificationService;
+    RegistrationCryptoService registrationCryptoService;
 
     private static final String REGISTER_URI = "/api/v1/devices/register";
     private static final String INVITE_URI = "/api/v1/devices/invite";
@@ -171,7 +169,7 @@ class DeviceControllerIT extends BaseIT {
             "base64Signature"
         );
 
-        doNothing().when(signatureVerificationService).deviceRegistrationVerify(any());
+        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(new byte[44]);
 
         mockMvc.perform(post(REGISTER_URI)
                 .with(TestJwtBuilder.forDevice(authId, deviceType).buildMockMvcJwt()
@@ -220,7 +218,7 @@ class DeviceControllerIT extends BaseIT {
 
         invitationService.createInvite(authId, inviteToken, encryptedMasterKey, deviceType);
 
-        doNothing().when(signatureVerificationService).deviceRegistrationVerify(any());
+        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(new byte[44]);
 
         mockMvc.perform(post(REGISTER_URI)
                 .with(TestJwtBuilder.forDevice(authId, deviceType).buildMockMvcJwt()
@@ -345,8 +343,6 @@ class DeviceControllerIT extends BaseIT {
 
         invitationService.createInvite(authId, inviteToken, "encryptedMasterKey", inviteDeviceType);
 
-        doNothing().when(signatureVerificationService).deviceRegistrationVerify(any());
-
         mockMvc.perform(post(REGISTER_URI)
                 .with(TestJwtBuilder.forDevice(authId, requestDeviceType).buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
@@ -354,7 +350,5 @@ class DeviceControllerIT extends BaseIT {
                 .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
             .andExpect(status().isBadRequest());
     }
-
-
 }
 

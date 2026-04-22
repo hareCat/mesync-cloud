@@ -52,11 +52,9 @@ class DeviceRegistrationServiceTest {
     @Mock
     InvitationService invitationService;
     @Mock
-    DevicePublicKeyService devicePublicKeyService;
-    @Mock
     RedisSecurityStore redisSecurityStore;
     @Mock
-    SignatureVerificationService signatureVerificationService;
+    RegistrationCryptoService registrationCryptoService;
     @Mock
     ObjectMapper objectMapper;
 
@@ -70,7 +68,7 @@ class DeviceRegistrationServiceTest {
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(ctx.decodedPublicKey());
+        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.decodedPublicKey());
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
             .thenReturn(ctx.encryptedMasterKey());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
@@ -181,7 +179,7 @@ class DeviceRegistrationServiceTest {
     void registerDevice_whenSignatureVerificationFailed_shouldThrowDeviceRegistrationExceptionWithInvalidSignature() throws NoSuchAlgorithmException {
         var ctx = createContext(DeviceType.MOBILE);
 
-        doThrow(CryptoException.class).when(signatureVerificationService).deviceRegistrationVerify(any());
+        doThrow(CryptoException.class).when(registrationCryptoService).verifyAngExtractPublicKeyBytes(any());
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
             .isInstanceOf(DeviceRegistrationException.class)
@@ -306,7 +304,7 @@ class DeviceRegistrationServiceTest {
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
 
-        doThrow(InvalidPublicKeyException.class).when(devicePublicKeyService).decodePublicKey(any());
+        doThrow(InvalidPublicKeyException.class).when(registrationCryptoService).verifyAngExtractPublicKeyBytes(any());
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
             .isInstanceOf(DeviceRegistrationException.class)
@@ -317,7 +315,7 @@ class DeviceRegistrationServiceTest {
                 assertThat(e.getMessage()).contains("public");
             });
 
-        verify(devicePublicKeyService).decodePublicKey(any());
+        verify(registrationCryptoService).verifyAngExtractPublicKeyBytes(any());
     }
 
     @Test
@@ -326,7 +324,7 @@ class DeviceRegistrationServiceTest {
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(ctx.decodedPublicKey());
+        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.decodedPublicKey());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
 
         doThrow(JsonProcessingException.class).when(objectMapper).writeValueAsString(any());
@@ -369,10 +367,9 @@ class DeviceRegistrationServiceTest {
             deviceRepository,
             userService,
             invitationService,
-            devicePublicKeyService,
             redisSecurityStore,
             props,
-            signatureVerificationService,
+            registrationCryptoService,
             objectMapper
         );
 
