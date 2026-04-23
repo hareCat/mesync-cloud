@@ -1,7 +1,9 @@
 package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.database.rider.core.api.configuration.DBUnit;
 import com.github.database.rider.core.api.dataset.DataSet;
+import com.github.database.rider.spring.api.DBRider;
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.controller.dto.DeviceInviteRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
@@ -47,8 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-//@DBRider
-//@DBUnit(caseSensitiveTableNames = true)
+@DBRider
+@DBUnit(caseSensitiveTableNames = true)
 class DeviceControllerIT extends BaseIT {
     @Autowired
     MockMvc mockMvc;

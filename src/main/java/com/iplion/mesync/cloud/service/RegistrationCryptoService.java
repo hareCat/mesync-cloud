@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.error.CryptoException;
+import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.model.DeviceRegistrationPayload;
 import com.iplion.mesync.cloud.model.DeviceRegistrationVerificationData;
 import com.iplion.mesync.cloud.security.crypto.DeviceRegistrationSignaturePayloadBuilder;
@@ -25,8 +26,14 @@ public class RegistrationCryptoService {
             data.inviteToken()
         ));
 
-        byte[] decodedPublicKey = devicePublicKeyService.decodePublicKey(data.base64PublicKey());
-        PublicKey publicKey = devicePublicKeyService.createPublicKey(decodedPublicKey);
+        byte[] decodedPublicKey;
+        PublicKey publicKey;
+        try {
+            decodedPublicKey = devicePublicKeyService.decodePublicKey(data.base64PublicKey());
+            publicKey = devicePublicKeyService.createPublicKey(decodedPublicKey);
+        } catch (InvalidPublicKeyException e) {
+            throw new CryptoException("Invalid public key format", e);
+        }
 
         if (!signatureVerifier.verify(
             publicKey,

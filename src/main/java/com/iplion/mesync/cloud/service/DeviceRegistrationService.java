@@ -81,9 +81,10 @@ public class DeviceRegistrationService {
                 request.base64Signature()
             ));
         } catch (CryptoException e) {
+            if (e.getCause() instanceof InvalidPublicKeyException) {
+                throw DeviceRegistrationException.wrongRegisterData("Invalid public key format", e);
+            }
             throw DeviceRegistrationException.invalidSignature(authId, e);
-        } catch (InvalidPublicKeyException e) {
-            throw DeviceRegistrationException.wrongRegisterData("Invalid public key format", e);
         }
 
         String encryptedMasterKey = resolveEncryptedMasterKey(

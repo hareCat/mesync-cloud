@@ -298,13 +298,15 @@ class DeviceRegistrationServiceTest {
     }
 
     @Test
-    void registerDevice_whenRequestPublicKeyWrong_shouldThrowDeviceRegistrationExceptionWithDecodeError() throws Exception {
+    void registerDevice_whenPublicKeyInvalid_shouldThrowDeviceRegistrationException() throws Exception {
         var ctx = createContext(DeviceType.DESKTOP);
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
 
-        doThrow(InvalidPublicKeyException.class).when(registrationCryptoService).verifyAngExtractPublicKeyBytes(any());
+        doThrow(new CryptoException("Invalid public key format", new InvalidPublicKeyException("bad key")))
+            .when(registrationCryptoService)
+            .verifyAngExtractPublicKeyBytes(any());
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
             .isInstanceOf(DeviceRegistrationException.class)
