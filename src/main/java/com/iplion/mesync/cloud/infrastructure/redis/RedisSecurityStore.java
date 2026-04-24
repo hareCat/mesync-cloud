@@ -25,13 +25,13 @@ public final class RedisSecurityStore {
         execute(() -> redisTemplate.opsForValue().set(redisKey, value, ttl));
     }
 
-    public long increment(String redisKey) {
-        return execute(() -> redisTemplate.opsForValue().increment(redisKey));
-    }
-
-    public boolean expire(String redisKey, Duration ttl) {
-        return execute(() -> redisTemplate.expire(redisKey, ttl));
-    }
+//    public long increment(String redisKey) {
+//        return execute(() -> redisTemplate.opsForValue().increment(redisKey));
+//    }
+//
+//    public boolean expire(String redisKey, Duration ttl) {
+//        return execute(() -> redisTemplate.expire(redisKey, ttl));
+//    }
 
     public long incrementWithTtl(String key, Duration ttl) {
         if (ttl.isZero() || ttl.isNegative()) {
