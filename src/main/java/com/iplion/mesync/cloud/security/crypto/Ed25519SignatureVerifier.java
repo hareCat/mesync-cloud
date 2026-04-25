@@ -19,7 +19,6 @@ public final class Ed25519SignatureVerifier implements SignatureVerifier {
     public boolean verify(PublicKey publicKey, byte[] payloadBytes, byte[] signatureBytes) {
 
         if (!(publicKey instanceof EdECPublicKey)) {
-            System.out.println(publicKey.getAlgorithm() + "-----------------------------");
             throw new InvalidPublicKeyException("Expected Ed25519 key");
         }
 
