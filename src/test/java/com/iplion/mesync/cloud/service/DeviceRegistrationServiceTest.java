@@ -319,6 +319,58 @@ class DeviceRegistrationServiceTest {
         verify(objectMapper).writeValueAsString(any());
     }
 
+    @Test
+    void registerDevice_whenUserSavingError_shouldThrowDeviceRegistrationExceptionWithUserSavingError() throws NoSuchAlgorithmException {
+        var ctx = createContext(DeviceType.MOBILE);
+
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenThrow(IllegalStateException.class);
+
+        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
+            .isInstanceOf(DeviceRegistrationException.class)
+            .satisfies(deviceRegistrationException -> {
+                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
+
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+                assertThat(e.getMessage()).contains("user");
+            });
+
+        verify(deviceRepository, never()).trySave(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void registerDevice_whenExtrasNull_shouldPersistEmptyJsonObject() throws Exception {
+        DeviceType  deviceType = DeviceType.MOBILE;
+        var ctx = createContext(deviceType);
+        DeviceRegisterRequestDto request = new DeviceRegisterRequestDto(
+            "test device",
+            deviceType,
+            "base64PublicKey",
+            null,
+            UUID.randomUUID(),
+            "base64Signature"
+        );
+
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(false);
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(1);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+
+        ctx.service().registerDevice(ctx.jwt(), request);
+
+        verify(deviceRepository).trySave(
+            any(),
+            any(),
+            eq(DeviceType.MOBILE.name()),
+            any(),
+            any(),
+            any(),
+            any(),
+            eq("{}")
+        );
+    }
+
     // --------------------- helpers ---------------------
 
     private record TestContext(
