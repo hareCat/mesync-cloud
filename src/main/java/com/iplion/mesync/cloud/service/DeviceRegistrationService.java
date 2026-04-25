@@ -191,9 +191,11 @@ public class DeviceRegistrationService {
             if (attempt == attempts) {
                 throw DeviceRegistrationException.saveFailed();
             }
+
             if (attempt == 1) {
                 device.setName(baseName + "-" + device.getDeviceType().name().toLowerCase());
             }
+
             if (attempt > 1) {
                 device.setName(generateDeviceName(baseName));
             }
