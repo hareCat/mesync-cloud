@@ -11,7 +11,6 @@ import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
-import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceRegistrationVerificationData;
@@ -81,10 +80,7 @@ public class DeviceRegistrationService {
                 request.base64Signature()
             ));
         } catch (CryptoException e) {
-            if (e.getCause() instanceof InvalidPublicKeyException) {
-                throw DeviceRegistrationException.wrongRegisterData("Invalid public key format", e);
-            }
-            throw DeviceRegistrationException.invalidSignature(authId, e);
+            throw DeviceRegistrationException.CryptographyFailed(authId, e);
         }
 
         String encryptedMasterKey = resolveEncryptedMasterKey(
@@ -94,11 +90,16 @@ public class DeviceRegistrationService {
             jwtDeviceType
         );
 
-        User user = userService.syncOrCreateUser(
-            authId,
-            jwtUserData.email(),
-            jwtUserData.emailVerified()
-        );
+        User user;
+        try {
+            user = userService.syncOrCreateUser(
+                authId,
+                jwtUserData.email(),
+                jwtUserData.emailVerified()
+            );
+        } catch (IllegalStateException e) {
+            throw DeviceRegistrationException.userSavingError(e);
+        }
 
         Device device = buildDevice(
             user,

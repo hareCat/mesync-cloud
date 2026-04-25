@@ -8,7 +8,6 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
-import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -188,7 +187,7 @@ class DeviceRegistrationServiceTest {
                 DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
 
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains("signature");
+                assertThat(e.getMessage()).contains(ctx.authId().toString());
             });
     }
 
@@ -295,29 +294,6 @@ class DeviceRegistrationServiceTest {
             .startsWith(ctx.request().name())
             .hasSizeGreaterThan(ctx.request().name().length())
             .isEqualTo(response.deviceName());
-    }
-
-    @Test
-    void registerDevice_whenPublicKeyInvalid_shouldThrowDeviceRegistrationException() throws Exception {
-        var ctx = createContext(DeviceType.DESKTOP);
-
-        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-
-        doThrow(new CryptoException("Invalid public key format", new InvalidPublicKeyException("bad key")))
-            .when(registrationCryptoService)
-            .verifyAngExtractPublicKeyBytes(any());
-
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("public");
-            });
-
-        verify(registrationCryptoService).verifyAngExtractPublicKeyBytes(any());
     }
 
     @Test

@@ -57,11 +57,11 @@ public class DeviceRegistrationException extends ApplicationException {
         );
     }
 
-    public static DeviceRegistrationException invalidSignature(UUID authId, Throwable cause) {
+    public static DeviceRegistrationException CryptographyFailed(UUID authId, Throwable cause) {
         return new DeviceRegistrationException(
             HttpStatus.FORBIDDEN,
-            "Invalid signature. AuthId=" + authId,
-            "Signature is not valid",
+            "Cryptography process failed. AuthId=" + authId,
+            "Cryptography data is not valid",
             cause
         );
     }
@@ -71,6 +71,15 @@ public class DeviceRegistrationException extends ApplicationException {
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to persist device",
             "Unable to complete device registration. Please try again."
+        );
+    }
+
+    public static DeviceRegistrationException userSavingError(Throwable e) {
+        return new DeviceRegistrationException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to save user",
+            "Unable to complete device registration. Please try again.",
+            e
         );
     }
 
