@@ -24,6 +24,15 @@ public class DeviceRegistrationException extends ApplicationException {
         );
     }
 
+    public static DeviceRegistrationException redisSetValueError(UUID authId, Throwable cause) {
+        return new DeviceRegistrationException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            String.format("Couldn't set redis value, authId=%s", authId.toString()),
+            "Unable to complete device registration. Please try again.",
+            cause
+        );
+    }
+
     public static DeviceRegistrationException invalidInvite(String internalMessage) {
         return new DeviceRegistrationException(
             HttpStatus.BAD_REQUEST,

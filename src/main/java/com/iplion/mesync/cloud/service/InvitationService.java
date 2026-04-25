@@ -2,6 +2,7 @@ package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
@@ -23,32 +24,42 @@ public class InvitationService {
 
     public Instant createInvite(UUID authId, UUID inviteToken, String encryptedMaster, DeviceType deviceType) {
         Duration cooldown = props.inviteCooldown();
-        if (!redisSecurityStore.setIfAbsent(
-            RedisKeys.registrationInviteCooldownKey(authId),
-            LOCK_VALUE,
-            cooldown)
-        ) {
-            throw DeviceRegistrationException.cooldownDelay(cooldown);
-        }
-
         Duration ttl = props.inviteTtl();
-        redisSecurityStore.set(
-            RedisKeys.registrationInviteKey(authId, inviteToken),
-            new DeviceInviteData(
-                encryptedMaster,
-                deviceType
-            ),
-            ttl
-        );
+
+        try {
+            if (!redisSecurityStore.setIfAbsent(
+                RedisKeys.registrationInviteCooldownKey(authId),
+                LOCK_VALUE,
+                cooldown)
+            ) {
+                throw DeviceRegistrationException.cooldownDelay(cooldown);
+            }
+
+            redisSecurityStore.set(
+                RedisKeys.registrationInviteKey(authId, inviteToken),
+                new DeviceInviteData(
+                    encryptedMaster,
+                    deviceType
+                ),
+                ttl
+            );
+        } catch (RedisOperationException e) {
+            throw DeviceRegistrationException.redisSetValueError(authId, e);
+        }
 
         return Instant.now().plus(ttl);
     }
 
     public String consumeInviteAndGetEncryptedMasterKey(UUID authId, DeviceType deviceType, UUID inviteToken) {
-        DeviceInviteData deviceInviteData = redisSecurityStore.getAndDelete(
-            RedisKeys.registrationInviteKey(authId, inviteToken),
-            DeviceInviteData.class
-        );
+        DeviceInviteData deviceInviteData;
+        try {
+            deviceInviteData = redisSecurityStore.getAndDelete(
+                RedisKeys.registrationInviteKey(authId, inviteToken),
+                DeviceInviteData.class
+            );
+        } catch (RedisOperationException e) {
+            throw DeviceRegistrationException.redisSetValueError(authId, e);
+        }
 
         if (deviceInviteData == null) {
             throw DeviceRegistrationException.invalidInvite("Invite token expired. authId=" + authId);
