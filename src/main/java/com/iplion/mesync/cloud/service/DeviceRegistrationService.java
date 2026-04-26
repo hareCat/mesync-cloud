@@ -11,6 +11,7 @@ import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceRegistrationVerificationData;
@@ -40,8 +41,12 @@ public class DeviceRegistrationService {
     private final ObjectMapper objectMapper;
 
     public DeviceInviteResponseDto saveInviteToken(Jwt jwt, DeviceInviteRequestDto request) {
-        UUID authId = JwtUtils.extractSubjectUuid(jwt);
-
+        UUID authId;
+        try {
+            authId = JwtUtils.extractSubjectUuid(jwt);
+        } catch (InvalidTokenException e) {
+            throw DeviceRegistrationException.wrongRegisterData("Extract JWT subject error.", e);
+        }
         Instant expiresAt = invitationService.createInvite(
             authId,
             request.inviteToken(),

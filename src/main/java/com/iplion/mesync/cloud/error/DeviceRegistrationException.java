@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.util.UUID;
 
 public class DeviceRegistrationException extends ApplicationException {
+    private static final String DEFAULT_CLIENT_MESSAGE = "Unable to complete device registration. Please try again.";
+
     private DeviceRegistrationException(HttpStatus status, String internalMessage, String clientMessage) {
         super(status, internalMessage, clientMessage);
     }
@@ -28,7 +30,7 @@ public class DeviceRegistrationException extends ApplicationException {
         return new DeviceRegistrationException(
             HttpStatus.INTERNAL_SERVER_ERROR,
             String.format("Couldn't set redis value, authId=%s", authId.toString()),
-            "Unable to complete device registration. Please try again.",
+            DEFAULT_CLIENT_MESSAGE,
             cause
         );
     }
@@ -70,7 +72,7 @@ public class DeviceRegistrationException extends ApplicationException {
         return new DeviceRegistrationException(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to persist device",
-            "Unable to complete device registration. Please try again."
+            DEFAULT_CLIENT_MESSAGE
         );
     }
 
@@ -78,7 +80,7 @@ public class DeviceRegistrationException extends ApplicationException {
         return new DeviceRegistrationException(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to save user",
-            "Unable to complete device registration. Please try again.",
+            DEFAULT_CLIENT_MESSAGE,
             e
         );
     }
@@ -87,7 +89,7 @@ public class DeviceRegistrationException extends ApplicationException {
         return new DeviceRegistrationException(
             HttpStatus.BAD_REQUEST,
             internalMessage,
-            "Unable to complete device registration. Please try again."
+            DEFAULT_CLIENT_MESSAGE
         );
     }
 
@@ -95,7 +97,7 @@ public class DeviceRegistrationException extends ApplicationException {
         return new DeviceRegistrationException(
             HttpStatus.BAD_REQUEST,
             internalMessage,
-            "Unable to complete device registration. Please try again.",
+            DEFAULT_CLIENT_MESSAGE,
             e
         );
     }
