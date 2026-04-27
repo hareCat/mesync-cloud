@@ -1,0 +1,15 @@
+devices:
+  - public_id: "547cf9de-15a4-4624-81ef-e32f693ad900"
+    user_id: 1
+    device_type: "MOBILE"
+    name: "test device"
+    public_key: "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
+    created_at: "2026-01-01 00:00:00"
+    updated_at: "2026-01-01 00:00:00"
+    last_active_at: "2026-01-01 00:00:00"
+users:
+  - id: 1
+    auth_id: "123e4567-e89b-12d3-a456-426614174000"
+#    private String email;
+    created_at: "2026-01-01 00:00:00"
+    updated_at: "2026-01-01 00:00:00"
