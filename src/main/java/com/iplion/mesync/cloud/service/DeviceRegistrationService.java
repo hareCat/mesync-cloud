@@ -47,6 +47,7 @@ public class DeviceRegistrationService {
         } catch (InvalidTokenException e) {
             throw DeviceRegistrationException.wrongRegisterData("Extract JWT subject error.", e);
         }
+
         Instant expiresAt = invitationService.createInvite(
             authId,
             request.inviteToken(),
@@ -75,10 +76,10 @@ public class DeviceRegistrationService {
             hasActiveDevices
         );
 
-        byte[] decodedPublicKey;
+        byte[] publicKeyBytes;
         try {
-            decodedPublicKey = registrationCryptoService.verifyAngExtractPublicKeyBytes(new DeviceRegistrationVerificationData(
-                request.name(),
+            publicKeyBytes = registrationCryptoService.verifyAngExtractPublicKeyBytes(new DeviceRegistrationVerificationData(
+                request.deviceName(),
                 jwtDeviceType,
                 request.base64PublicKey(),
                 request.inviteToken(),
@@ -109,8 +110,8 @@ public class DeviceRegistrationService {
         Device device = buildDevice(
             user,
             deviceType,
-            decodedPublicKey,
-            request.name(),
+            publicKeyBytes,
+            request.deviceName(),
             request.extras()
         );
 
@@ -149,7 +150,7 @@ public class DeviceRegistrationService {
     private Device buildDevice(
         User user,
         DeviceType deviceType,
-        byte[] decodedPublicKey,
+        byte[] publicKeyBytes,
         String deviceName,
         Map<String, String> extras
     ) {
@@ -159,7 +160,7 @@ public class DeviceRegistrationService {
         device.setPublicId(UUID.randomUUID());
         device.setName(deviceName);
         device.setExtras(extras == null ? new HashMap<>() : new HashMap<>(extras));
-        device.setPublicKey(decodedPublicKey);
+        device.setPublicKey(publicKeyBytes);
         device.setUser(user);
         device.setDeviceType(deviceType);
         device.setKeyCreatedAt(now);

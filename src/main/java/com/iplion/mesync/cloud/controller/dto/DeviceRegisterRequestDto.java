@@ -11,14 +11,13 @@ import java.util.UUID;
 public record DeviceRegisterRequestDto(
     @NotBlank
     @Size(max = 100)
-    String name,
+    String deviceName,
 
     @NotNull
     DeviceType deviceType,
 
     // base64(X509 Ed25519)
     @NotBlank
-    @Size(max = 80)
     String base64PublicKey,
 
     @Size(max = 10)
@@ -27,7 +26,7 @@ public record DeviceRegisterRequestDto(
     UUID inviteToken,
 
     @NotBlank
-    @Size(max = 512)
+    @Size(max = 128)
     String base64Signature
 ) {
 }

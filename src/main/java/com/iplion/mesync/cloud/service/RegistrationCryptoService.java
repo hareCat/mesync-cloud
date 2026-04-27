@@ -26,11 +26,11 @@ public class RegistrationCryptoService {
             data.inviteToken()
         ));
 
-        byte[] decodedPublicKey;
+        byte[] publicKeyBytes;
         PublicKey publicKey;
         try {
-            decodedPublicKey = devicePublicKeyService.decodePublicKey(data.base64PublicKey());
-            publicKey = devicePublicKeyService.createPublicKey(decodedPublicKey);
+            publicKeyBytes = devicePublicKeyService.decodePublicKey(data.base64PublicKey());
+            publicKey = devicePublicKeyService.createPublicKey(publicKeyBytes);
         } catch (InvalidPublicKeyException e) {
             throw new CryptoException("Invalid public key format", e);
         }
@@ -38,15 +38,15 @@ public class RegistrationCryptoService {
         if (!signatureVerifier.verify(
             publicKey,
             payload,
-            decodedSignature(data.base64Signature())
+            signature(data.base64Signature())
         )) {
             throw new CryptoException("Signature verification failed");
         }
 
-        return decodedPublicKey;
+        return publicKeyBytes;
     }
 
-    private byte[] decodedSignature(String base64Signature) {
+    private byte[] signature(String base64Signature) {
         try {
             return Base64.getDecoder().decode(base64Signature);
         } catch (IllegalArgumentException e) {

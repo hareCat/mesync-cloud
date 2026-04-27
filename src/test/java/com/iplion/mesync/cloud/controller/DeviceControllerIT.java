@@ -191,7 +191,7 @@ class DeviceControllerIT extends BaseIT {
         assertThat(devices).hasSize(1);
         Device device = devices.get(0);
 
-        assertThat(device.getName()).isEqualTo(deviceRegisterRequestDto.name());
+        assertThat(device.getName()).isEqualTo(deviceRegisterRequestDto.deviceName());
         assertThat(device.getDeviceType()).isEqualTo(deviceRegisterRequestDto.deviceType());
         assertThat(device.getExtras()).isEqualTo(deviceRegisterRequestDto.extras());
         assertThat(device.getPublicKey()).isNotNull();

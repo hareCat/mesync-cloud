@@ -67,7 +67,7 @@ class DeviceRegistrationServiceTest {
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.decodedPublicKey());
+        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
             .thenReturn(ctx.encryptedMasterKey());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
@@ -83,14 +83,14 @@ class DeviceRegistrationServiceTest {
             any(),
             eq(ctx.user().getId()),
             eq(deviceType.name()),
-            eq(ctx.request().name()),
-            argThat(bytes -> Arrays.equals(bytes, ctx.decodedPublicKey())),
+            eq(ctx.request().deviceName()),
+            argThat(bytes -> Arrays.equals(bytes, ctx.publicKeyBytes())),
             any(), any(),
             argThat(json -> json.contains("platform"))
         );
 
         assertThat(response.deviceId()).isNotNull();
-        assertThat(response.deviceName()).isEqualTo(ctx.request().name());
+        assertThat(response.deviceName()).isEqualTo(ctx.request().deviceName());
         assertThat(response.encryptedMasterKey()).isEqualTo(ctx.encryptedMasterKey());
     }
 
@@ -116,7 +116,7 @@ class DeviceRegistrationServiceTest {
         );
 
         assertThat(response.deviceId()).isNotNull();
-        assertThat(response.deviceName()).isEqualTo(ctx.request().name());
+        assertThat(response.deviceName()).isEqualTo(ctx.request().deviceName());
         assertThat(response.encryptedMasterKey()).isNull();
     }
 
@@ -243,7 +243,7 @@ class DeviceRegistrationServiceTest {
     void registerDevice_saveWithRetry_shouldSaveDeviceWithNewNameWithDeviceType() throws NoSuchAlgorithmException {
         DeviceType deviceType = DeviceType.MOBILE;
         var ctx = createContext(deviceType);
-        String generatedDeviceName = ctx.request().name() + "-" + deviceType.name().toLowerCase();
+        String generatedDeviceName = ctx.request().deviceName() + "-" + deviceType.name().toLowerCase();
 
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
@@ -261,7 +261,7 @@ class DeviceRegistrationServiceTest {
         );
         List<String> names = captor.getAllValues();
 
-        assertThat(names.get(0)).isEqualTo(ctx.request().name());
+        assertThat(names.get(0)).isEqualTo(ctx.request().deviceName());
         assertThat(names.get(1))
             .isEqualTo(generatedDeviceName)
             .isEqualTo(response.deviceName());
@@ -290,9 +290,9 @@ class DeviceRegistrationServiceTest {
         List<String> names = captor.getAllValues();
 
         assertThat(names.get(2))
-            .isNotEqualTo(ctx.request().name())
-            .startsWith(ctx.request().name())
-            .hasSizeGreaterThan(ctx.request().name().length())
+            .isNotEqualTo(ctx.request().deviceName())
+            .startsWith(ctx.request().deviceName())
+            .hasSizeGreaterThan(ctx.request().deviceName().length())
             .isEqualTo(response.deviceName());
     }
 
@@ -302,7 +302,7 @@ class DeviceRegistrationServiceTest {
 
         when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.decodedPublicKey());
+        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
 
         doThrow(JsonProcessingException.class).when(objectMapper).writeValueAsString(any());
@@ -378,7 +378,7 @@ class DeviceRegistrationServiceTest {
         DeviceRegisterRequestDto request,
         User user,
         UUID authId,
-        byte[] decodedPublicKey,
+        byte[] publicKeyBytes,
         String encryptedMasterKey,
         RegistrationProperties props,
         Jwt jwt
@@ -413,7 +413,7 @@ class DeviceRegistrationServiceTest {
 
         KeyPairGenerator generator = KeyPairGenerator.getInstance("Ed25519");
         PublicKey publicKey = generator.generateKeyPair().getPublic();
-        byte[] decodedPublicKey = publicKey.getEncoded();
+        byte[] publicKeyBytes = publicKey.getEncoded();
 
         DeviceRegisterRequestDto request = new DeviceRegisterRequestDto(
             "test device",
@@ -428,6 +428,6 @@ class DeviceRegistrationServiceTest {
             .forDevice(authId, deviceType)
             .buildJwt();
 
-        return new TestContext(service, request, user, authId, decodedPublicKey, encryptedMasterKey, props, jwt);
+        return new TestContext(service, request, user, authId, publicKeyBytes, encryptedMasterKey, props, jwt);
     }
 }

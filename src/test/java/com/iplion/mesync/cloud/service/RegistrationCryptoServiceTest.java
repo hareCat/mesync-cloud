@@ -52,10 +52,10 @@ public class RegistrationCryptoServiceTest {
 
     @Test
     void whenCreatePublicKeyFails_thenThrowCryptoException() throws Exception {
-        byte[] decodedPublicKey = new byte[44];
+        byte[] publicKeyBytes = new byte[44];
         var verificationData = TestDataFactory.verificationData();
 
-        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(decodedPublicKey);
+        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(publicKeyBytes);
         doThrow(InvalidPublicKeyException.class).when(devicePublicKeyService).createPublicKey(any());
 
         assertThatThrownBy(() -> registrationCryptoService.verifyAngExtractPublicKeyBytes(verificationData))
@@ -65,9 +65,9 @@ public class RegistrationCryptoServiceTest {
     @Test
     void whenBreakVerification_thenThrowCryptoException() throws Exception {
         var verificationData = TestDataFactory.verificationData();
-        byte[] decodedKey = new byte[44];
+        byte[] publicKeyBytes = new byte[44];
 
-        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(decodedKey);
+        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(publicKeyBytes);
         when(devicePublicKeyService.createPublicKey(any())).thenReturn(mock(PublicKey.class));
         when(signatureVerifier.verify(any(), any(), any())).thenReturn(false);
 
@@ -78,18 +78,18 @@ public class RegistrationCryptoServiceTest {
     @Test
     void shouldReturnPublicKeyBytes() throws Exception {
         var verificationData = TestDataFactory.verificationData();
-        byte[] decodedKey = new byte[44];
+        byte[] publicKeyBytes = new byte[44];
         PublicKey publicKey = mock(PublicKey.class);
 
-        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(decodedKey);
+        when(devicePublicKeyService.decodePublicKey(any())).thenReturn(publicKeyBytes);
         when(devicePublicKeyService.createPublicKey(any())).thenReturn(publicKey);
         when(signatureVerifier.verify(any(), any(), any())).thenReturn(true);
 
         assertThat(registrationCryptoService.verifyAngExtractPublicKeyBytes(verificationData))
-            .isEqualTo(decodedKey);
+            .isEqualTo(publicKeyBytes);
 
         verify(devicePublicKeyService).decodePublicKey(eq(verificationData.base64PublicKey()));
-        verify(devicePublicKeyService).createPublicKey(argThat(bytes -> Arrays.equals(bytes, decodedKey)));
+        verify(devicePublicKeyService).createPublicKey(argThat(bytes -> Arrays.equals(bytes, publicKeyBytes)));
         verify(signatureVerifier).verify(eq(publicKey), any(byte[].class), any(byte[].class));
     }
 
