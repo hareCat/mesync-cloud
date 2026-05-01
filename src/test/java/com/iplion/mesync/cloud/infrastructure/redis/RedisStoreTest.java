@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class RedisSecurityStoreTest {
+public class RedisStoreTest {
     @Mock
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -33,15 +33,15 @@ public class RedisSecurityStoreTest {
     private ObjectMapper objectMapper;
 
     @InjectMocks
-    RedisSecurityStore redisSecurityStore;
+    RedisStore redisStore;
 
     @Test
     public void incrementWithTtl_whenInvalidTtl_shouldThrowRedisOperationException() {
-        assertThatThrownBy(() -> redisSecurityStore.incrementWithTtl("key", Duration.ofSeconds(0)))
+        assertThatThrownBy(() -> redisStore.incrementWithTtl("key", Duration.ofSeconds(0)))
             .isInstanceOf(RedisOperationException.class)
             .hasMessageContaining("TTL");
 
-        assertThatThrownBy(() -> redisSecurityStore.incrementWithTtl("key", Duration.ofSeconds(-1)))
+        assertThatThrownBy(() -> redisStore.incrementWithTtl("key", Duration.ofSeconds(-1)))
             .isInstanceOf(RedisOperationException.class)
             .hasMessageContaining("TTL");
     }
@@ -50,7 +50,7 @@ public class RedisSecurityStoreTest {
     public void incrementWithTtl_whenRedisNotAvailable_shouldThrowRedisOperationExceptionWithCauseDataAccessException() {
         when(redisTemplate.execute(any(), any(), any())).thenThrow(new DataAccessException("error") {});
 
-        assertThatThrownBy(() -> redisSecurityStore.incrementWithTtl("key", Duration.ofSeconds(5)))
+        assertThatThrownBy(() -> redisStore.incrementWithTtl("key", Duration.ofSeconds(5)))
             .isInstanceOf(RedisOperationException.class)
             .hasCauseInstanceOf(DataAccessException.class);
     }
@@ -59,7 +59,7 @@ public class RedisSecurityStoreTest {
     public void incrementWithTtl_whenRedisSavingError_shouldThrowRedisOperationException() {
         when(redisTemplate.execute(any(), any(), any())).thenReturn(null);
 
-        assertThatThrownBy(() -> redisSecurityStore.incrementWithTtl("key", Duration.ofSeconds(5)))
+        assertThatThrownBy(() -> redisStore.incrementWithTtl("key", Duration.ofSeconds(5)))
             .isInstanceOf(RedisOperationException.class)
             .hasMessageContaining("null");
     }
@@ -70,7 +70,7 @@ public class RedisSecurityStoreTest {
 
         when(redisTemplate.execute(any(), any(), any())).thenReturn(ttl.toSeconds());
 
-        assertThat(redisSecurityStore.incrementWithTtl("key", ttl))
+        assertThat(redisStore.incrementWithTtl("key", ttl))
             .isEqualTo(ttl.toSeconds());
 
         verify(redisTemplate).execute(any(), eq(List.of("key")), eq(5L));
@@ -86,7 +86,7 @@ public class RedisSecurityStoreTest {
         when(objectMapper.convertValue(any(), eq(Integer.class)))
             .thenThrow(new IllegalArgumentException());
 
-        assertThatThrownBy(() -> redisSecurityStore.getAndDelete("key", Integer.class))
+        assertThatThrownBy(() -> redisStore.getAndDelete("key", Integer.class))
             .isInstanceOf(RedisOperationException.class)
             .hasMessageContaining("convert");
     }
@@ -97,7 +97,7 @@ public class RedisSecurityStoreTest {
 
         when(valueOps.get(any())).thenReturn(null);
 
-        assertThat(redisSecurityStore.get("key", Integer.class)).isNull();
+        assertThat(redisStore.get("key", Integer.class)).isNull();
     }
 
     @Test
@@ -106,7 +106,7 @@ public class RedisSecurityStoreTest {
 
         when(valueOps.get(any())).thenThrow(new DataAccessException("err") {});
 
-        assertThatThrownBy(() -> redisSecurityStore.get("key", Integer.class))
+        assertThatThrownBy(() -> redisStore.get("key", Integer.class))
             .isInstanceOf(RedisOperationException.class)
             .hasCauseInstanceOf(DataAccessException.class);
     }
@@ -120,9 +120,9 @@ public class RedisSecurityStoreTest {
             .thenReturn(true)
             .thenReturn(false);
 
-        assertThat(redisSecurityStore.setIfAbsent("key", "value", Duration.ofSeconds(30))).isFalse();
-        assertThat(redisSecurityStore.setIfAbsent("key", "value", Duration.ofSeconds(30))).isTrue();
-        assertThat(redisSecurityStore.setIfAbsent("key", "value", Duration.ofSeconds(30))).isFalse();
+        assertThat(redisStore.setIfAbsent("key", "value", Duration.ofSeconds(30))).isFalse();
+        assertThat(redisStore.setIfAbsent("key", "value", Duration.ofSeconds(30))).isTrue();
+        assertThat(redisStore.setIfAbsent("key", "value", Duration.ofSeconds(30))).isFalse();
 
         verify(valueOps, times(3)).setIfAbsent(any(), any(), any());
     }
@@ -135,7 +135,7 @@ public class RedisSecurityStoreTest {
             .thenThrow(new DataAccessException("err") {});
 
         assertThatThrownBy(() ->
-            redisSecurityStore.setIfAbsent("key", "value", Duration.ofSeconds(1))
+            redisStore.setIfAbsent("key", "value", Duration.ofSeconds(1))
         ).isInstanceOf(RedisOperationException.class);
     }
 
@@ -145,7 +145,7 @@ public class RedisSecurityStoreTest {
 
         doThrow(new DataAccessException("error") {}).when(valueOps).set(any(), any(), any());
 
-        assertThatThrownBy(() -> redisSecurityStore.set("key", 666, Duration.ofSeconds(30)))
+        assertThatThrownBy(() -> redisStore.set("key", 666, Duration.ofSeconds(30)))
             .isInstanceOf(RedisOperationException.class)
             .hasCauseInstanceOf(DataAccessException.class);
     }

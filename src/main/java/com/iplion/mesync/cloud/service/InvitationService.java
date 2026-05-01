@@ -4,7 +4,7 @@ import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
-import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.infrastructure.redis.RedisStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.UUID;
 public class InvitationService {
     private static final String LOCK_VALUE = "1";
 
-    private final RedisSecurityStore redisSecurityStore;
+    private final RedisStore redisStore;
     private final RegistrationProperties props;
 
     public Instant createInvite(UUID authId, UUID inviteToken, String encryptedMaster, DeviceType deviceType) {
@@ -27,7 +27,7 @@ public class InvitationService {
         Duration ttl = props.inviteTtl();
 
         try {
-            if (!redisSecurityStore.setIfAbsent(
+            if (!redisStore.setIfAbsent(
                 RedisKeys.registrationInviteCooldownKey(authId),
                 LOCK_VALUE,
                 cooldown)
@@ -35,7 +35,7 @@ public class InvitationService {
                 throw DeviceRegistrationException.cooldownDelay(cooldown);
             }
 
-            redisSecurityStore.set(
+            redisStore.set(
                 RedisKeys.registrationInviteKey(authId, inviteToken),
                 new DeviceInviteData(
                     encryptedMaster,
@@ -53,7 +53,7 @@ public class InvitationService {
     public String consumeInviteAndGetEncryptedMasterKey(UUID authId, DeviceType deviceType, UUID inviteToken) {
         DeviceInviteData deviceInviteData;
         try {
-            deviceInviteData = redisSecurityStore.getAndDelete(
+            deviceInviteData = redisStore.getAndDelete(
                 RedisKeys.registrationInviteKey(authId, inviteToken),
                 DeviceInviteData.class
             );

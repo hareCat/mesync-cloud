@@ -12,7 +12,7 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
-import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.infrastructure.redis.RedisStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -66,7 +66,7 @@ class DeviceControllerIT extends BaseIT {
     InvitationService invitationService;
 
     @Autowired
-    private RedisSecurityStore redisSecurityStore;
+    private RedisStore redisStore;
 
     @Autowired
     DeviceRepository deviceRepository;
@@ -124,7 +124,7 @@ class DeviceControllerIT extends BaseIT {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.expiresAt").exists());
 
-        DeviceInviteData inviteData = redisSecurityStore.get(
+        DeviceInviteData inviteData = redisStore.get(
             RedisKeys.registrationInviteKey(authId, inviteToken),
             DeviceInviteData.class
         );
@@ -236,7 +236,7 @@ class DeviceControllerIT extends BaseIT {
             .andExpect(jsonPath("$.deviceName").value(deviceGeneratedName))
             .andExpect(jsonPath("$.encryptedMasterKey").value(encryptedMasterKey));
 
-        DeviceInviteData inviteData = redisSecurityStore.get(
+        DeviceInviteData inviteData = redisStore.get(
             RedisKeys.registrationInviteKey(authId, inviteToken),
             DeviceInviteData.class
         );

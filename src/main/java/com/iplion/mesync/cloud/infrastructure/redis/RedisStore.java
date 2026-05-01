@@ -2,6 +2,7 @@ package com.iplion.mesync.cloud.infrastructure.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.error.RedisOperationException;
+import com.iplion.mesync.cloud.security.dto.RedisDeviceRequestResultDto;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
@@ -16,9 +17,10 @@ import java.util.function.Supplier;
 //TODO add redis nodes
 @Service
 @RequiredArgsConstructor
-public final class RedisSecurityStore {
+public final class RedisStore {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisScript<Long> rateLimitScript;
+    private final RedisScript<List> deviceRequestScript;
     private final ObjectMapper objectMapper;
 
     public <T> void set(String redisKey, T value, Duration ttl) {
@@ -51,6 +53,48 @@ public final class RedisSecurityStore {
         return value;
     }
 
+    @SuppressWarnings("unchecked")
+    public RedisDeviceRequestResultDto processDeviceRequest(
+        String nonceKey,
+        String deviceKey,
+        String rateLimitKey,
+        Duration nonceTtl,
+        Duration rateWindowKey,
+        int rateLimit
+    ) {
+        if (nonceTtl.isZero() || nonceTtl.isNegative()) {
+            throw new RedisOperationException("nonce TTL must be positive");
+        }
+
+        if (rateWindowKey.isZero() || rateWindowKey.isNegative()) {
+            throw new RedisOperationException("rate limit TTL must be positive");
+        }
+
+        List<Object> raw = execute(() -> (List<Object>) redisTemplate.execute(
+            deviceRequestScript,
+            List.of(nonceKey, deviceKey, rateLimitKey),
+            nonceTtl.getSeconds(),
+            rateWindowKey.getSeconds(),
+            rateLimit
+        ));
+
+        if (raw == null || raw.size() < 4) {
+            throw new RedisOperationException("Invalid Redis response");
+        }
+
+        String publicKey = (String) raw.get(0);
+
+        boolean revoked = raw.get(1) != null && ((Long) raw.get(1)) == 1L;
+        boolean isReplay = ((Long) raw.get(2)) == 1L;
+        boolean isRateLimited = ((Long) raw.get(3)) == 1L;
+
+        return new RedisDeviceRequestResultDto(
+            publicKey,
+            revoked,
+            isReplay,
+            isRateLimited
+        );
+    }
     private <T> T convert(Object data, Class<T> clazz) {
         if (data == null) {
             return null;

@@ -13,7 +13,7 @@ import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
-import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.infrastructure.redis.RedisStore;
 import com.iplion.mesync.cloud.model.DeviceRegistrationVerificationData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
@@ -35,7 +35,7 @@ public class DeviceRegistrationService {
     private final DeviceRepository deviceRepository;
     private final UserService userService;
     private final InvitationService invitationService;
-    private final RedisSecurityStore redisSecurityStore;
+    private final RedisStore redisStore;
     private final RegistrationProperties props;
     private final RegistrationCryptoService registrationCryptoService;
     private final ObjectMapper objectMapper;
@@ -237,7 +237,7 @@ public class DeviceRegistrationService {
     }
 
     public void enforceRegistrationRateLimit(UUID authId) {
-        long attemptCount = redisSecurityStore.incrementWithTtl(
+        long attemptCount = redisStore.incrementWithTtl(
             RedisKeys.registrationRateLimitKey(authId),
             props.registrationTtl()
         );

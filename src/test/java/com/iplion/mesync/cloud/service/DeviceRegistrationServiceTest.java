@@ -8,7 +8,7 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
-import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.infrastructure.redis.RedisStore;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
@@ -51,7 +51,7 @@ class DeviceRegistrationServiceTest {
     @Mock
     InvitationService invitationService;
     @Mock
-    RedisSecurityStore redisSecurityStore;
+    RedisStore redisStore;
     @Mock
     RegistrationCryptoService registrationCryptoService;
     @Mock
@@ -65,7 +65,7 @@ class DeviceRegistrationServiceTest {
 
         var ctx = createContext(deviceType);
 
-        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
+        when(redisStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
         when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
@@ -124,7 +124,7 @@ class DeviceRegistrationServiceTest {
     void registerDevice_whenTooMuchTriesForRegister_shouldThrowDeviceRegistrationExceptionWithRateLimit() throws NoSuchAlgorithmException {
         var ctx = createContext(DeviceType.BROWSER);
 
-        when(redisSecurityStore.incrementWithTtl(any(), any()))
+        when(redisStore.incrementWithTtl(any(), any()))
             .thenReturn(ctx.props().registrationAttempts() + 1);
 
         assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
@@ -136,7 +136,7 @@ class DeviceRegistrationServiceTest {
                 assertThat(e.getMessage()).contains("rate limit");
             });
 
-        verify(redisSecurityStore).incrementWithTtl(contains(ctx.authId().toString()), eq(ctx.props().registrationTtl()));
+        verify(redisStore).incrementWithTtl(contains(ctx.authId().toString()), eq(ctx.props().registrationTtl()));
     }
 
     @Test
@@ -300,7 +300,7 @@ class DeviceRegistrationServiceTest {
     void registerDevice_whenRequestExtrasWrong_shouldThrowDeviceRegistrationExceptionWithDecodeError() throws Exception {
         var ctx = createContext(DeviceType.DESKTOP);
 
-        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
+        when(redisStore.incrementWithTtl(any(), any())).thenReturn(1L);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
         when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
@@ -397,7 +397,7 @@ class DeviceRegistrationServiceTest {
             deviceRepository,
             userService,
             invitationService,
-            redisSecurityStore,
+            redisStore,
             props,
             registrationCryptoService,
             objectMapper

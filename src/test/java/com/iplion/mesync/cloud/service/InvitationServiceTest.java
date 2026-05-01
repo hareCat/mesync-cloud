@@ -4,7 +4,7 @@ import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
-import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.infrastructure.redis.RedisStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class InvitationServiceTest {
     @Mock
-    RedisSecurityStore redisSecurityStore;
+    RedisStore redisStore;
 
     RegistrationProperties props = new RegistrationProperties(
         Duration.ofMinutes(10),
@@ -43,12 +43,12 @@ public class InvitationServiceTest {
 
     @BeforeEach
     public void setUp() {
-        invitationService = new InvitationService(redisSecurityStore, props);
+        invitationService = new InvitationService(redisStore, props);
     }
 
     @Test
     public void createInvite_whenSetIfAbsentFail_shouldThrowDeviceRegistrationExceptionWithCooldownDelay() {
-        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(false);
+        when(redisStore.setIfAbsent(any(), any(), any())).thenReturn(false);
 
         assertThatThrownBy(() -> invitationService.createInvite(
             UUID.randomUUID(),
@@ -66,7 +66,7 @@ public class InvitationServiceTest {
     public void createInvite_whenSetRedisValueFail_shouldThrowDeviceRegistrationExceptionWithRedisSetValueError() {
         UUID authId = UUID.randomUUID();
 
-        when(redisSecurityStore.setIfAbsent(any(), any(), any()))
+        when(redisStore.setIfAbsent(any(), any(), any()))
             .thenThrow(new RedisOperationException("error"))
             .thenReturn(true);
 
@@ -82,7 +82,7 @@ public class InvitationServiceTest {
                 assertThat(e.getCause()).isInstanceOf(RedisOperationException.class);
             });
 
-        doThrow(new RedisOperationException("error")).when(redisSecurityStore).set(any(), any(), any());
+        doThrow(new RedisOperationException("error")).when(redisStore).set(any(), any(), any());
 
         assertThatThrownBy(() -> invitationService.createInvite(
             authId,
@@ -109,8 +109,8 @@ public class InvitationServiceTest {
             deviceType
         );
 
-        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
-        doNothing().when(redisSecurityStore).set(any(), any(), any());
+        when(redisStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        doNothing().when(redisStore).set(any(), any(), any());
 
         assertThat(
             invitationService.createInvite(
@@ -120,12 +120,12 @@ public class InvitationServiceTest {
                 deviceType)
         ).isAfterOrEqualTo(expiresAt);
 
-        verify(redisSecurityStore).setIfAbsent(
+        verify(redisStore).setIfAbsent(
             eq(RedisKeys.registrationInviteCooldownKey(authId)),
             any(String.class),
             eq(props.inviteCooldown())
         );
-        verify(redisSecurityStore).set(
+        verify(redisStore).set(
             eq(RedisKeys.registrationInviteKey(authId, inviteToken)),
             eq(deviceInviteData),
             eq(props.inviteTtl())
@@ -136,7 +136,7 @@ public class InvitationServiceTest {
     public void consumeInviteAndGetEncryptedMasterKey_whenSetRedisValueFail_shouldThrowDeviceRegistrationExceptionWithRedisSetValueError() {
         UUID authId = UUID.randomUUID();
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
+        when(redisStore.getAndDelete(any(), any()))
             .thenThrow(new RedisOperationException("error"));
 
         assertThatThrownBy(() -> invitationService.consumeInviteAndGetEncryptedMasterKey(
@@ -155,7 +155,7 @@ public class InvitationServiceTest {
     public void consumeInviteAndGetEncryptedMasterKey_whenRedisReturnsNull_shouldThrowDeviceRegistrationExceptionWithInvalidInvite() {
         UUID authId = UUID.randomUUID();
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
+        when(redisStore.getAndDelete(any(), any()))
             .thenReturn(null);
 
         assertThatThrownBy(() -> invitationService.consumeInviteAndGetEncryptedMasterKey(
@@ -180,7 +180,7 @@ public class InvitationServiceTest {
             inviteDeviceType
         );
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
+        when(redisStore.getAndDelete(any(), any()))
             .thenReturn(deviceInviteData);
 
         assertThatThrownBy(() -> invitationService.consumeInviteAndGetEncryptedMasterKey(
@@ -205,7 +205,7 @@ public class InvitationServiceTest {
             deviceType
         );
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
+        when(redisStore.getAndDelete(any(), any()))
             .thenReturn(deviceInviteData);
 
         assertThat(invitationService.consumeInviteAndGetEncryptedMasterKey(
@@ -214,7 +214,7 @@ public class InvitationServiceTest {
             inviteToken
         )).isEqualTo(deviceInviteData.encryptedMasterKey());
 
-        verify(redisSecurityStore).getAndDelete(eq(RedisKeys.registrationInviteKey(authId, inviteToken)), any());
+        verify(redisStore).getAndDelete(eq(RedisKeys.registrationInviteKey(authId, inviteToken)), any());
     }
 
 }
