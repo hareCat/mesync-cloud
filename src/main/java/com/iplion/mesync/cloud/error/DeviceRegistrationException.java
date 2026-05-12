@@ -43,62 +43,47 @@ public class DeviceRegistrationException extends ApplicationException {
         );
     }
 
-    public static DeviceRegistrationException rateLimit() {
-        return new DeviceRegistrationException(
-            HttpStatus.TOO_MANY_REQUESTS,
-            "Registration rate limit exceeded",
-            "Too many requests"
-        );
-    }
-
-    public static DeviceRegistrationException firstDeviceType() {
+    public static DeviceRegistrationException firstDeviceType(UUID authId) {
         return new DeviceRegistrationException(
             HttpStatus.BAD_REQUEST,
-            "First device is not mobile",
+            "First device is not mobile. authId: " + authId,
             "The first device must be registered from a mobile client."
         );
     }
 
-    public static DeviceRegistrationException CryptographyFailed(UUID authId, Throwable cause) {
+    public static DeviceRegistrationException saveFailed(UUID authId, Throwable cause) {
         return new DeviceRegistrationException(
-            HttpStatus.FORBIDDEN,
-            "Cryptography process failed. AuthId=" + authId,
-            "Cryptography data is not valid",
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to persist device. authId: " + authId,
+            DEFAULT_CLIENT_MESSAGE,
             cause
         );
     }
 
-    public static DeviceRegistrationException saveFailed() {
+    public static DeviceRegistrationException userSaveFailed(UUID authId, Throwable cause) {
         return new DeviceRegistrationException(
             HttpStatus.INTERNAL_SERVER_ERROR,
-            "Failed to persist device",
-            DEFAULT_CLIENT_MESSAGE
-        );
-    }
-
-    public static DeviceRegistrationException userSavingError(Throwable e) {
-        return new DeviceRegistrationException(
-            HttpStatus.INTERNAL_SERVER_ERROR,
-            "Failed to save user",
+            "Failed to save user. authId: " + authId,
             DEFAULT_CLIENT_MESSAGE,
-            e
+            cause
         );
     }
 
-    public static DeviceRegistrationException deviceTypeMismatch(String internalMessage) {
+    public static DeviceRegistrationException deviceTypeMismatch(String internalMessage, String clientMessage) {
         return new DeviceRegistrationException(
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.FORBIDDEN,
             internalMessage,
-            DEFAULT_CLIENT_MESSAGE
+            clientMessage
         );
     }
 
-    public static DeviceRegistrationException wrongRegisterData(String internalMessage, Throwable e) {
+    public static DeviceRegistrationException wrongRegisterData(String internalMessage, Throwable cause) {
         return new DeviceRegistrationException(
             HttpStatus.BAD_REQUEST,
             internalMessage,
             DEFAULT_CLIENT_MESSAGE,
-            e
+            cause
         );
     }
+
 }

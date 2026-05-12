@@ -7,12 +7,9 @@ import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
 
-@ConfigurationProperties("app.registration")
+@ConfigurationProperties("app.auth")
 @Validated
-public record RegistrationProperties(
-    @NotNull Duration inviteTtl,
-    @NotNull Duration inviteCooldown,
-
+public record AuthProperties(
     @NotNull Duration nonceTtl,
     @NotNull Duration rateLimitTtl,
     @Min(1) int attempts

@@ -33,10 +33,7 @@ public class SecurityConfig {
     };
 
     @Bean
-    SecurityFilterChain securityFilterChain(
-//        DeviceSignatureFilter deviceSignatureFilter,
-        HttpSecurity http
-    ) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(
@@ -47,7 +44,6 @@ public class SecurityConfig {
                 oauth2 -> oauth2.jwt(
                     jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())
                 ))
-//            .addFilterAfter(deviceSignatureFilter, BearerTokenAuthenticationFilter.class)
             .build();
     }
 

@@ -1,29 +1,75 @@
 package com.iplion.mesync.cloud.repository;
 
+import com.iplion.mesync.cloud.config.PostgresContainerConfig;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.model.DeviceAuthProjection;
 import com.iplion.mesync.cloud.model.DeviceType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(PostgresContainerConfig.class)
 public class DeviceRepositoryTest {
     @Autowired
     DeviceRepository deviceRepository;
 
     @Autowired
     TestEntityManager em;
+
+    @Test
+    void findAuthDataByPublicId_shouldReturnProjection_whenDeviceActive() {
+        User user = TestDataFactory.user();
+        em.persistAndFlush(user);
+
+        Device device = TestDataFactory.device(user, "test-device");
+        em.persistAndFlush(device);
+
+        em.clear();
+
+        DeviceAuthProjection authData = deviceRepository.findAuthDataByPublicId(device.getPublicId())
+            .orElseThrow();
+
+        assertThat(authData.getPublicId()).isEqualTo(device.getPublicId());
+        assertThat(authData.getUserId()).isEqualTo(user.getId());
+        assertThat(authData.getUserAuthId()).isEqualTo(user.getAuthId());
+        assertThat(authData.getDeviceType()).isEqualTo(device.getDeviceType());
+        assertThat(authData.getPublicKey()).isEqualTo(device.getPublicKey());
+    }
+
+    @Test
+    void findAuthDataByPublicId_shouldReturnEmpty_whenDeviceRevoked() {
+        User user = TestDataFactory.user();
+        em.persistAndFlush(user);
+
+        Device device = TestDataFactory.device(user, "test-device");
+        device.setRevokedAt(Instant.now());
+        em.persistAndFlush(device);
+
+        em.clear();
+
+        Optional<DeviceAuthProjection> authData = deviceRepository.findAuthDataByPublicId(device.getPublicId());
+
+        assertThat(authData).isEmpty();
+    }
+
+    @Test
+    void findAuthDataByPublicId_shouldReturnEmpty_whenDeviceNotExists() {
+        Optional<DeviceAuthProjection> authData = deviceRepository.findAuthDataByPublicId(UUID.randomUUID());
+
+        assertThat(authData).isEmpty();
+    }
 
     @Test
     void findActiveByUserAuthId_shouldReturnOnlyActiveDevices() {
@@ -169,35 +215,6 @@ public class DeviceRepositoryTest {
         boolean exists = deviceRepository.existsActiveByUserAuthId(user.getAuthId());
 
         assertThat(exists).isFalse();
-    }
-
-    @Test
-    void findActivePublicKeyByPublicId_shouldReturnPublicKey() {
-        User user = TestDataFactory.user();
-        em.persistAndFlush(user);
-
-        Device device = TestDataFactory.device(user, "test device");
-        em.persistAndFlush(device);
-
-        byte[] publicIdBytes = deviceRepository.findActivePublicKeyByPublicId(device.getPublicId())
-            .orElseThrow();
-
-        assertThat(publicIdBytes).isEqualTo(device.getPublicKey());
-    }
-
-    @Test
-    void findActivePublicKeyByPublicId_shouldReturnEmpty_whenDeviceRevoked() {
-        User user = TestDataFactory.user();
-        em.persistAndFlush(user);
-
-        Device device = TestDataFactory.device(user, "test");
-        device.setRevokedAt(Instant.now());
-        em.persistAndFlush(device);
-
-
-        var result = deviceRepository.findActivePublicKeyByPublicId(device.getPublicId());
-
-        assertThat(result).isEmpty();
     }
 
     private static class TestDataFactory {

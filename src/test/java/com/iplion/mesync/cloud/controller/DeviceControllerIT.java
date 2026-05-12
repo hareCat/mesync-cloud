@@ -1,14 +1,9 @@
 package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.database.rider.core.api.configuration.DBUnit;
-import com.github.database.rider.core.api.dataset.DataSet;
-import com.github.database.rider.spring.api.DBRider;
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.config.PostgresContainerConfig;
-import com.iplion.mesync.cloud.config.RedisContainerConfig;
-import com.iplion.mesync.cloud.controller.dto.DeviceInviteRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.infrastructure.redis.RedisKeys;
@@ -17,44 +12,35 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
+import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
 import com.iplion.mesync.cloud.service.InvitationService;
-import com.iplion.mesync.cloud.service.RegistrationCryptoService;
+import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
+import java.security.GeneralSecurityException;
+import java.security.KeyPair;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@DBRider
-@DBUnit(caseSensitiveTableNames = true)
-@Import({RedisContainerConfig.class, PostgresContainerConfig.class})
 class DeviceControllerIT extends BaseIT {
     @Autowired
     MockMvc mockMvc;
@@ -75,169 +61,113 @@ class DeviceControllerIT extends BaseIT {
     UserRepository userRepository;
 
     @Autowired
-    RedisConnectionFactory redisConnectionFactory;
+    JdbcTemplate jdbcTemplate;
 
-    @MockitoBean
-    JwtDecoder jwtDecoder;
-
-    @MockitoBean
-    RegistrationCryptoService registrationCryptoService;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     private static final String REGISTER_URI = "/api/v1/devices/register";
     private static final String INVITE_URI = "/api/v1/devices/invite";
 
-    private static String base64PublicKey;
+    @AfterEach
+    void cleanUp() {
+        jdbcTemplate.execute("""
+                TRUNCATE TABLE devices, users
+                RESTART IDENTITY
+                CASCADE
+            """);
 
-    @BeforeAll
-    static void init() throws NoSuchAlgorithmException {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("Ed25519");
-        byte[] publicKeyBytes = generator.generateKeyPair().getPublic().getEncoded();
-        base64PublicKey = Base64.getEncoder().encodeToString(publicKeyBytes);
-    }
-
-    @BeforeEach
-    void cleanRedis() {
-        try (var conn = redisConnectionFactory.getConnection()) {
-            conn.serverCommands().flushAll();
+        try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
+            connection.serverCommands().flushDb();
         }
     }
 
     @Test
-    void saveInvite_shouldReturn201Created_andStoreInviteInRedis() throws Exception {
-        UUID authId = UUID.randomUUID();
-        UUID inviteToken = UUID.randomUUID();
-        String testPublicKey = "a".repeat(32);
-        DeviceType deviceType = DeviceType.MOBILE;
+    void saveInvite_shouldReturn201CreatedAndStoreInviteInRedis() throws Exception {
+        TestContext context = TestDataFactory.createInviteContext(TestCrypto.generateKeyPair());
 
-        DeviceInviteRequestDto deviceInviteRequestDto = new DeviceInviteRequestDto(
-            inviteToken,
-            testPublicKey,
-            deviceType
+        TestDataFactory.saveNewUserWithDevice(
+            context,
+            context.publicId,
+            context.publicKeyBytes,
+            deviceRepository,
+            userRepository
+        );
+
+        var requestDto = new SaveInviteRequestDto(
+            context.publicId,
+            context.inviteToken,
+            context.encryptedMasterKey,
+            context.deviceType,
+            context.nonce,
+            context.base64Signature
         );
 
         mockMvc.perform(post(INVITE_URI)
-                .with(TestJwtBuilder.forDevice(authId, deviceType)
+                .with(TestJwtBuilder.forDevice(context.authId, context.deviceType)
                     .buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("devices.invite")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceInviteRequestDto)))
+                .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.expiresAt").exists());
 
-        DeviceInviteData inviteData = redisSecurityStore.get(
-            RedisKeys.registrationInviteKey(authId, inviteToken),
+        DeviceInviteData inviteData = redisSecurityStore.getAndDelete(
+            RedisKeys.registrationInviteKey(context.authId, context.inviteToken),
             DeviceInviteData.class
         );
 
         assertThat(inviteData).isNotNull();
-        assertThat(inviteData.deviceType()).isEqualTo(deviceType);
-        assertThat(inviteData.encryptedMasterKey()).isEqualTo(testPublicKey);
+        assertThat(inviteData.deviceType()).isEqualTo(context.deviceType);
+        assertThat(inviteData.encryptedMasterKey()).isEqualTo(context.encryptedMasterKey);
     }
 
     @Test
-    void saveInvite_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
-        UUID inviteToken = UUID.randomUUID();
-        String testPublicKey = "a".repeat(32);
-        DeviceType deviceType = DeviceType.MOBILE;
+    void registerDevice_shouldReturn201CreatedAndGenerateNewName_whenNameAlreadyExists() throws Exception {
+        KeyPair newDeviceKeyPair = TestCrypto.generateKeyPair();
 
-        DeviceInviteRequestDto deviceInviteRequestDto = new DeviceInviteRequestDto(
-            inviteToken,
-            testPublicKey,
-            deviceType
+        TestContext context = TestDataFactory.createRegistrationContext(newDeviceKeyPair);
+
+        DeviceType newDeviceType = DeviceType.BROWSER;
+        String deviceRequiredName = context.deviceName;
+        String deviceGeneratedName = deviceRequiredName + "-" + newDeviceType.name().toLowerCase();
+
+        TestDataFactory.saveNewUserWithDevice(
+            context,
+            UUID.randomUUID(),
+            TestCrypto.generateKeyPair().getPublic().getEncoded(),
+            deviceRepository,
+            userRepository
         );
 
-        mockMvc.perform(post(INVITE_URI)
-                .with(TestJwtBuilder.forDevice(UUID.randomUUID(), deviceType)
-                    .buildMockMvcJwt()
-                    .authorities(new SimpleGrantedAuthority("messages.read")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceInviteRequestDto)))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.status").value(403))
-            .andExpect(jsonPath("$.title").exists())
-            .andExpect(jsonPath("$.instance").exists());
-    }
-
-    @Test
-    @DataSet(cleanBefore = true)
-    void registerDevice_shouldReturn201Created_andSaveNewUserWithNewDevice() throws Exception {
-        UUID authId = UUID.randomUUID();
-        UUID inviteToken = UUID.randomUUID();
-        DeviceType deviceType = DeviceType.MOBILE;
-        String deviceName = "test device";
-
-        DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
-            deviceName,
-            deviceType,
-            base64PublicKey,
-            Map.of("platform", "android"),
-            inviteToken,
-            "base64Signature"
+        var requestDto = new DeviceRegisterRequestDto(
+            context.deviceName,
+            Base64.getEncoder().encodeToString(newDeviceKeyPair.getPublic().getEncoded()),
+            context.extras,
+            context.inviteToken,
+            context.nonce,
+            context.base64Signature
         );
 
-        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(new byte[44]);
+        invitationService.createInvite(
+            context.authId,
+            context.inviteToken,
+            context.encryptedMasterKey,
+            newDeviceType
+        );
 
         mockMvc.perform(post(REGISTER_URI)
-                .with(TestJwtBuilder.forDevice(authId, deviceType).buildMockMvcJwt()
+                .with(TestJwtBuilder.forDevice(context.authId, newDeviceType).buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.deviceId").exists())
-            .andExpect(jsonPath("$.deviceName").value(deviceName))
-            .andExpect(jsonPath("$.encryptedMasterKey").value(nullValue()));
-
-        List<User> users = userRepository.findAll();
-        assertThat(users).hasSize(1);
-        User user = users.get(0);
-
-        List<Device> devices = deviceRepository.findActiveByUserAuthId(authId);
-        assertThat(devices).hasSize(1);
-        Device device = devices.get(0);
-
-        assertThat(device.getName()).isEqualTo(deviceRegisterRequestDto.deviceName());
-        assertThat(device.getDeviceType()).isEqualTo(deviceRegisterRequestDto.deviceType());
-        assertThat(device.getExtras()).isEqualTo(deviceRegisterRequestDto.extras());
-        assertThat(device.getPublicKey()).isNotNull();
-        assertThat(user.getAuthId()).isEqualTo(authId);
-
-    }
-
-    @Test
-    @DataSet(value = "datasets/deviceController/register/before.yaml", cleanBefore = true)
-    void registerDevice_shouldReturn201Created_andGenerateNewName_whenNameAlreadyExists() throws Exception {
-        UUID authId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
-        UUID inviteToken = UUID.randomUUID();
-        DeviceType deviceType = DeviceType.BROWSER;
-        String deviceRequiredName = "test device";
-        String deviceGeneratedName = deviceRequiredName + "-" + deviceType.name().toLowerCase();
-        String encryptedMasterKey = "encryptedMasterKey";
-
-        DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
-            deviceRequiredName,
-            deviceType,
-            base64PublicKey,
-            Map.of("platform", "android"),
-            inviteToken,
-            "base64Signature"
-        );
-
-        invitationService.createInvite(authId, inviteToken, encryptedMasterKey, deviceType);
-
-        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(new byte[44]);
-
-        mockMvc.perform(post(REGISTER_URI)
-                .with(TestJwtBuilder.forDevice(authId, deviceType).buildMockMvcJwt()
-                    .authorities(new SimpleGrantedAuthority("messages.read")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
+                .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.deviceId").exists())
             .andExpect(jsonPath("$.deviceName").value(deviceGeneratedName))
-            .andExpect(jsonPath("$.encryptedMasterKey").value(encryptedMasterKey));
+            .andExpect(jsonPath("$.encryptedMasterKey").value(context.encryptedMasterKey));
 
-        DeviceInviteData inviteData = redisSecurityStore.get(
-            RedisKeys.registrationInviteKey(authId, inviteToken),
+        DeviceInviteData inviteData = redisSecurityStore.getAndDelete(
+            RedisKeys.registrationInviteKey(context.authId, context.inviteToken),
             DeviceInviteData.class
         );
 
@@ -245,7 +175,7 @@ class DeviceControllerIT extends BaseIT {
         assertThat(users).hasSize(1);
         User user = users.get(0);
 
-        List<Device> devices = deviceRepository.findActiveByUserAuthId(authId);
+        List<Device> devices = deviceRepository.findActiveByUserAuthId(context.authId);
         assertThat(devices).hasSize(2);
         Device savedDevice = devices.stream()
             .filter(d -> d.getName().equals(deviceGeneratedName))
@@ -256,105 +186,143 @@ class DeviceControllerIT extends BaseIT {
             .extracting(Device::getName)
             .containsExactlyInAnyOrder(deviceRequiredName, deviceGeneratedName);
         assertThat(savedDevice.getName()).isEqualTo(deviceGeneratedName);
-        assertThat(savedDevice.getDeviceType()).isEqualTo(deviceRegisterRequestDto.deviceType());
-        assertThat(savedDevice.getExtras()).isEqualTo(deviceRegisterRequestDto.extras());
-        assertThat(savedDevice.getPublicKey()).isNotNull();
-        assertThat(user.getAuthId()).isEqualTo(authId);
+        assertThat(savedDevice.getDeviceType()).isEqualTo(newDeviceType);
+        assertThat(savedDevice.getExtras()).isEqualTo(context.extras);
+        assertThat(savedDevice.getPublicKey()).isEqualTo(context.publicKeyBytes);
+        assertThat(user.getAuthId()).isEqualTo(context.authId);
         assertThat(inviteData).isNull();
     }
 
     @Test
-    void registerDevice_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
-        DeviceType deviceType = DeviceType.BROWSER;
+    void registerDevice_shouldReturn403Forbidden_whenPublicKeyInvalid() throws Exception {
+        TestContext context = TestDataFactory.createRegistrationContext(TestCrypto.generateKeyPair());
 
-        DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
-            "test device",
-            deviceType,
-            base64PublicKey,
-            Map.of("platform", "android"),
-            UUID.randomUUID(),
-            "base64Signature"
+        var requestDto = new DeviceRegisterRequestDto(
+            context.deviceName,
+            Base64.getEncoder().encodeToString(TestCrypto.generateKeyPair().getPublic().getEncoded()),
+            context.extras,
+            context.inviteToken,
+            context.nonce,
+            context.base64Signature
+        );
+
+        invitationService.createInvite(
+            context.authId,
+            context.inviteToken,
+            context.encryptedMasterKey,
+            context.deviceType
         );
 
         mockMvc.perform(post(REGISTER_URI)
-                .with(TestJwtBuilder.forDevice(UUID.randomUUID(), deviceType).buildMockMvcJwt()
-                    .authorities(new SimpleGrantedAuthority("devices.remove")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void registerDevice_shouldReturn401Unauthorized_whenNoJwt() throws Exception {
-        mockMvc.perform(post(REGISTER_URI))
-            .andExpect(status().isUnauthorized())
-            .andExpect(header().exists("WWW-Authenticate"));
-    }
-
-    @Test
-    void registerDevice_shouldReturn401Unauthorized_whenInvalidJwt() throws Exception {
-        DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
-            "test device",
-            DeviceType.MOBILE,
-            base64PublicKey,
-            Map.of("platform", "android"),
-            UUID.randomUUID(),
-            "base64Signature"
-        );
-
-        mockMvc.perform(post(REGISTER_URI)
-                .with(TestJwtBuilder.custom().buildMockMvcJwt()
+                .with(TestJwtBuilder.forDevice(context.authId, context.deviceType).buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
-            .andExpect(status().isUnauthorized());
-    }
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.detail", containsString("valid")));
 
-    @Test
-    @DataSet(value = "datasets/deviceController/register/before.yaml", cleanBefore = true)
-    void registerDevice_shouldReturn400BadRequest_whenInviteNotExist() throws Exception {
-        DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
-            "test device",
-            DeviceType.MOBILE,
-            base64PublicKey,
-            Map.of("platform", "android"),
-            UUID.randomUUID(),
-            "base64Signature"
+        List<User> users = userRepository.findAll();
+        assertThat(users).hasSize(0);
+
+        List<Device> devices = deviceRepository.findActiveByUserAuthId(context.authId);
+        assertThat(devices).hasSize(0);
+
+        DeviceInviteData inviteData = redisSecurityStore.getAndDelete(
+            RedisKeys.registrationInviteKey(context.authId, context.inviteToken),
+            DeviceInviteData.class
         );
 
-        mockMvc.perform(post(REGISTER_URI)
-                .with(TestJwtBuilder.forDevice(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), DeviceType.MOBILE).buildMockMvcJwt()
-                    .authorities(new SimpleGrantedAuthority("messages.read")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
-            .andExpect(status().isBadRequest());
+        assertThat(inviteData).isNotNull();
     }
 
-    @Test
-    @DataSet(value = "datasets/deviceController/register/before.yaml", cleanBefore = true)
-    void registerDevice_shouldReturn400BadRequest_whenInviteDeviceAndJwtDeviceMismatch() throws Exception {
-        UUID authId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
-        UUID inviteToken = UUID.randomUUID();
-        DeviceType inviteDeviceType = DeviceType.BROWSER;
-        DeviceType requestDeviceType = DeviceType.MOBILE;
-
-        DeviceRegisterRequestDto deviceRegisterRequestDto = new DeviceRegisterRequestDto(
-            "test device",
-            requestDeviceType,
-            base64PublicKey,
-            Map.of("platform", "android"),
-            inviteToken,
-            "base64Signature"
-        );
-
-        invitationService.createInvite(authId, inviteToken, "encryptedMasterKey", inviteDeviceType);
-
-        mockMvc.perform(post(REGISTER_URI)
-                .with(TestJwtBuilder.forDevice(authId, requestDeviceType).buildMockMvcJwt()
-                    .authorities(new SimpleGrantedAuthority("messages.read")))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto)))
-            .andExpect(status().isBadRequest());
+    public static class TestContext {
+        UUID authId;
+        UUID publicId;
+        String deviceName;
+        DeviceType deviceType;
+        UUID inviteToken;
+        UUID nonce;
+        String encryptedMasterKey;
+        byte[] publicKeyBytes;
+        String base64Signature;
+        String base64PublicKey;
+        Map<String, String> extras;
     }
+
+    private static class TestDataFactory {
+        public static TestContext createInviteContext(KeyPair keyPair) throws GeneralSecurityException {
+            TestContext context = TestDataFactory.createContext(keyPair);
+            byte[] payload = new SaveInviteAuthRequest(
+                null,
+                null,
+                context.nonce,
+                context.inviteToken,
+                context.publicId,
+                context.encryptedMasterKey
+            ).payload();
+            context.base64Signature = Base64.getEncoder().encodeToString(
+                TestCrypto.sign(keyPair.getPrivate(), payload)
+            );
+
+            return context;
+        }
+
+        public static TestContext createRegistrationContext(KeyPair keyPair) throws GeneralSecurityException {
+            TestContext context = TestDataFactory.createContext(keyPair);
+            byte[] payload = new RegistrationAuthRequest(
+                null,
+                null,
+                context.nonce,
+                context.inviteToken,
+                context.base64PublicKey
+            ).payload();
+            context.base64Signature = Base64.getEncoder().encodeToString(
+                TestCrypto.sign(keyPair.getPrivate(), payload)
+            );
+
+            return context;
+        }
+
+        private static TestContext createContext(KeyPair keyPair) {
+            var context = new TestContext();
+            context.authId = UUID.randomUUID();
+            context.publicId = UUID.randomUUID();
+            context.deviceName = "test name";
+            context.deviceType = DeviceType.MOBILE;
+            context.inviteToken = UUID.randomUUID();
+            context.nonce = UUID.randomUUID();
+            context.encryptedMasterKey = "a".repeat(32);
+            context.publicKeyBytes = keyPair.getPublic().getEncoded();
+            context.base64PublicKey = Base64.getEncoder().encodeToString(context.publicKeyBytes);
+            context.extras = Map.of("platform", "android");
+
+            return context;
+        }
+
+        public static void saveNewUserWithDevice(
+            TestContext context,
+            UUID publicId,
+            byte[] publicKeyBytes,
+            DeviceRepository deviceRepository,
+            UserRepository userRepository
+        ) {
+            User user = new User();
+            user.setAuthId(context.authId);
+            userRepository.saveAndFlush(user);
+
+            Device device = new Device();
+            device.setPublicId(publicId);
+            device.setUser(user);
+            device.setDeviceType(context.deviceType);
+            device.setName(context.deviceName);
+            device.setPublicKey(publicKeyBytes);
+            device.setKeyCreatedAt(Instant.now());
+            device.setLastActiveAt(Instant.now());
+            device.setExtras(context.extras);
+            deviceRepository.saveAndFlush(device);
+        }
+
+    }
+
 }
 

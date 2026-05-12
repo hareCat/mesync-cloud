@@ -1,31 +1,35 @@
 package com.iplion.mesync.cloud.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.error.CryptoException;
+import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
-import com.iplion.mesync.cloud.infrastructure.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;
+import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
-import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.security.SecurityService;
+import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
+import com.iplion.mesync.cloud.security.auth.DeviceAuthResult;
+import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
+import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,12 +37,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,383 +54,277 @@ class DeviceRegistrationServiceTest {
     @Mock
     InvitationService invitationService;
     @Mock
-    RedisSecurityStore redisSecurityStore;
+    DeviceService deviceService;
     @Mock
-    RegistrationCryptoService registrationCryptoService;
+    SecurityService securityService;
     @Mock
-    ObjectMapper objectMapper;
+    KeySignatureService keySignatureService;
 
-    private final ObjectMapper testObjectMapper = new ObjectMapper();
+    @InjectMocks
+    DeviceRegistrationService deviceRegistrationService;
 
     @Test
-    void registerDevice_whenUserAlreadyHaveActiveDevice_shouldRegisterAnotherOne() throws Exception {
+    void saveInviteToken_shouldSaveToken() {
         DeviceType deviceType = DeviceType.DESKTOP;
+        Instant expiredAt = Instant.now();
+        Jwt jwt = mock(Jwt.class);
+        DeviceAuthData deviceAuthData = deviceAuthData();
 
         var ctx = createContext(deviceType);
+        var request = saveInviteRequestDto();
+        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
 
-        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
+        when(securityService.verifyDeviceRequest(any())).thenReturn(result);
+        when(invitationService.createInvite(any(), any(), any(), any())).thenReturn(expiredAt);
+
+        SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(jwt, request);
+
+        ArgumentCaptor<SaveInviteAuthRequest> captor = ArgumentCaptor.forClass(SaveInviteAuthRequest.class);
+        verify(securityService).verifyDeviceRequest(captor.capture());
+        SaveInviteAuthRequest authRequestData = captor.getValue();
+
+        verify(invitationService).createInvite(
+            any(UUID.class),
+            eq(request.inviteToken()),
+            eq(request.encryptedMasterKey()),
+            eq(request.deviceType())
+        );
+
+        assertThat(authRequestData.jwt()).isEqualTo(jwt);
+        assertThat(authRequestData.publicId()).isEqualTo(request.publicId());
+        assertThat(authRequestData.inviteToken()).isEqualTo(request.inviteToken());
+        assertThat(authRequestData.nonce()).isEqualTo(request.nonce());
+        assertThat(authRequestData.base64Signature()).isEqualTo(request.base64Signature());
+        assertThat(authRequestData.encryptedMasterKey()).isEqualTo(request.encryptedMasterKey());
+        assertThat(response).isNotNull();
+        assertThat(response.expiresAt()).isEqualTo(expiredAt);
+    }
+
+    @Test
+    void saveInviteToken_whenDeviceTypeNotMobile_shouldThrow() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+        Jwt jwt = mock(Jwt.class);
+        DeviceAuthData deviceAuthData = new DeviceAuthData(
+            1L,
+            UUID.randomUUID(),
+            1L,
+            UUID.randomUUID(),
+            DeviceType.BROWSER,
+            mock(PublicKey.class)
+        );
+
+        var ctx = createContext(deviceType);
+        var request = saveInviteRequestDto();
+        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
+
+        when(securityService.verifyDeviceRequest(any())).thenReturn(result);
+
+        assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(jwt, request))
+            .isInstanceOfSatisfying(
+                DeviceRegistrationException.class,
+                e -> assertThat(e.getMessage()).contains("device")
+            );
+
+        verify(securityService).verifyDeviceRequest(any(DeviceAuthRequest.class));
+        verify(invitationService, never()).createInvite(
+            any(UUID.class),
+            eq(request.inviteToken()),
+            eq(request.encryptedMasterKey()),
+            eq(request.deviceType())
+        );
+    }
+
+    @Test
+    void registerDevice_whenUserAlreadyHaveActiveDevice_shouldRegisterAnotherOne() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+        Jwt jwt = mock(Jwt.class);
+
+        var ctx = createContext(deviceType);
+        var request = deviceRegistrationRequest();
+        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
+
+        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(true);
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
             .thenReturn(ctx.encryptedMasterKey());
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(objectMapper.writeValueAsString(any()))
-            .thenReturn(testObjectMapper.writeValueAsString(ctx.request().extras()));
+        doNothing().when(deviceService).saveWithRetry(any());
 
-        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(1);
+        DeviceRegisterResponseDto response = deviceRegistrationService.registerDevice(jwt, request);
 
-        DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
+        ArgumentCaptor<RegistrationAuthRequest> captor = ArgumentCaptor.forClass(RegistrationAuthRequest.class);
+        verify(securityService).verifyRegistrationRequest(captor.capture());
+        RegistrationAuthRequest authRequestData = captor.getValue();
 
-        verify(deviceRepository, times(1)).trySave(
-            any(),
-            eq(ctx.user().getId()),
-            eq(deviceType.name()),
-            eq(ctx.request().deviceName()),
-            argThat(bytes -> Arrays.equals(bytes, ctx.publicKeyBytes())),
-            any(), any(),
-            argThat(json -> json.contains("platform"))
-        );
-
+        assertThat(authRequestData.jwt()).isEqualTo(jwt);
+        assertThat(authRequestData.base64Signature()).isEqualTo(request.base64Signature());
+        assertThat(authRequestData.nonce()).isEqualTo(request.nonce());
+        assertThat(authRequestData.inviteToken()).isEqualTo(request.inviteToken());
+        assertThat(authRequestData.base64PublicKey()).isEqualTo(request.base64PublicKey());
         assertThat(response.deviceId()).isNotNull();
-        assertThat(response.deviceName()).isEqualTo(ctx.request().deviceName());
+        assertThat(response.deviceName()).isEqualTo(request.deviceName());
         assertThat(response.encryptedMasterKey()).isEqualTo(ctx.encryptedMasterKey());
     }
 
     @Test
-    void registerDevice_whenUserNotHaveActiveDevices_shouldCreateFirstMobileDevice() throws Exception {
+    void registerDevice_whenUserNotHaveActiveDevices_shouldCreateFirstMobileDevice() {
         DeviceType deviceType = DeviceType.MOBILE;
 
         var ctx = createContext(deviceType);
+        var request = deviceRegistrationRequest();
+        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(false);
+        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(1);
+        doNothing().when(deviceService).saveWithRetry(any());
 
-        DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
+        DeviceRegisterResponseDto response = deviceRegistrationService.registerDevice(mock(Jwt.class), request);
 
         verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
 
-        verify(deviceRepository, times(1)).trySave(
-            any(), any(),
-            eq(deviceType.name()),
-            any(), any(), any(), any(), any()
-        );
-
         assertThat(response.deviceId()).isNotNull();
-        assertThat(response.deviceName()).isEqualTo(ctx.request().deviceName());
+        assertThat(response.deviceName()).isEqualTo(request.deviceName());
         assertThat(response.encryptedMasterKey()).isNull();
     }
 
     @Test
-    void registerDevice_whenTooMuchTriesForRegister_shouldThrowDeviceRegistrationExceptionWithRateLimit() throws NoSuchAlgorithmException {
+    void registerDevice_whenFirstDeviceTypeNotMobile_shouldThrow() {
         var ctx = createContext(DeviceType.BROWSER);
+        var request = deviceRegistrationRequest();
+        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(redisSecurityStore.incrementWithTtl(any(), any()))
-            .thenReturn(ctx.props().registrationAttempts() + 1);
+        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(false);
 
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-                assertThat(e.getMessage()).contains("rate limit");
-            });
-
-        verify(redisSecurityStore).incrementWithTtl(contains(ctx.authId().toString()), eq(ctx.props().registrationTtl()));
-    }
-
-    @Test
-    void registerDevice_whenDeviceTypeMismatch_shouldThrowDeviceRegistrationExceptionWithDeviceTypeMismatch() throws NoSuchAlgorithmException {
-        var ctx = createContext(DeviceType.BROWSER);
-
-        Jwt jwt = TestJwtBuilder
-            .forDevice(ctx.authId(), DeviceType.MOBILE)
-            .buildJwt();
-
-        assertThatThrownBy(() -> ctx.service().registerDevice(jwt, ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("type mismatch");
+                assertThat(e.getMessage()).contains("mobile");
             });
 
+        verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
     }
 
     @Test
-    void registerDevice_whenDeviceTypeMismatch_shouldThrowDeviceRegistrationExceptionWithFirstDeviceType() throws NoSuchAlgorithmException {
-        var ctx = createContext(DeviceType.BROWSER);
-
-        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
-
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("not mobile");
-            });
-    }
-
-    @Test
-    void registerDevice_whenSignatureVerificationFailed_shouldThrowDeviceRegistrationExceptionWithInvalidSignature() throws NoSuchAlgorithmException {
+    void registerDevice_whenRequestInviteTokenMissing_shouldThrow() {
         var ctx = createContext(DeviceType.MOBILE);
-
-        doThrow(CryptoException.class).when(registrationCryptoService).verifyAngExtractPublicKeyBytes(any());
-
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .hasCauseInstanceOf(CryptoException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains(ctx.authId().toString());
-            });
-    }
-
-    @Test
-    void registerDevice_whenRequestInviteTokenMissing_shouldThrowDeviceRegistrationExceptionWithInvalidInvite() throws NoSuchAlgorithmException {
-        DeviceType deviceType = DeviceType.MOBILE;
-
-        var ctx = createContext(deviceType);
-
-        DeviceRegisterRequestDto request = new DeviceRegisterRequestDto(
+        var request = new DeviceRegisterRequestDto(
             "test device",
-            deviceType,
-            "base64PublicKey",
+            "a".repeat(44),
             Map.of("platform", "android"),
             null,
-            "base64Signature"
+            UUID.randomUUID(),
+            "a".repeat(80)
         );
+        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
+        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
 
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), request))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                 assertThat(e.getMessage()).contains("invite");
             });
+
+        verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
     }
 
     @Test
-    void registerDevice_saveWithRetry_shouldThrowDeviceRegistrationExceptionWithSaveFailedThreeTimes() throws NoSuchAlgorithmException {
+    void registerDevice_whenUserSavingError_shouldThrow() {
         var ctx = createContext(DeviceType.MOBILE);
+        var request = deviceRegistrationRequest();
+        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
-        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(0);
-
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(e.getMessage()).contains("device");
-            });
-
-        verify(deviceRepository, times(3)).trySave(any(), any(), any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void registerDevice_saveWithRetry_shouldSaveDeviceWithNewNameWithDeviceType() throws NoSuchAlgorithmException {
-        DeviceType deviceType = DeviceType.MOBILE;
-        var ctx = createContext(deviceType);
-        String generatedDeviceName = ctx.request().deviceName() + "-" + deviceType.name().toLowerCase();
-
-        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
-        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(0)
-            .thenReturn(1);
-
-        DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(deviceRepository, times(2)).trySave(
-            any(), any(), any(),
-            captor.capture(),
-            any(), any(), any(), any()
-        );
-        List<String> names = captor.getAllValues();
-
-        assertThat(names.get(0)).isEqualTo(ctx.request().deviceName());
-        assertThat(names.get(1))
-            .isEqualTo(generatedDeviceName)
-            .isEqualTo(response.deviceName());
-    }
-
-    @Test
-    void registerDevice_saveWithRetry_shouldSaveDeviceWithNewRandomName() throws NoSuchAlgorithmException {
-        DeviceType deviceType = DeviceType.MOBILE;
-        var ctx = createContext(deviceType);
-
-        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
-        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(0)
-            .thenReturn(0)
-            .thenReturn(1);
-
-        DeviceRegisterResponseDto response = ctx.service().registerDevice(ctx.jwt(), ctx.request());
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(deviceRepository, times(3)).trySave(
-            any(), any(), any(),
-            captor.capture(),
-            any(), any(), any(), any()
-        );
-        List<String> names = captor.getAllValues();
-
-        assertThat(names.get(2))
-            .isNotEqualTo(ctx.request().deviceName())
-            .startsWith(ctx.request().deviceName())
-            .hasSizeGreaterThan(ctx.request().deviceName().length())
-            .isEqualTo(response.deviceName());
-    }
-
-    @Test
-    void registerDevice_whenRequestExtrasWrong_shouldThrowDeviceRegistrationExceptionWithDecodeError() throws Exception {
-        var ctx = createContext(DeviceType.DESKTOP);
-
-        when(redisSecurityStore.incrementWithTtl(any(), any())).thenReturn(1L);
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(true);
-        when(registrationCryptoService.verifyAngExtractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
-        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-
-        doThrow(JsonProcessingException.class).when(objectMapper).writeValueAsString(any());
-
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
-
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("Extras");
-            });
-
-        verify(objectMapper).writeValueAsString(any());
-    }
-
-    @Test
-    void registerDevice_whenUserSavingError_shouldThrowDeviceRegistrationExceptionWithUserSavingError() throws NoSuchAlgorithmException {
-        var ctx = createContext(DeviceType.MOBILE);
-
-        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
+        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenThrow(IllegalStateException.class);
 
-        assertThatThrownBy(() -> ctx.service().registerDevice(ctx.jwt(), ctx.request()))
-            .isInstanceOf(DeviceRegistrationException.class)
-            .satisfies(deviceRegistrationException -> {
-                DeviceRegistrationException e = (DeviceRegistrationException) deviceRegistrationException;
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
+                    assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+                    assertThat(e.getMessage()).contains("user");
+                    assertThat(e.getCause()).isInstanceOf(IllegalStateException.class);
+                }
+            );
 
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(e.getMessage()).contains("user");
-            });
-
-        verify(deviceRepository, never()).trySave(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(keySignatureService, never()).extractPublicKeyBytes(any());
     }
 
     @Test
-    void registerDevice_whenExtrasNull_shouldPersistEmptyJsonObject() throws Exception {
-        DeviceType  deviceType = DeviceType.MOBILE;
-        var ctx = createContext(deviceType);
-        DeviceRegisterRequestDto request = new DeviceRegisterRequestDto(
-            "test device",
-            deviceType,
-            "base64PublicKey",
-            null,
-            UUID.randomUUID(),
-            "base64Signature"
-        );
+    void registerDevice_whenDeviceSavingError_shouldThrow() {
+        var ctx = createContext(DeviceType.MOBILE);
+        var request = deviceRegistrationRequest();
+        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.authId()))).thenReturn(false);
+        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
-        when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
-            .thenReturn(1);
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        doThrow(DeviceException.class).when(deviceService).saveWithRetry(any());
 
-        ctx.service().registerDevice(ctx.jwt(), request);
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
+                    assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+                    assertThat(e.getMessage()).contains("device");
+                    assertThat(e.getCause()).isInstanceOf(DeviceException.class);
+                }
+            );
 
-        verify(deviceRepository).trySave(
-            any(),
-            any(),
-            eq(DeviceType.MOBILE.name()),
-            any(),
-            any(),
-            any(),
-            any(),
-            eq("{}")
-        );
+        verify(keySignatureService).extractPublicKeyBytes(any());
     }
 
     // --------------------- helpers ---------------------
 
     private record TestContext(
-        DeviceRegistrationService service,
-        DeviceRegisterRequestDto request,
         User user,
-        UUID authId,
-        byte[] publicKeyBytes,
         String encryptedMasterKey,
-        RegistrationProperties props,
-        Jwt jwt
+        JwtUserData jwtUserData
     ) {
     }
 
-    private TestContext createContext(DeviceType deviceType) throws NoSuchAlgorithmException {
-        final RegistrationProperties props = new RegistrationProperties(
-            Duration.ofMinutes(10),
-            Duration.ofSeconds(60),
-            Duration.ofMinutes(10),
-            10
-        );
-
-        DeviceRegistrationService service = new DeviceRegistrationService(
-            deviceRepository,
-            userService,
-            invitationService,
-            redisSecurityStore,
-            props,
-            registrationCryptoService,
-            objectMapper
-        );
-
+    private TestContext createContext(DeviceType deviceType) {
         UUID authId = UUID.randomUUID();
         String encryptedMasterKey = "encryptedMasterKey";
         String email = "test@mail.com";
+        String clientId = deviceType.getClientId();
+        JwtUserData jwtUserData = new JwtUserData(authId, clientId, email, true);
 
         User user = new User();
         user.setId(1L);
         user.setEmail(email);
 
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("Ed25519");
-        PublicKey publicKey = generator.generateKeyPair().getPublic();
-        byte[] publicKeyBytes = publicKey.getEncoded();
+        return new TestContext(user, encryptedMasterKey, jwtUserData);
+    }
 
-        DeviceRegisterRequestDto request = new DeviceRegisterRequestDto(
+    DeviceRegisterRequestDto deviceRegistrationRequest() {
+        return new DeviceRegisterRequestDto(
             "test device",
-            deviceType,
-            "base64PublicKey",
+            "a".repeat(44),
             Map.of("platform", "android"),
             UUID.randomUUID(),
-            "base64Signature"
+            UUID.randomUUID(),
+            "a".repeat(80)
         );
+    }
 
-        Jwt jwt = TestJwtBuilder
-            .forDevice(authId, deviceType)
-            .buildJwt();
+    SaveInviteRequestDto saveInviteRequestDto() {
+        return new SaveInviteRequestDto(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "encryptedMasterKey",
+            DeviceType.MOBILE,
+            UUID.randomUUID(),
+            Base64.getEncoder().encodeToString(new byte[64])
+        );
+    }
 
-        return new TestContext(service, request, user, authId, publicKeyBytes, encryptedMasterKey, props, jwt);
+    public DeviceAuthData deviceAuthData() {
+        return new DeviceAuthData(
+            1L,
+            UUID.randomUUID(),
+            1L,
+            UUID.randomUUID(),
+            DeviceType.MOBILE,
+            mock(PublicKey.class)
+        );
     }
 }

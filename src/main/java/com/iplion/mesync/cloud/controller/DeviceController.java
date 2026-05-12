@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.controller;
 
-import com.iplion.mesync.cloud.controller.dto.DeviceInviteRequestDto;
-import com.iplion.mesync.cloud.controller.dto.DeviceInviteResponseDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
@@ -36,9 +36,9 @@ public class DeviceController {
     @PostMapping("/invite")
     @PreAuthorize("hasAuthority('devices.invite')")
     @ResponseStatus(HttpStatus.CREATED)
-    public DeviceInviteResponseDto saveInvite(
+    public SaveInviteResponseDto saveInvite(
         @AuthenticationPrincipal Jwt jwt,
-        @Valid @RequestBody DeviceInviteRequestDto request
+        @Valid @RequestBody SaveInviteRequestDto request
     ) {
         return deviceRegistrationService.saveInviteToken(jwt, request);
     }

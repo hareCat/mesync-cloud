@@ -36,6 +36,7 @@ public class InvitationServiceTest {
         Duration.ofMinutes(10),
         Duration.ofSeconds(60),
         Duration.ofMinutes(10),
+        Duration.ofSeconds(30),
         10
     );
 
@@ -191,7 +192,7 @@ public class InvitationServiceTest {
             .hasMessageContaining(authId.toString(), inviteDeviceType.name(), requestDeviceType.name())
             .isInstanceOfSatisfying(
                 DeviceRegistrationException.class,
-                e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
+                e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN)
             );
     }
 

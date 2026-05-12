@@ -19,7 +19,7 @@ import java.time.Instant;
 
 @Slf4j
 @RestControllerAdvice
-public class ApplicationExceptionHandler {
+public class ApiExceptionHandler {
     private static final String SAFE_5XX_MESSAGE = "Request could not be processed. Please try again later.";
 
     private ProblemDetail problemDetail(HttpStatus status, String clientMessage, HttpServletRequest request) {

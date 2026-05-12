@@ -68,5 +68,5 @@ public class Device {
     //extra
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extras", columnDefinition = "jsonb", nullable = false)
-    private Map<String, Object> extras = new HashMap<>();
+    private Map<String, String> extras = new HashMap<>();
 }

@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.repository;
 
 import com.iplion.mesync.cloud.entity.Device;
+import com.iplion.mesync.cloud.model.DeviceAuthProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,12 +15,18 @@ import java.util.UUID;
 @Repository
 public interface DeviceRepository extends JpaRepository<Device, Long> {
     @Query("""
-            select d.publicKey
+            select
+                d.id as id,
+                d.publicId as publicId,
+                d.user.id as userId,
+                d.user.authId as userAuthId,
+                d.deviceType as deviceType,
+                d.publicKey as publicKey
             from Device d
-            where d.publicId = :deviceId
-            and d.revokedAt is null
+            where d.publicId = :publicId
+              and d.revokedAt is null
         """)
-    Optional<byte[]> findActivePublicKeyByPublicId(UUID deviceId);
+    Optional<DeviceAuthProjection> findAuthDataByPublicId(UUID publicId);
 
     @Query("""
             select d

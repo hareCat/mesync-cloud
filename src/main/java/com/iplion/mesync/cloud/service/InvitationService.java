@@ -72,7 +72,8 @@ public class InvitationService {
                     authId,
                     deviceType.name(),
                     deviceInviteData.deviceType().name()
-                )
+                ),
+                "Invite for your device not found."
             );
         }
 
