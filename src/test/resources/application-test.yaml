@@ -21,3 +21,8 @@ app:
     invite-cooldown: 1m
     registration-ttl: 10m
     registration-attempts: 10
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

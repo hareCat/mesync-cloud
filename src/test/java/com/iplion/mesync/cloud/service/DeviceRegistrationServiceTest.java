@@ -12,7 +12,6 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
-import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthResult;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
@@ -41,8 +40,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -101,40 +100,6 @@ class DeviceRegistrationServiceTest {
     }
 
     @Test
-    void saveInviteToken_whenDeviceTypeNotMobile_shouldThrow() {
-        DeviceType deviceType = DeviceType.DESKTOP;
-        Jwt jwt = mock(Jwt.class);
-        DeviceAuthData deviceAuthData = new DeviceAuthData(
-            1L,
-            UUID.randomUUID(),
-            1L,
-            UUID.randomUUID(),
-            DeviceType.BROWSER,
-            mock(PublicKey.class)
-        );
-
-        var ctx = createContext(deviceType);
-        var request = saveInviteRequestDto();
-        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
-
-        when(securityService.verifyDeviceRequest(any())).thenReturn(result);
-
-        assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(jwt, request))
-            .isInstanceOfSatisfying(
-                DeviceRegistrationException.class,
-                e -> assertThat(e.getMessage()).contains("device")
-            );
-
-        verify(securityService).verifyDeviceRequest(any(DeviceAuthRequest.class));
-        verify(invitationService, never()).createInvite(
-            any(UUID.class),
-            eq(request.inviteToken()),
-            eq(request.encryptedMasterKey()),
-            eq(request.deviceType())
-        );
-    }
-
-    @Test
     void registerDevice_whenUserAlreadyHaveActiveDevice_shouldRegisterAnotherOne() {
         DeviceType deviceType = DeviceType.DESKTOP;
         Jwt jwt = mock(Jwt.class);
@@ -181,7 +146,7 @@ class DeviceRegistrationServiceTest {
 
         DeviceRegisterResponseDto response = deviceRegistrationService.registerDevice(mock(Jwt.class), request);
 
-        verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
+        verifyNoInteractions(invitationService);
 
         assertThat(response.deviceId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(request.deviceName());
@@ -203,7 +168,7 @@ class DeviceRegistrationServiceTest {
                 assertThat(e.getMessage()).contains("mobile");
             });
 
-        verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
+        verifyNoInteractions(invitationService);
     }
 
     @Test
@@ -228,7 +193,7 @@ class DeviceRegistrationServiceTest {
                 assertThat(e.getMessage()).contains("invite");
             });
 
-        verify(invitationService, never()).consumeInviteAndGetEncryptedMasterKey(any(), any(), any());
+        verifyNoInteractions(invitationService);
     }
 
     @Test
@@ -248,7 +213,7 @@ class DeviceRegistrationServiceTest {
                 }
             );
 
-        verify(keySignatureService, never()).extractPublicKeyBytes(any());
+        verifyNoInteractions(keySignatureService);
     }
 
     @Test

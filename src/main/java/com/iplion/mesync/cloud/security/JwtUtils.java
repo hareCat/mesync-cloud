@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import java.util.Locale;
 import java.util.UUID;
 
+// TODO add roles extract
 public final class JwtUtils {
     private JwtUtils() {}
 

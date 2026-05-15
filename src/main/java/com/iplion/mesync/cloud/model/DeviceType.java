@@ -7,7 +7,8 @@ import lombok.Getter;
 public enum DeviceType {
     MOBILE("mesync-mobile"),
     BROWSER("mesync-browser"),
-    DESKTOP("mesync-desktop");
+    DESKTOP("mesync-desktop"),
+    MANAGER("mesync-device-manager");
 
     private final String clientId;
 

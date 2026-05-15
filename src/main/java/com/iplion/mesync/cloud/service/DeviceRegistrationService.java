@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+//TODO change security deviceType check to roles check
 @Service
 @RequiredArgsConstructor
 public class DeviceRegistrationService {
@@ -46,17 +47,6 @@ public class DeviceRegistrationService {
             request.publicId(),
             request.encryptedMasterKey()
         ));
-
-        if (authResult.deviceAuthData().deviceType() != DeviceType.MOBILE) {
-            throw DeviceRegistrationException.deviceTypeMismatch(
-                String.format(
-                    "Got invite from device with type: %s, authId=%s",
-                    authResult.deviceAuthData().deviceType().name(),
-                    authResult.jwtUserData().id()
-                ),
-                "Invite may be created with mobile device only."
-            );
-        }
 
         Instant expiresAt = invitationService.createInvite(
             authResult.jwtUserData().id(),
