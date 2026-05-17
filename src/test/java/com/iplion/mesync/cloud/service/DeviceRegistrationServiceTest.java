@@ -8,6 +8,7 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -36,10 +37,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -74,7 +77,7 @@ class DeviceRegistrationServiceTest {
         var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
 
         when(securityService.verifyDeviceRequest(any())).thenReturn(result);
-        when(invitationService.createInvite(any(), any(), any(), any())).thenReturn(expiredAt);
+        when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
 
         SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(jwt, request);
 
@@ -86,6 +89,7 @@ class DeviceRegistrationServiceTest {
             any(UUID.class),
             eq(request.inviteToken()),
             eq(request.encryptedMasterKey()),
+            eq(request.keyVersion()),
             eq(request.deviceType())
         );
 
@@ -100,6 +104,34 @@ class DeviceRegistrationServiceTest {
     }
 
     @Test
+    void saveInviteToken_shouldThrow_whenDeviceMasterkeyVersionOutdated() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+        Jwt jwt = mock(Jwt.class);
+        DeviceAuthData deviceAuthData = deviceAuthData();
+
+        var ctx = createContext(deviceType);
+        var request = new SaveInviteRequestDto(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "encryptedMasterKey",
+            1,
+            DeviceType.MOBILE,
+            UUID.randomUUID(),
+            Base64.getEncoder().encodeToString(new byte[64])
+        );
+        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
+
+        when(securityService.verifyDeviceRequest(any())).thenReturn(result);
+
+        assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(jwt, request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
+                assertThat(e.getMessage()).contains("key")
+            );
+
+        verify(invitationService, never()).createInvite(any(), any(), any(), anyInt(), any());
+    }
+
+    @Test
     void registerDevice_whenUserAlreadyHaveActiveDevice_shouldRegisterAnotherOne() {
         DeviceType deviceType = DeviceType.DESKTOP;
         Jwt jwt = mock(Jwt.class);
@@ -107,11 +139,16 @@ class DeviceRegistrationServiceTest {
         var ctx = createContext(deviceType);
         var request = deviceRegistrationRequest();
         var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
+        DeviceInviteData deviceInviteData = new DeviceInviteData(
+            ctx.encryptedMasterKey(),
+            1,
+            deviceType
+        );
 
         when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(true);
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
-            .thenReturn(ctx.encryptedMasterKey());
+            .thenReturn(deviceInviteData);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
         doNothing().when(deviceService).saveWithRetry(any());
 
@@ -276,6 +313,7 @@ class DeviceRegistrationServiceTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "encryptedMasterKey",
+            2,
             DeviceType.MOBILE,
             UUID.randomUUID(),
             Base64.getEncoder().encodeToString(new byte[64])
@@ -289,7 +327,8 @@ class DeviceRegistrationServiceTest {
             1L,
             UUID.randomUUID(),
             DeviceType.MOBILE,
-            mock(PublicKey.class)
+            mock(PublicKey.class),
+            2
         );
     }
 }

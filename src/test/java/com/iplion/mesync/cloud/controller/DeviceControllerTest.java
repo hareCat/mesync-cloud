@@ -145,12 +145,12 @@ public class DeviceControllerTest {
         mockMvc.perform(saveInviteMockRequest(new SaveInviteRequestDto(
                 UUID.randomUUID(), UUID.randomUUID(),
                 "",
-                DeviceType.MOBILE, UUID.randomUUID(), "a".repeat(80)
+                1, DeviceType.MOBILE, UUID.randomUUID(), "a".repeat(80)
             )))
             .andExpect(status().isBadRequest());
 
         mockMvc.perform(saveInviteMockRequest(new SaveInviteRequestDto(
-                UUID.randomUUID(), UUID.randomUUID(), "a".repeat(44), DeviceType.MOBILE, UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), "a".repeat(44), 1, DeviceType.MOBILE, UUID.randomUUID(),
                 ""
             )))
             .andExpect(status().isBadRequest());
@@ -216,6 +216,7 @@ public class DeviceControllerTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "a".repeat(32),
+            1,
             DeviceType.BROWSER,
             UUID.randomUUID(),
             "a".repeat(80)

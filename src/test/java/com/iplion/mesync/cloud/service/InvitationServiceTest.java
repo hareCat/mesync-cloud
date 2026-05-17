@@ -55,6 +55,7 @@ public class InvitationServiceTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "encryptedMasterKey",
+            1,
             DeviceType.MOBILE)
         )
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
@@ -75,6 +76,7 @@ public class InvitationServiceTest {
             authId,
             UUID.randomUUID(),
             "encryptedMasterKey",
+            1,
             DeviceType.MOBILE)
         )
             .hasMessageContaining(authId.toString())
@@ -89,6 +91,7 @@ public class InvitationServiceTest {
             authId,
             UUID.randomUUID(),
             "encryptedMasterKey",
+            1,
             DeviceType.MOBILE)
         )
             .hasMessageContaining(authId.toString())
@@ -105,8 +108,10 @@ public class InvitationServiceTest {
         Instant expiresAt = Instant.now().plus(props.inviteTtl());
         DeviceType deviceType = DeviceType.MOBILE;
         String encryptedMasterKey = "encryptedMasterKey";
+        Integer keyVersion = 1;
         var deviceInviteData = new DeviceInviteData(
             encryptedMasterKey,
+            keyVersion,
             deviceType
         );
 
@@ -118,6 +123,7 @@ public class InvitationServiceTest {
                 authId,
                 inviteToken,
                 encryptedMasterKey,
+                keyVersion,
                 deviceType)
         ).isAfterOrEqualTo(expiresAt);
 
@@ -178,6 +184,7 @@ public class InvitationServiceTest {
         DeviceType requestDeviceType = DeviceType.BROWSER;
         DeviceInviteData deviceInviteData = new DeviceInviteData(
             "encryptedMasterKey",
+            1,
             inviteDeviceType
         );
 
@@ -203,6 +210,7 @@ public class InvitationServiceTest {
         DeviceType deviceType = DeviceType.MOBILE;
         DeviceInviteData deviceInviteData = new DeviceInviteData(
             "encryptedMasterKey",
+            1,
             deviceType
         );
 
@@ -213,7 +221,7 @@ public class InvitationServiceTest {
             authId,
             deviceType,
             inviteToken
-        )).isEqualTo(deviceInviteData.encryptedMasterKey());
+        )).isEqualTo(deviceInviteData);
 
         verify(redisSecurityStore).getAndDelete(eq(RedisKeys.registrationInviteKey(authId, inviteToken)), any());
     }

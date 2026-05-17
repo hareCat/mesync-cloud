@@ -9,6 +9,7 @@ public record DeviceAuthData(
     Long userId,
     UUID userAuthId,
     DeviceType deviceType,
-    PublicKey publicKey
+    PublicKey publicKey,
+    Integer userKeyVersion
 ) {
 }

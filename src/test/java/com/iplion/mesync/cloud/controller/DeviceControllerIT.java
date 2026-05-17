@@ -98,6 +98,7 @@ class DeviceControllerIT extends BaseIT {
             context.publicId,
             context.inviteToken,
             context.encryptedMasterKey,
+            context.keyVersion,
             context.deviceType,
             context.nonce,
             context.base64Signature
@@ -120,6 +121,7 @@ class DeviceControllerIT extends BaseIT {
         assertThat(inviteData).isNotNull();
         assertThat(inviteData.deviceType()).isEqualTo(context.deviceType);
         assertThat(inviteData.encryptedMasterKey()).isEqualTo(context.encryptedMasterKey);
+        assertThat(inviteData.keyVersion()).isEqualTo(context.keyVersion);
     }
 
     @Test
@@ -153,6 +155,7 @@ class DeviceControllerIT extends BaseIT {
             context.authId,
             context.inviteToken,
             context.encryptedMasterKey,
+            context.keyVersion,
             newDeviceType
         );
 
@@ -164,7 +167,8 @@ class DeviceControllerIT extends BaseIT {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.deviceId").exists())
             .andExpect(jsonPath("$.deviceName").value(deviceGeneratedName))
-            .andExpect(jsonPath("$.encryptedMasterKey").value(context.encryptedMasterKey));
+            .andExpect(jsonPath("$.encryptedMasterKey").value(context.encryptedMasterKey))
+            .andExpect(jsonPath("$.keyVersion").value(context.keyVersion));
 
         DeviceInviteData inviteData = redisSecurityStore.getAndDelete(
             RedisKeys.registrationInviteKey(context.authId, context.inviteToken),
@@ -210,6 +214,7 @@ class DeviceControllerIT extends BaseIT {
             context.authId,
             context.inviteToken,
             context.encryptedMasterKey,
+            context.keyVersion,
             context.deviceType
         );
 
@@ -235,6 +240,8 @@ class DeviceControllerIT extends BaseIT {
         assertThat(inviteData).isNotNull();
     }
 
+    // helpers ------------------------
+
     public static class TestContext {
         UUID authId;
         UUID publicId;
@@ -243,6 +250,7 @@ class DeviceControllerIT extends BaseIT {
         UUID inviteToken;
         UUID nonce;
         String encryptedMasterKey;
+        Integer keyVersion;
         byte[] publicKeyBytes;
         String base64Signature;
         String base64PublicKey;
@@ -258,7 +266,8 @@ class DeviceControllerIT extends BaseIT {
                 context.nonce,
                 context.inviteToken,
                 context.publicId,
-                context.encryptedMasterKey
+                context.encryptedMasterKey,
+                context.keyVersion
             ).payload();
             context.base64Signature = Base64.getEncoder().encodeToString(
                 TestCrypto.sign(keyPair.getPrivate(), payload)
@@ -292,6 +301,7 @@ class DeviceControllerIT extends BaseIT {
             context.inviteToken = UUID.randomUUID();
             context.nonce = UUID.randomUUID();
             context.encryptedMasterKey = "a".repeat(32);
+            context.keyVersion = 2;
             context.publicKeyBytes = keyPair.getPublic().getEncoded();
             context.base64PublicKey = Base64.getEncoder().encodeToString(context.publicKeyBytes);
             context.extras = Map.of("platform", "android");

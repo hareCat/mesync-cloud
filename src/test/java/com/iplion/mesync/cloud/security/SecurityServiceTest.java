@@ -171,7 +171,8 @@ public class SecurityServiceTest {
             fromContext.userId(),
             UUID.randomUUID(),
             fromContext.deviceType(),
-            fromContext.publicKey()
+            fromContext.publicKey(),
+            1
         );
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(wrongOwnerDevice);
@@ -197,7 +198,8 @@ public class SecurityServiceTest {
             fromContext.userId(),
             fromContext.userAuthId(),
             DeviceType.DESKTOP,
-            fromContext.publicKey()
+            fromContext.publicKey(),
+            1
         );
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(wrongTypeDevice);
@@ -238,7 +240,8 @@ public class SecurityServiceTest {
             1L,
             authId,
             deviceType,
-            keyPair.getPublic()
+            keyPair.getPublic(),
+            1
         );
 
         return new TestContext(

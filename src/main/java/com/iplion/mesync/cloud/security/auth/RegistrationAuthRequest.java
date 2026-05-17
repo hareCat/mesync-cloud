@@ -17,7 +17,7 @@ public record RegistrationAuthRequest(
     public byte[] payload() {
         return PayloadBuilder.build(
             "REGISTRATION",
-            inviteToken().toString(),
+            inviteToken() == null ? "" : inviteToken().toString(),
             base64PublicKey(),
             nonce().toString()
         );

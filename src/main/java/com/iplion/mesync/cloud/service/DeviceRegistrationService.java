@@ -9,6 +9,8 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.InvalidDeviceTypeException;
+import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
@@ -27,7 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-//TODO change security deviceType check to roles check
+//TODO change security deviceType check to roles check and remove DeviceType.MANAGER
 @Service
 @RequiredArgsConstructor
 public class DeviceRegistrationService {
@@ -45,13 +47,25 @@ public class DeviceRegistrationService {
             request.nonce(),
             request.inviteToken(),
             request.publicId(),
-            request.encryptedMasterKey()
+            request.encryptedMasterKey(),
+            request.keyVersion()
         ));
+
+        DeviceAuthData deviceAuthData = authResult.deviceAuthData();
+        if (deviceAuthData.userKeyVersion() > request.keyVersion()) {
+            throw DeviceRegistrationException.masterKeyVersionMismatch(
+                deviceAuthData.userAuthId(),
+                deviceAuthData.publicId(),
+                deviceAuthData.userKeyVersion(),
+                request.keyVersion()
+            );
+        }
 
         Instant expiresAt = invitationService.createInvite(
             authResult.jwtUserData().id(),
             request.inviteToken(),
             request.encryptedMasterKey(),
+            request.keyVersion(),
             request.deviceType()
         );
 
@@ -90,12 +104,18 @@ public class DeviceRegistrationService {
             throw DeviceRegistrationException.firstDeviceType(authId);
         }
 
-        String encryptedMasterKey = resolveEncryptedMasterKey(
-            hasActiveDevices,
-            request.inviteToken(),
-            authId,
-            deviceType
-        );
+        String encryptedMasterKey = null;
+        Integer keyVersion = null;
+        if (hasActiveDevices) {
+            DeviceInviteData deviceInviteData = getInviteData(
+                request.inviteToken(),
+                authId,
+                deviceType
+            );
+
+            encryptedMasterKey = deviceInviteData.encryptedMasterKey();
+            keyVersion = deviceInviteData.keyVersion();
+        }
 
         User user;
         try {
@@ -125,20 +145,16 @@ public class DeviceRegistrationService {
         return new DeviceRegisterResponseDto(
             device.getPublicId(),
             device.getName(),
-            encryptedMasterKey
+            encryptedMasterKey,
+            keyVersion == null ? user.getKeyVersion() : keyVersion
         );
     }
 
-    private String resolveEncryptedMasterKey(
-        boolean hasDevices,
+    private DeviceInviteData getInviteData(
         UUID inviteToken,
         UUID authId,
         DeviceType deviceType
     ) {
-        if (!hasDevices) {
-            return null;
-        }
-
         if (inviteToken == null) {
             throw DeviceRegistrationException.invalidInvite(
                 "Missing invite token for additional device. authId: " + authId

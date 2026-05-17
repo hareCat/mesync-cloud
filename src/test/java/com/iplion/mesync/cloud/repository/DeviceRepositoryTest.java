@@ -233,8 +233,6 @@ public class DeviceRepositoryTest {
         static User user() {
             User user = new User();
             user.setAuthId(UUID.randomUUID());
-            user.setCreatedAt(Instant.now());
-            user.setUpdatedAt(Instant.now());
 
             return user;
         }

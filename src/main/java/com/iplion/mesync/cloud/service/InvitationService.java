@@ -22,7 +22,7 @@ public class InvitationService {
     private final RedisSecurityStore redisSecurityStore;
     private final RegistrationProperties props;
 
-    public Instant createInvite(UUID authId, UUID inviteToken, String encryptedMaster, DeviceType deviceType) {
+    public Instant createInvite(UUID authId, UUID inviteToken, String encryptedMaster, Integer keyVersion, DeviceType deviceType) {
         Duration cooldown = props.inviteCooldown();
         Duration ttl = props.inviteTtl();
 
@@ -39,6 +39,7 @@ public class InvitationService {
                 RedisKeys.registrationInviteKey(authId, inviteToken),
                 new DeviceInviteData(
                     encryptedMaster,
+                    keyVersion,
                     deviceType
                 ),
                 ttl
@@ -50,7 +51,7 @@ public class InvitationService {
         return Instant.now().plus(ttl);
     }
 
-    public String consumeInviteAndGetEncryptedMasterKey(UUID authId, DeviceType deviceType, UUID inviteToken) {
+    public DeviceInviteData consumeInviteAndGetEncryptedMasterKey(UUID authId, DeviceType deviceType, UUID inviteToken) {
         DeviceInviteData deviceInviteData;
         try {
             deviceInviteData = redisSecurityStore.getAndDelete(
@@ -77,6 +78,6 @@ public class InvitationService {
             );
         }
 
-        return deviceInviteData.encryptedMasterKey();
+        return deviceInviteData;
     }
 }

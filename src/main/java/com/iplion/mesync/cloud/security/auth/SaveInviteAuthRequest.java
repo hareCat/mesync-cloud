@@ -11,7 +11,8 @@ public record SaveInviteAuthRequest(
     UUID nonce,
     UUID inviteToken,
     UUID publicId,
-    String encryptedMasterKey
+    String encryptedMasterKey,
+    Integer keyVersion
 ) implements DeviceAuthRequest {
 
     @Override
@@ -21,6 +22,7 @@ public record SaveInviteAuthRequest(
             publicId().toString(),
             inviteToken().toString(),
             encryptedMasterKey,
+            keyVersion.toString(),
             nonce().toString()
         );
     }

@@ -19,7 +19,6 @@ import java.util.UUID;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
     @Column(name = "auth_id", unique = true, nullable = false)
@@ -27,6 +26,9 @@ public class User {
 
     @Column(name = "email")
     private String email;
+
+    @Column(name = "key_version", nullable = false)
+    private Integer keyVersion = 1;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
