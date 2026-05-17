@@ -10,7 +10,7 @@ public interface DeviceAuthProjection {
     Long getUserId();
     UUID getUserAuthId();
     DeviceType getDeviceType();
-    byte[] getPublicKey();
+    byte[] getPublicKeyBytes();
 
     default DeviceAuthData toDeviceAuthData(KeySignatureService keySignatureService) {
         return new DeviceAuthData(
@@ -19,7 +19,7 @@ public interface DeviceAuthProjection {
             getUserId(),
             getUserAuthId(),
             getDeviceType(),
-            keySignatureService.createPublicKey(getPublicKey())
+            keySignatureService.createPublicKey(getPublicKeyBytes())
         );
     }
 }

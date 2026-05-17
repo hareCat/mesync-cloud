@@ -21,7 +21,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
                 d.user.id as userId,
                 d.user.authId as userAuthId,
                 d.deviceType as deviceType,
-                d.publicKey as publicKey
+                d.publicKeyBytes as publicKeyBytes
             from Device d
             where d.publicId = :publicId
               and d.revokedAt is null
@@ -51,7 +51,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
             user_id,
             device_type,
             name,
-            public_key,
+            public_key_bytes,
             key_created_at,
             last_active_at,
             extras

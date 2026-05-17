@@ -61,7 +61,7 @@ public class DeviceService {
             device.getUser().getId(),
             device.getDeviceType().name(),
             device.getName(),
-            device.getPublicKey(),
+            device.getPublicKeyBytes(),
             device.getKeyCreatedAt(),
             device.getLastActiveAt(),
             serializeExtras(device.getExtras())

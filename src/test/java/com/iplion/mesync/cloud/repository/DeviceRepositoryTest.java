@@ -45,7 +45,7 @@ public class DeviceRepositoryTest {
         assertThat(authData.getUserId()).isEqualTo(user.getId());
         assertThat(authData.getUserAuthId()).isEqualTo(user.getAuthId());
         assertThat(authData.getDeviceType()).isEqualTo(device.getDeviceType());
-        assertThat(authData.getPublicKey()).isEqualTo(device.getPublicKey());
+        assertThat(authData.getPublicKeyBytes()).isEqualTo(device.getPublicKeyBytes());
     }
 
     @Test
@@ -224,7 +224,7 @@ public class DeviceRepositoryTest {
             device.setUser(user);
             device.setDeviceType(DeviceType.MOBILE);
             device.setName(deviceName);
-            device.setPublicKey(generatePublicKeyBytes());
+            device.setPublicKeyBytes(generatePublicKeyBytes());
             device.setKeyCreatedAt(Instant.now());
 
             return device;

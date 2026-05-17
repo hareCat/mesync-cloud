@@ -165,7 +165,7 @@ public class DeviceRegistrationService {
         device.setPublicId(UUID.randomUUID());
         device.setName(deviceName);
         device.setExtras(extras == null ? new HashMap<>() : new HashMap<>(extras));
-        device.setPublicKey(publicKeyBytes);
+        device.setPublicKeyBytes(publicKeyBytes);
         device.setUser(user);
         device.setDeviceType(deviceType);
         device.setKeyCreatedAt(now);

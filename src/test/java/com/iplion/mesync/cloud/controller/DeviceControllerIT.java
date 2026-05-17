@@ -188,7 +188,7 @@ class DeviceControllerIT extends BaseIT {
         assertThat(savedDevice.getName()).isEqualTo(deviceGeneratedName);
         assertThat(savedDevice.getDeviceType()).isEqualTo(newDeviceType);
         assertThat(savedDevice.getExtras()).isEqualTo(context.extras);
-        assertThat(savedDevice.getPublicKey()).isEqualTo(context.publicKeyBytes);
+        assertThat(savedDevice.getPublicKeyBytes()).isEqualTo(context.publicKeyBytes);
         assertThat(user.getAuthId()).isEqualTo(context.authId);
         assertThat(inviteData).isNull();
     }
@@ -315,7 +315,7 @@ class DeviceControllerIT extends BaseIT {
             device.setUser(user);
             device.setDeviceType(context.deviceType);
             device.setName(context.deviceName);
-            device.setPublicKey(publicKeyBytes);
+            device.setPublicKeyBytes(publicKeyBytes);
             device.setKeyCreatedAt(Instant.now());
             device.setLastActiveAt(Instant.now());
             device.setExtras(context.extras);

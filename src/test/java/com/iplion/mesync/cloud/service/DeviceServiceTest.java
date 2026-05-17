@@ -117,7 +117,7 @@ class DeviceServiceTest {
         device.setUser(user);
         device.setName("test name");
         device.setDeviceType(DeviceType.MOBILE);
-        device.setPublicKey("pk".getBytes());
+        device.setPublicKeyBytes("pk".getBytes());
         device.setExtras(Map.of());
 
         return device;

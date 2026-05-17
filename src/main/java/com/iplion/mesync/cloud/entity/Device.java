@@ -29,6 +29,7 @@ import java.util.UUID;
 public class Device {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
     @Column(name = "public_id", nullable = false, updatable = false)
@@ -46,8 +47,8 @@ public class Device {
     private String name;
 
     //security
-    @Column(name = "public_key", nullable = false, unique = true)
-    private byte[] publicKey;
+    @Column(name = "public_key_bytes", nullable = false, unique = true)
+    private byte[] publicKeyBytes;
 
     @Column(name = "key_created_at", nullable = false)
     private Instant keyCreatedAt;
