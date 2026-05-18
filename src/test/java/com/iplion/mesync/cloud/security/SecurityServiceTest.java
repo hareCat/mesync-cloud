@@ -110,7 +110,7 @@ public class SecurityServiceTest {
     }
 
     @Test
-    public void verifyDeviceRequest_shouldReturnResult_whenRequestValid() {
+    public void verifySaveInviteRequest_shouldReturnResult_whenRequestValid() {
         var request = new TestDeviceAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
@@ -120,7 +120,7 @@ public class SecurityServiceTest {
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
 
-        DeviceAuthResult result = securityService.verifyDeviceRequest(request);
+        DeviceAuthResult result = securityService.verifySaveInviteRequest(request);
 
         verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
@@ -156,7 +156,7 @@ public class SecurityServiceTest {
     }
 
     @Test
-    void verifyDeviceRequest_shouldThrow_whenOwnershipMismatch() {
+    void verifySaveInviteRequest_shouldThrow_whenOwnershipMismatch() {
         var request = new TestDeviceAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
@@ -176,35 +176,9 @@ public class SecurityServiceTest {
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(wrongOwnerDevice);
 
-        assertThatThrownBy(() -> securityService.verifyDeviceRequest(request))
+        assertThatThrownBy(() -> securityService.verifySaveInviteRequest(request))
             .isInstanceOf(AuthException.class)
             .hasMessageContaining("owner");
-    }
-
-    @Test
-    void verifyDeviceRequest_shouldThrowAuthException_whenDeviceTypeMismatch() {
-        var request = new TestDeviceAuthRequest(
-            testContext.jwt(),
-            testContext.base64Signature(),
-            UUID.randomUUID(),
-            testContext.publicId()
-        );
-
-        DeviceAuthData fromContext = testContext.deviceAuthData;
-        DeviceAuthData wrongTypeDevice = new DeviceAuthData(
-            fromContext.id(),
-            fromContext.publicId(),
-            fromContext.userId(),
-            fromContext.userAuthId(),
-            DeviceType.DESKTOP,
-            fromContext.publicKey()
-        );
-
-        when(deviceService.getDeviceAuthData(any())).thenReturn(wrongTypeDevice);
-
-        assertThatThrownBy(() -> securityService.verifyDeviceRequest(request))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining("type");
     }
 
     // test-context

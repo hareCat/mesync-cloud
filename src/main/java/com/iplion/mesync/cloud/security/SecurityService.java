@@ -53,9 +53,10 @@ public class SecurityService {
         );
     }
 
-    public <T extends DeviceAuthRequest> DeviceAuthResult verifyDeviceRequest(T request) {
+    public <T extends DeviceAuthRequest> DeviceAuthResult verifySaveInviteRequest(T request) {
         var context = runPipeline(request, List.of(
-            this::deviceDataCheck,
+            this::getDeviceAuthData,
+            this::deviceOwnerCheck,
             this::deviceAuthRedisCheck,
             this::verifySignature
         ));
@@ -84,7 +85,7 @@ public class SecurityService {
         return context;
     }
 
-    private <T extends DeviceAuthRequest> void deviceDataCheck(AuthPipelineContext<T> context) {
+    private <T extends DeviceAuthRequest> void getDeviceAuthData(AuthPipelineContext<T> context) {
         UUID publicId = context.getRequest().publicId();
         DeviceAuthData deviceAuthData;
         try {
@@ -93,29 +94,34 @@ public class SecurityService {
             throw AuthException.deviceNotFound(context.getJwtUserData().id(), e);
         }
 
-        UUID jwtAuthId = context.getJwtUserData().id();
-        UUID dbAuthId = deviceAuthData.userAuthId();
-        if (!dbAuthId.equals(jwtAuthId)) {
-            throw AuthException.deviceOwnershipMismatch(
-                jwtAuthId,
-                deviceAuthData.userAuthId()
-            );
-        }
+        context.setSecuritySubjectId(deviceAuthData.publicId());
+        context.setDeviceAuthData(deviceAuthData);
+        context.setPublicKey(deviceAuthData.publicKey());
 
+    }
+
+    private <T extends DeviceAuthRequest> void deviceTypeCheck(AuthPipelineContext<T> context) {
         DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
-        DeviceType dbDeviceType = deviceAuthData.deviceType();
-        if (!jwtDeviceType.equals(dbDeviceType)) {
+        DeviceAuthData deviceAuthData = context.getDeviceAuthData();
+        if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
             throw AuthException.deviceTypeMismatch(
                 deviceAuthData.userAuthId(),
                 deviceAuthData.publicId(),
                 jwtDeviceType,
-                dbDeviceType
+                deviceAuthData.deviceType()
             );
         }
+    }
 
-        context.setSecuritySubjectId(deviceAuthData.publicId());
-        context.setDeviceAuthData(deviceAuthData);
-        context.setPublicKey(deviceAuthData.publicKey());
+    private <T extends DeviceAuthRequest> void deviceOwnerCheck(AuthPipelineContext<T> context) {
+        UUID jwtAuthId = context.getJwtUserData().id();
+        UUID dbAuthId = context.getDeviceAuthData().userAuthId();
+        if (!dbAuthId.equals(jwtAuthId)) {
+            throw AuthException.deviceOwnershipMismatch(
+                jwtAuthId,
+                dbAuthId
+            );
+        }
     }
 
     private <T extends AuthRequest> void registrationAuthRedisCheck(AuthPipelineContext<T> context) {
