@@ -121,7 +121,7 @@ class DeviceRegistrationServiceTest {
         );
         var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
 
-        when(securityService.verifyDeviceRequest(any())).thenReturn(result);
+        when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
 
         assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(jwt, request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
