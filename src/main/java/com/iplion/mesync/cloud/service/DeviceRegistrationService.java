@@ -41,7 +41,7 @@ public class DeviceRegistrationService {
     private final KeySignatureService keySignatureService;
 
     public SaveInviteResponseDto saveInviteToken(Jwt jwt, SaveInviteRequestDto request) {
-        DeviceAuthResult authResult = securityService.verifyDeviceRequest(new SaveInviteAuthRequest(
+        DeviceAuthResult authResult = securityService.verifySaveInviteRequest(new SaveInviteAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),

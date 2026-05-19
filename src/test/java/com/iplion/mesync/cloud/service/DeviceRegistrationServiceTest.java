@@ -76,13 +76,13 @@ class DeviceRegistrationServiceTest {
         var request = saveInviteRequestDto();
         var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
 
-        when(securityService.verifyDeviceRequest(any())).thenReturn(result);
+        when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
         when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
 
         SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(jwt, request);
 
         ArgumentCaptor<SaveInviteAuthRequest> captor = ArgumentCaptor.forClass(SaveInviteAuthRequest.class);
-        verify(securityService).verifyDeviceRequest(captor.capture());
+        verify(securityService).verifySaveInviteRequest(captor.capture());
         SaveInviteAuthRequest authRequestData = captor.getValue();
 
         verify(invitationService).createInvite(
