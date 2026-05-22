@@ -34,8 +34,10 @@ import java.util.UUID;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -87,8 +89,8 @@ public class SecurityServiceTest {
             testContext.jwt(),
             testContext.base64Signature(),
             UUID.randomUUID(),
-            UUID.randomUUID(),
-            testContext.base64PublicKey
+            testContext.base64PublicKey,
+            UUID.randomUUID()
         );
 
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
@@ -146,13 +148,15 @@ public class SecurityServiceTest {
             brokenJwt,
             testContext.base64Signature(),
             UUID.randomUUID(),
-            UUID.randomUUID(),
-            testContext.base64PublicKey()
+            testContext.base64PublicKey(),
+            UUID.randomUUID()
         );
 
         assertThatThrownBy(() -> securityService.verifyRegistrationRequest(request))
             .isInstanceOf(AuthException.class)
             .hasCauseInstanceOf(InvalidTokenException.class);
+
+        verify(redisSecurityStore, never()).registrationSecurityCheck(any(), any(), any(), any(), anyInt());
     }
 
     @Test
@@ -180,6 +184,37 @@ public class SecurityServiceTest {
         assertThatThrownBy(() -> securityService.verifySaveInviteRequest(request))
             .isInstanceOf(AuthException.class)
             .hasMessageContaining("owner");
+
+        verify(keySignatureService, never()).verify(any(), any(), any());
+    }
+
+    @Test
+    void verifyMessagingRequest_shouldThrow_whenRequestDeviceTypeMismatch() {
+        var request = new TestDeviceAuthRequest(
+            testContext.jwt(),
+            testContext.base64Signature(),
+            UUID.randomUUID(),
+            testContext.publicId()
+        );
+
+        DeviceAuthData fromContext = testContext.deviceAuthData;
+        DeviceAuthData wrongtypeDevice = new DeviceAuthData(
+            fromContext.id(),
+            fromContext.publicId(),
+            fromContext.userId(),
+            fromContext.userAuthId(),
+            DeviceType.BROWSER,
+            fromContext.publicKey(),
+            1
+        );
+
+        when(deviceService.getDeviceAuthData(any())).thenReturn(wrongtypeDevice);
+
+        assertThatThrownBy(() -> securityService.verifyMessagingRequest(request))
+            .isInstanceOf(AuthException.class)
+            .hasMessageContaining("type");
+
+        verify(keySignatureService, never()).verify(any(), any(), any());
     }
 
     // test-context

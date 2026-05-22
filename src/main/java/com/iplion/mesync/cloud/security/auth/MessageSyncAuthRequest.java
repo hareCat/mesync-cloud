@@ -1,43 +1,37 @@
 package com.iplion.mesync.cloud.security.auth;
 
-import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.UUID;
 
-public record SaveInviteAuthRequest(
+public record MessageSyncAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    UUID inviteToken,
     UUID publicId,
 
-    String encryptedMasterKey,
-    Integer keyVersion
+    Long lastMessageId
 ) implements DeviceAuthRequest {
 
     @Override
     public byte[] payload() {
         return PayloadBuilder.build(
-            "INVITATION",
+            "MESSAGE_SYNC",
             publicId().toString(),
-            inviteToken().toString(),
-            encryptedMasterKey,
-            keyVersion.toString(),
+            lastMessageId().toString(),
             nonce().toString()
         );
     }
 
-    public static SaveInviteAuthRequest from(Jwt jwt, SaveInviteRequestDto request) {
-        return new SaveInviteAuthRequest(
+    public static MessageSyncAuthRequest from(Jwt jwt, MessageSyncRequestDto request) {
+        return new MessageSyncAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),
-            request.inviteToken(),
             request.publicId(),
-            request.encryptedMasterKey(),
-            request.keyVersion()
+            request.lastMessageId()
         );
     }
 

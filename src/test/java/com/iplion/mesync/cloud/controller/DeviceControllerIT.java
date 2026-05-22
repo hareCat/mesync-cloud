@@ -282,8 +282,8 @@ class DeviceControllerIT extends BaseIT {
                 null,
                 null,
                 context.nonce,
-                context.inviteToken,
-                context.base64PublicKey
+                context.base64PublicKey,
+                context.inviteToken
             ).payload();
             context.base64Signature = Base64.getEncoder().encodeToString(
                 TestCrypto.sign(keyPair.getPrivate(), payload)

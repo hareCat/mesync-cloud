@@ -55,9 +55,9 @@ public class SecurityService {
 
     public <T extends DeviceAuthRequest> DeviceAuthResult verifySaveInviteRequest(T request) {
         var context = runPipeline(request, List.of(
+            this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
             this::deviceOwnerCheck,
-            this::deviceAuthRedisCheck,
             this::verifySignature
         ));
 
@@ -67,7 +67,25 @@ public class SecurityService {
         );
     }
 
-    private <T extends AuthRequest> AuthPipelineContext<T> runPipeline(T request, Iterable<Consumer<AuthPipelineContext<T>>> steps) {
+    public <T extends DeviceAuthRequest> DeviceAuthResult verifyMessagingRequest(T request) {
+        var context = runPipeline(request, List.of(
+            this::deviceAuthRedisCheck,
+            this::getDeviceAuthData,
+            this::deviceOwnerCheck,
+            this::deviceTypeCheck,
+            this::verifySignature
+        ));
+
+        return new DeviceAuthResult(
+            context.getJwtUserData(),
+            context.getDeviceAuthData()
+        );
+    }
+
+    private <T extends AuthRequest> AuthPipelineContext<T> runPipeline(
+        T request,
+        Iterable<Consumer<AuthPipelineContext<T>>> steps
+    ) {
         AuthPipelineContext<T> context = new AuthPipelineContext<>(request);
 
         try {
@@ -101,6 +119,19 @@ public class SecurityService {
     }
 
     private <T extends DeviceAuthRequest> void deviceTypeCheck(AuthPipelineContext<T> context) {
+        DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
+        DeviceAuthData deviceAuthData = context.getDeviceAuthData();
+        if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
+            throw AuthException.deviceTypeMismatch(
+                deviceAuthData.userAuthId(),
+                deviceAuthData.publicId(),
+                jwtDeviceType,
+                deviceAuthData.deviceType()
+            );
+        }
+    }
+
+    private <T extends DeviceAuthRequest> void deviceMasterKeyVersionCheck(AuthPipelineContext<T> context) {
         DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
         DeviceAuthData deviceAuthData = context.getDeviceAuthData();
         if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {

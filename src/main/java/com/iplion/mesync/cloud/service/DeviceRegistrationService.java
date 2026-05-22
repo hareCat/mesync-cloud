@@ -41,15 +41,9 @@ public class DeviceRegistrationService {
     private final KeySignatureService keySignatureService;
 
     public SaveInviteResponseDto saveInviteToken(Jwt jwt, SaveInviteRequestDto request) {
-        DeviceAuthResult authResult = securityService.verifySaveInviteRequest(new SaveInviteAuthRequest(
-            jwt,
-            request.base64Signature(),
-            request.nonce(),
-            request.inviteToken(),
-            request.publicId(),
-            request.encryptedMasterKey(),
-            request.keyVersion()
-        ));
+        DeviceAuthResult authResult = securityService.verifySaveInviteRequest(
+            SaveInviteAuthRequest.from(jwt, request)
+        );
 
         DeviceAuthData deviceAuthData = authResult.deviceAuthData();
         if (deviceAuthData.userKeyVersion() > request.keyVersion()) {
@@ -76,13 +70,9 @@ public class DeviceRegistrationService {
 
     @Transactional
     public DeviceRegisterResponseDto registerDevice(Jwt jwt, DeviceRegisterRequestDto request) {
-        RegistrationAuthResult authResult = securityService.verifyRegistrationRequest(new RegistrationAuthRequest(
-            jwt,
-            request.base64Signature(),
-            request.nonce(),
-            request.inviteToken(),
-            request.base64PublicKey()
-        ));
+        RegistrationAuthResult authResult = securityService.verifyRegistrationRequest(
+            RegistrationAuthRequest.from(jwt, request)
+        );
 
         UUID authId = authResult.jwtUserData().id();
         DeviceType deviceType;

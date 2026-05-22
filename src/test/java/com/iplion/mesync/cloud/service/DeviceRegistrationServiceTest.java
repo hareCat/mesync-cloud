@@ -104,10 +104,8 @@ class DeviceRegistrationServiceTest {
     }
 
     @Test
-    void saveInviteToken_shouldThrow_whenDeviceMasterkeyVersionOutdated() {
-        DeviceType deviceType = DeviceType.DESKTOP;
-        Jwt jwt = mock(Jwt.class);
-        DeviceAuthData deviceAuthData = deviceAuthData();
+    void saveInviteToken_shouldThrow_whenDeviceMasterKeyVersionOutdated() {
+        DeviceType deviceType = DeviceType.MOBILE;
 
         var ctx = createContext(deviceType);
         var request = new SaveInviteRequestDto(
@@ -115,15 +113,15 @@ class DeviceRegistrationServiceTest {
             UUID.randomUUID(),
             "encryptedMasterKey",
             1,
-            DeviceType.MOBILE,
+            deviceType,
             UUID.randomUUID(),
             Base64.getEncoder().encodeToString(new byte[64])
         );
-        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
+        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData());
 
         when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
 
-        assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(jwt, request))
+        assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(mock(Jwt.class), request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
                 assertThat(e.getMessage()).contains("key")
             );
@@ -166,6 +164,7 @@ class DeviceRegistrationServiceTest {
         assertThat(response.deviceId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(request.deviceName());
         assertThat(response.encryptedMasterKey()).isEqualTo(ctx.encryptedMasterKey());
+        assertThat(response.keyVersion()).isEqualTo(ctx.user().getKeyVersion());
     }
 
     @Test

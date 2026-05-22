@@ -1,4 +1,4 @@
--- V6__create_message_and_sms_message
+-- V6__create_message
 
 CREATE TABLE IF NOT EXISTS messages
 (
