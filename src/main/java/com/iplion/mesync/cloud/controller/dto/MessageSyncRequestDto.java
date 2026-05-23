@@ -15,6 +15,9 @@ public record MessageSyncRequestDto(
     @PositiveOrZero
     long lastMessageId,
 
+    @PositiveOrZero
+    int limit,
+
     @NotNull
     UUID nonce,
 

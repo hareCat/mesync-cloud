@@ -20,6 +20,7 @@ public record MessagePublishAuthRequest(
     MessageType messageType,
     MessageDirection direction,
     Instant occurredAt,
+    Integer keyVersion,
     String base64Ciphertext
 ) implements DeviceAuthRequest {
 
@@ -33,6 +34,7 @@ public record MessagePublishAuthRequest(
             messageType().name(),
             direction().name(),
             occurredAt().toString(),
+            keyVersion().toString(),
             base64Ciphertext(),
             nonce().toString()
         );
@@ -49,6 +51,7 @@ public record MessagePublishAuthRequest(
             request.messageType(),
             request.direction(),
             request.occurredAt(),
+            request.keyVersion(),
             request.base64Ciphertext()
         );
     }

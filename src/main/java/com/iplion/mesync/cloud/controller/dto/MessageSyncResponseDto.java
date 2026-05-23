@@ -5,6 +5,7 @@ import com.iplion.mesync.cloud.model.SyncMessageDto;
 import java.util.List;
 
 // TODO add lastMessageId
-public class MessageSyncResponseDto {
-    List<SyncMessageDto> messages;
+public record MessageSyncResponseDto(
+    List<SyncMessageDto> messages
+) {
 }

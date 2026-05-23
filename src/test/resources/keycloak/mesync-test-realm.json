@@ -95,6 +95,14 @@
       "containerId" : "8b9733ac-8af7-48e0-87ef-d7f29cac549b",
       "attributes" : { }
     }, {
+      "id" : "efe9e12b-1f7e-4843-8aec-c51b414370ea",
+      "name" : "messages.publish",
+      "description" : "",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "8b9733ac-8af7-48e0-87ef-d7f29cac549b",
+      "attributes" : { }
+    }, {
       "id" : "6b0142c0-cfa8-404e-a694-4dc75dab531e",
       "name" : "devices.remove",
       "description" : "remove a registered device",
@@ -465,7 +473,7 @@
     "roles" : [ "devices.invite", "devices.remove" ]
   }, {
     "client" : "mesync-mobile",
-    "roles" : [ "messages.write", "messages.read" ]
+    "roles" : [ "messages.write", "messages.read", "messages.publish" ]
   }, {
     "clientScope" : "offline_access",
     "roles" : [ "offline_access" ]

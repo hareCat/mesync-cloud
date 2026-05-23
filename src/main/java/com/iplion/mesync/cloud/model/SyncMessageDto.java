@@ -6,7 +6,7 @@ import java.util.UUID;
 public record SyncMessageDto(
     Long id,
     UUID publicId,
-    UUID deviceId,
+    UUID devicePublicId,
     String address,
     MessageType messageType,
     MessageDirection direction,

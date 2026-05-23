@@ -12,7 +12,8 @@ public record MessageSyncAuthRequest(
     UUID nonce,
     UUID publicId,
 
-    Long lastMessageId
+    Long lastMessageId,
+    Integer limit
 ) implements DeviceAuthRequest {
 
     @Override
@@ -21,6 +22,7 @@ public record MessageSyncAuthRequest(
             "MESSAGE_SYNC",
             publicId().toString(),
             lastMessageId().toString(),
+            limit().toString(),
             nonce().toString()
         );
     }
@@ -31,7 +33,8 @@ public record MessageSyncAuthRequest(
             request.base64Signature(),
             request.nonce(),
             request.publicId(),
-            request.lastMessageId()
+            request.lastMessageId(),
+            request.limit()
         );
     }
 

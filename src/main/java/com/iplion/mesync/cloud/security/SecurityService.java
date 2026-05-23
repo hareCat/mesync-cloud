@@ -8,8 +8,6 @@ import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
@@ -21,6 +19,8 @@ import com.iplion.mesync.cloud.security.auth.PublicKeyAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
+import com.iplion.mesync.cloud.security.redis.RedisKeys;
+import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.service.DeviceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+// TODO check request lastMessageId with saved device lastMessageId from caffeine
 @Service
 @RequiredArgsConstructor
 public class SecurityService {
@@ -119,19 +120,6 @@ public class SecurityService {
     }
 
     private <T extends DeviceAuthRequest> void deviceTypeCheck(AuthPipelineContext<T> context) {
-        DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
-        DeviceAuthData deviceAuthData = context.getDeviceAuthData();
-        if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
-            throw AuthException.deviceTypeMismatch(
-                deviceAuthData.userAuthId(),
-                deviceAuthData.publicId(),
-                jwtDeviceType,
-                deviceAuthData.deviceType()
-            );
-        }
-    }
-
-    private <T extends DeviceAuthRequest> void deviceMasterKeyVersionCheck(AuthPipelineContext<T> context) {
         DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
         DeviceAuthData deviceAuthData = context.getDeviceAuthData();
         if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
