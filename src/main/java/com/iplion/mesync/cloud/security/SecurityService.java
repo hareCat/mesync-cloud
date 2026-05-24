@@ -14,10 +14,9 @@ import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.security.auth.AuthPipelineContext;
 import com.iplion.mesync.cloud.security.auth.AuthRequest;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
-import com.iplion.mesync.cloud.security.auth.DeviceAuthResult;
-import com.iplion.mesync.cloud.security.auth.PublicKeyAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
 import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
@@ -54,7 +53,7 @@ public class SecurityService {
         );
     }
 
-    public <T extends DeviceAuthRequest> DeviceAuthResult verifySaveInviteRequest(T request) {
+    public <T extends DeviceAuthRequest> SaveInviteAuthResult verifySaveInviteRequest(T request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -62,13 +61,13 @@ public class SecurityService {
             this::verifySignature
         ));
 
-        return new DeviceAuthResult(
+        return new SaveInviteAuthResult(
             context.getJwtUserData(),
             context.getDeviceAuthData()
         );
     }
 
-    public <T extends DeviceAuthRequest> DeviceAuthResult verifyMessagingRequest(T request) {
+    public <T extends DeviceAuthRequest> DeviceAuthData verifyMessagingRequest(T request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -77,10 +76,7 @@ public class SecurityService {
             this::verifySignature
         ));
 
-        return new DeviceAuthResult(
-            context.getJwtUserData(),
-            context.getDeviceAuthData()
-        );
+        return context.getDeviceAuthData();
     }
 
     private <T extends AuthRequest> AuthPipelineContext<T> runPipeline(
@@ -143,7 +139,7 @@ public class SecurityService {
         }
     }
 
-    private <T extends AuthRequest> void registrationAuthRedisCheck(AuthPipelineContext<T> context) {
+    private void registrationAuthRedisCheck(AuthPipelineContext<RegistrationAuthRequest> context) {
         redisCheck(context.getJwtUserData().id(), subjectId -> redisSecurityStore.registrationSecurityCheck(
             RedisKeys.registrationNonceKey(subjectId),
             RedisKeys.registrationRateLimitKey(subjectId),
@@ -173,7 +169,7 @@ public class SecurityService {
         }
     }
 
-    private <T extends PublicKeyAuthRequest> void createPublicKey(AuthPipelineContext<T> context) {
+    private void createPublicKey(AuthPipelineContext<RegistrationAuthRequest> context) {
         try {
             byte[] publicKeyBytes = Base64.getDecoder().decode(context.getRequest().base64PublicKey());
             context.setPublicKey(keySignatureService.createPublicKey(publicKeyBytes));

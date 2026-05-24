@@ -10,10 +10,10 @@ public record RegistrationAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    String base64PublicKey,
 
+    String base64PublicKey,
     UUID inviteToken
-) implements PublicKeyAuthRequest {
+) implements AuthRequest {
 
     @Override
     public byte[] payload() {

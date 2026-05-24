@@ -4,15 +4,15 @@ import com.iplion.mesync.cloud.config.AuthProperties;
 import com.iplion.mesync.cloud.config.RegistrationProperties;
 import com.iplion.mesync.cloud.error.AuthException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
-import com.iplion.mesync.cloud.security.auth.DeviceAuthResult;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
+import com.iplion.mesync.cloud.security.redis.RedisKeys;
+import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.service.DeviceService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
@@ -122,7 +122,7 @@ public class SecurityServiceTest {
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
 
-        DeviceAuthResult result = securityService.verifySaveInviteRequest(request);
+        SaveInviteAuthResult result = securityService.verifySaveInviteRequest(request);
 
         verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
@@ -137,7 +137,6 @@ public class SecurityServiceTest {
 
         assertThat(result.jwtUserData()).isNotNull();
         assertThat(result.deviceAuthData()).isEqualTo(testContext.deviceAuthData());
-
     }
 
     @Test
@@ -186,6 +185,35 @@ public class SecurityServiceTest {
             .hasMessageContaining("owner");
 
         verify(keySignatureService, never()).verify(any(), any(), any());
+    }
+
+    @Test
+    void verifyMessagingRequest_shouldReturnDeviceAuthData_whenRequestValid() {
+        var request = new TestDeviceAuthRequest(
+            testContext.jwt(),
+            testContext.base64Signature(),
+            UUID.randomUUID(),
+            testContext.publicId()
+        );
+
+        when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
+
+        DeviceAuthData result = securityService.verifyMessagingRequest(request);
+
+        verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
+        verify(redisSecurityStore).deviceAuthSecurityCheck(
+            eq(RedisKeys.authDeviceRevokedKey(request.publicId())),
+            eq(RedisKeys.authNonceKey(request.publicId())),
+            eq(RedisKeys.authRateLimitKey(request.publicId())),
+            eq(authProps.nonceTtl()),
+            eq(authProps.rateLimitTtl()),
+            eq(authProps.attempts())
+        );
+        verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
+
+        assertThat(result).isEqualTo(testContext.deviceAuthData());
+
+
     }
 
     @Test

@@ -14,7 +14,7 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
-import com.iplion.mesync.cloud.security.auth.DeviceAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
@@ -41,7 +41,7 @@ public class DeviceRegistrationService {
     private final KeySignatureService keySignatureService;
 
     public SaveInviteResponseDto saveInviteToken(Jwt jwt, SaveInviteRequestDto request) {
-        DeviceAuthResult authResult = securityService.verifySaveInviteRequest(
+        SaveInviteAuthResult authResult = securityService.verifySaveInviteRequest(
             SaveInviteAuthRequest.from(jwt, request)
         );
 

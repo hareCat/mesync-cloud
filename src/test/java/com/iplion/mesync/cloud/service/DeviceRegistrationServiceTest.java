@@ -13,7 +13,7 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
-import com.iplion.mesync.cloud.security.auth.DeviceAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
@@ -74,7 +74,7 @@ class DeviceRegistrationServiceTest {
 
         var ctx = createContext(deviceType);
         var request = saveInviteRequestDto();
-        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData);
+        var result = new SaveInviteAuthResult(ctx.jwtUserData(), deviceAuthData);
 
         when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
         when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
@@ -117,7 +117,7 @@ class DeviceRegistrationServiceTest {
             UUID.randomUUID(),
             Base64.getEncoder().encodeToString(new byte[64])
         );
-        var result = new DeviceAuthResult(ctx.jwtUserData(), deviceAuthData());
+        var result = new SaveInviteAuthResult(ctx.jwtUserData(), deviceAuthData());
 
         when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
 

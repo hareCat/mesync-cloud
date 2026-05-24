@@ -14,6 +14,7 @@ public class MesyncCloudApplication {
     // TODO implement FCM (push notifications)
     // TODO add last device message id to caffeine deviceAuthData
     //      and check request lastMessageId with saved device lastMessageId from caffeine
+    // TODO add handlers for postgres exceptions
     public static void main(String[] args) {
         SpringApplication.run(MesyncCloudApplication.class, args);
     }

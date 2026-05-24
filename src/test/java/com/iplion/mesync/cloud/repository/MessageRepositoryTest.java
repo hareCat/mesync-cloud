@@ -63,7 +63,7 @@ public class MessageRepositoryTest {
 
         em.flush();
 
-        List<SyncMessageDto> result = messageRepository.findNextAfterId(
+        List<SyncMessageDto> result = messageRepository.findNextAfterIdByUserExcludingDevice(
             currentUser.getId(),
             currentDevice.getId(),
             oldMessage.getId(),
@@ -95,7 +95,7 @@ public class MessageRepositoryTest {
 
         em.flush();
 
-        List<SyncMessageDto> result = messageRepository.findNextAfterId(
+        List<SyncMessageDto> result = messageRepository.findNextAfterIdByUserExcludingDevice(
                 user.getId(),
                 currentDevice.getId(),
                 0L,

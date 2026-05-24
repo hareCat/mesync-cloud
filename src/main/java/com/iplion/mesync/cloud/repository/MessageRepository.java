@@ -33,7 +33,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
               )
             order by m.id
         """)
-    List<SyncMessageDto> findNextAfterId(
+    List<SyncMessageDto> findNextAfterIdByUserExcludingDevice(
         Long userId,
         Long deviceId,
         Long afterId,

@@ -7,5 +7,5 @@ import java.security.PublicKey;
 public record RegistrationAuthResult(
     JwtUserData jwtUserData,
     PublicKey publicKey
-) implements AuthResult {
+) {
 }
