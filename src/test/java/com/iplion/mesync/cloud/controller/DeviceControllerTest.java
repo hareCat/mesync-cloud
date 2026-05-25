@@ -8,6 +8,7 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
 import com.iplion.mesync.cloud.service.InvitationService;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -46,14 +47,11 @@ public class DeviceControllerTest {
     @MockitoBean
     private InvitationService invitationService;
 
-    private static final String REGISTER_URI = "/api/v1/devices/register";
-    private static final String INVITE_URI = "/api/v1/devices/invite";
-
     @Test
     void saveInvite_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
         var requestDto = saveInviteRequestDto();
 
-        mockMvc.perform(post(INVITE_URI)
+        mockMvc.perform(post(TestUri.INVITE_URI)
                 .with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                     .buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
@@ -69,7 +67,7 @@ public class DeviceControllerTest {
     void registerDevice_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
         var requestDto = deviceRegisterRequestDto();
 
-        mockMvc.perform(post(REGISTER_URI)
+        mockMvc.perform(post(TestUri.REGISTER_URI)
                 .with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE).buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("devices.remove")))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -84,7 +82,7 @@ public class DeviceControllerTest {
     void registerDevice_shouldReturn401_whenNoJwt() throws Exception {
         var requestDto = deviceRegisterRequestDto();
 
-        mockMvc.perform(post(REGISTER_URI)
+        mockMvc.perform(post(TestUri.REGISTER_URI)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isUnauthorized());
@@ -94,7 +92,7 @@ public class DeviceControllerTest {
     void saveInviteToken_shouldReturn401_whenNoJwt() throws Exception {
         var requestDto = saveInviteRequestDto();
 
-        mockMvc.perform(post(INVITE_URI)
+        mockMvc.perform(post(TestUri.INVITE_URI)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isUnauthorized());
@@ -159,7 +157,7 @@ public class DeviceControllerTest {
     @Test
     void registerDevice_shouldReturn201AndCallService() throws Exception {
         var requestDto = deviceRegisterRequestDto();
-        mockMvc.perform(post(REGISTER_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+        mockMvc.perform(post(TestUri.REGISTER_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                     .buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -172,7 +170,7 @@ public class DeviceControllerTest {
     @Test
     void saveInviteToken_shouldReturn201AndCallService() throws Exception {
         var requestDto = saveInviteRequestDto();
-        mockMvc.perform(post(INVITE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+        mockMvc.perform(post(TestUri.INVITE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                     .buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("devices.invite")))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -185,7 +183,7 @@ public class DeviceControllerTest {
     // helpers
 
     MockHttpServletRequestBuilder registerMockRequest(DeviceRegisterRequestDto requestDto) throws Exception {
-        return post(REGISTER_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+        return post(TestUri.REGISTER_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                 .buildMockMvcJwt()
                 .authorities(new SimpleGrantedAuthority("messages.read")))
             .contentType(MediaType.APPLICATION_JSON)
@@ -193,7 +191,7 @@ public class DeviceControllerTest {
     }
 
     MockHttpServletRequestBuilder saveInviteMockRequest(SaveInviteRequestDto requestDto) throws Exception {
-        return post(INVITE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+        return post(TestUri.INVITE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                 .buildMockMvcJwt()
                 .authorities(new SimpleGrantedAuthority("devices.invite")))
             .contentType(MediaType.APPLICATION_JSON)

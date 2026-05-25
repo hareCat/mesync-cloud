@@ -10,9 +10,9 @@ public record SaveInviteAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    UUID inviteToken,
     UUID publicId,
 
+    UUID inviteToken,
     String encryptedMasterKey,
     Integer keyVersion
 ) implements DeviceAuthRequest {
@@ -34,8 +34,8 @@ public record SaveInviteAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),
-            request.inviteToken(),
             request.publicId(),
+            request.inviteToken(),
             request.encryptedMasterKey(),
             request.keyVersion()
         );

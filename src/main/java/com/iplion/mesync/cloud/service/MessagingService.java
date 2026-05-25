@@ -76,14 +76,14 @@ public class MessagingService {
     public MessageSyncResponseDto sync(Jwt jwt, MessageSyncRequestDto request) {
         DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(MessageSyncAuthRequest.from(jwt, request));
 
-        List<SyncMessageDto> messages = messageRepository.findNextAfterIdByUserExcludingDevice(
+        List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(
             deviceAuthData.userId(),
             deviceAuthData.id(),
             request.lastMessageId(),
             PageRequest.of(0, Math.min(MAX_MESSAGES_PER_SYNC_REQUEST, request.limit()))
         );
 
-        return new MessageSyncResponseDto(messages);
+        return new MessageSyncResponseDto(syncMessageDtos);
     }
 
     private Message buildMessage(MessagePublishRequestDto request, DeviceAuthData deviceAuthData) {

@@ -6,17 +6,18 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.redis.RedisKeys;
+import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.service.InvitationService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,9 +67,6 @@ class DeviceControllerIT extends BaseIT {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    private static final String REGISTER_URI = "/api/v1/devices/register";
-    private static final String INVITE_URI = "/api/v1/devices/invite";
-
     @AfterEach
     void cleanUp() {
         jdbcTemplate.execute("""
@@ -104,7 +102,7 @@ class DeviceControllerIT extends BaseIT {
             context.base64Signature
         );
 
-        mockMvc.perform(post(INVITE_URI)
+        mockMvc.perform(post(TestUri.INVITE_URI)
                 .with(TestJwtBuilder.forDevice(context.authId, context.deviceType)
                     .buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("devices.invite")))
@@ -119,9 +117,9 @@ class DeviceControllerIT extends BaseIT {
         );
 
         assertThat(inviteData).isNotNull();
-        assertThat(inviteData.deviceType()).isEqualTo(context.deviceType);
-        assertThat(inviteData.encryptedMasterKey()).isEqualTo(context.encryptedMasterKey);
-        assertThat(inviteData.keyVersion()).isEqualTo(context.keyVersion);
+        assertThat(inviteData.deviceType()).isEqualTo(requestDto.deviceType());
+        assertThat(inviteData.encryptedMasterKey()).isEqualTo(requestDto.encryptedMasterKey());
+        assertThat(inviteData.keyVersion()).isEqualTo(requestDto.keyVersion());
     }
 
     @Test
@@ -159,7 +157,7 @@ class DeviceControllerIT extends BaseIT {
             newDeviceType
         );
 
-        mockMvc.perform(post(REGISTER_URI)
+        mockMvc.perform(post(TestUri.REGISTER_URI)
                 .with(TestJwtBuilder.forDevice(context.authId, newDeviceType).buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -191,7 +189,7 @@ class DeviceControllerIT extends BaseIT {
             .containsExactlyInAnyOrder(deviceRequiredName, deviceGeneratedName);
         assertThat(savedDevice.getName()).isEqualTo(deviceGeneratedName);
         assertThat(savedDevice.getDeviceType()).isEqualTo(newDeviceType);
-        assertThat(savedDevice.getExtras()).isEqualTo(context.extras);
+        assertThat(savedDevice.getExtras()).isEqualTo(requestDto.extras());
         assertThat(savedDevice.getPublicKeyBytes()).isEqualTo(context.publicKeyBytes);
         assertThat(user.getAuthId()).isEqualTo(context.authId);
         assertThat(inviteData).isNull();
@@ -218,7 +216,7 @@ class DeviceControllerIT extends BaseIT {
             context.deviceType
         );
 
-        mockMvc.perform(post(REGISTER_URI)
+        mockMvc.perform(post(TestUri.REGISTER_URI)
                 .with(TestJwtBuilder.forDevice(context.authId, context.deviceType).buildMockMvcJwt()
                     .authorities(new SimpleGrantedAuthority("messages.read")))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -264,8 +262,8 @@ class DeviceControllerIT extends BaseIT {
                 null,
                 null,
                 context.nonce,
-                context.inviteToken,
                 context.publicId,
+                context.inviteToken,
                 context.encryptedMasterKey,
                 context.keyVersion
             ).payload();

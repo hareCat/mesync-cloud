@@ -9,6 +9,7 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
@@ -113,11 +114,14 @@ public class SecurityServiceTest {
 
     @Test
     public void verifySaveInviteRequest_shouldReturnResult_whenRequestValid() {
-        var request = new TestDeviceAuthRequest(
+        var request = new SaveInviteAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
             UUID.randomUUID(),
-            testContext.publicId()
+            testContext.publicId(),
+            UUID.randomUUID(),
+            "encryptedMasterKey",
+            1
         );
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
@@ -160,11 +164,14 @@ public class SecurityServiceTest {
 
     @Test
     void verifySaveInviteRequest_shouldThrow_whenOwnershipMismatch() {
-        var request = new TestDeviceAuthRequest(
+        var request = new SaveInviteAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
             UUID.randomUUID(),
-            testContext.publicId()
+            testContext.publicId(),
+            UUID.randomUUID(),
+            "encryptedMasterKey",
+            1
         );
 
         DeviceAuthData fromContext = testContext.deviceAuthData;

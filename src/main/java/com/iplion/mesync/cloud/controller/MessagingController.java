@@ -35,7 +35,6 @@ public class MessagingController {
 
     @PostMapping("/sync")
     @PreAuthorize("hasAuthority('messages.read')")
-    @ResponseStatus(HttpStatus.CREATED)
     public MessageSyncResponseDto sync(
         @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody MessageSyncRequestDto request

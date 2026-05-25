@@ -16,6 +16,7 @@ import com.iplion.mesync.cloud.security.auth.AuthRequest;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
@@ -53,7 +54,7 @@ public class SecurityService {
         );
     }
 
-    public <T extends DeviceAuthRequest> SaveInviteAuthResult verifySaveInviteRequest(T request) {
+    public SaveInviteAuthResult verifySaveInviteRequest(SaveInviteAuthRequest request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -115,7 +116,7 @@ public class SecurityService {
 
     }
 
-    private <T extends DeviceAuthRequest> void deviceTypeCheck(AuthPipelineContext<T> context) {
+    private void deviceTypeCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
         DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
         DeviceAuthData deviceAuthData = context.getDeviceAuthData();
         if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
@@ -128,7 +129,7 @@ public class SecurityService {
         }
     }
 
-    private <T extends DeviceAuthRequest> void deviceOwnerCheck(AuthPipelineContext<T> context) {
+    private void deviceOwnerCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
         UUID jwtAuthId = context.getJwtUserData().id();
         UUID dbAuthId = context.getDeviceAuthData().userAuthId();
         if (!dbAuthId.equals(jwtAuthId)) {
@@ -149,7 +150,7 @@ public class SecurityService {
         ));
     }
 
-    private <T extends DeviceAuthRequest> void deviceAuthRedisCheck(AuthPipelineContext<T> context) {
+    private void deviceAuthRedisCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
         redisCheck(context.getRequest().publicId(),
             subjectId -> redisSecurityStore.deviceAuthSecurityCheck(
                 RedisKeys.authDeviceRevokedKey(subjectId),
@@ -184,7 +185,7 @@ public class SecurityService {
         }
     }
 
-    private <T extends AuthRequest> void verifySignature(AuthPipelineContext<T> context) {
+    private void verifySignature(AuthPipelineContext<? extends AuthRequest> context) {
         try {
             keySignatureService.verify(
                 context.getPublicKey(),

@@ -14,10 +14,10 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -168,7 +168,6 @@ public class DeviceRegistrationService {
         Instant now = Instant.now();
 
         Device device = new Device();
-        device.setPublicId(UUID.randomUUID());
         device.setName(deviceName);
         device.setExtras(extras == null ? new HashMap<>() : new HashMap<>(extras));
         device.setPublicKeyBytes(publicKeyBytes);

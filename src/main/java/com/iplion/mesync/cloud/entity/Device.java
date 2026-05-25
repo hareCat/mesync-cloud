@@ -32,7 +32,7 @@ public class Device {
     private Long id;
 
     @Column(name = "public_id", nullable = false, updatable = false)
-    private UUID publicId;
+    private UUID publicId = UUID.randomUUID();
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
