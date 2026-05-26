@@ -15,6 +15,7 @@ public class MesyncCloudApplication {
     // TODO add last device message id to caffeine deviceAuthData
     //      and check request lastMessageId with saved device lastMessageId from caffeine
     // TODO add handlers for postgres exceptions
+    // TODO add swagger description
     public static void main(String[] args) {
         SpringApplication.run(MesyncCloudApplication.class, args);
     }

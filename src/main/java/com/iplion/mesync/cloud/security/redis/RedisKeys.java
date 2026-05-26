@@ -11,32 +11,32 @@ public final class RedisKeys {
     private static final String AUTH_RATE_LIMIT = "mesync:auth:rate";
     private static final String AUTH_NONCE = "mesync:auth:nonce";
 
-    public static String registrationRateLimitKey(UUID authId) {
-        return REG_RATE_LIMIT + ":" + authId;
+    public static String registrationRateLimitKey(UUID id) {
+        return REG_RATE_LIMIT + ":" + id;
     }
 
-    public static String registrationInviteCooldownKey(UUID authId) {
-        return REG_INVITE_COOLDOWN + ":" + authId;
+    public static String registrationInviteCooldownKey(UUID id) {
+        return REG_INVITE_COOLDOWN + ":" + id;
     }
 
-    public static String registrationInviteKey(UUID authId, UUID invite) {
-        return REG_INVITE + ":" + authId + ":" + invite;
+    public static String registrationInviteKey(UUID id, UUID invite) {
+        return REG_INVITE + ":" + id + ":" + invite;
     }
 
-    public static String registrationNonceKey(UUID authId) {
-        return REG_NONCE + ":" + authId;
+    public static String registrationNonceKey(UUID id, UUID nonce) {
+        return REG_NONCE + ":" + id + ":" + nonce;
     }
 
-    public static String authDeviceRevokedKey(UUID authId) {
-        return AUTH_DEVICE_REVOKED + ":" + authId;
+    public static String authDeviceRevokedKey(UUID id) {
+        return AUTH_DEVICE_REVOKED + ":" + id;
     }
 
-    public static String authRateLimitKey(UUID authId) {
-        return AUTH_RATE_LIMIT + ":" + authId;
+    public static String authRateLimitKey(UUID id) {
+        return AUTH_RATE_LIMIT + ":" + id;
     }
 
-    public static String authNonceKey(UUID authId) {
-        return AUTH_NONCE + ":" + authId;
+    public static String authNonceKey(UUID id, UUID nonce) {
+        return AUTH_NONCE + ":" + id + ":" + nonce;
     }
 
 }

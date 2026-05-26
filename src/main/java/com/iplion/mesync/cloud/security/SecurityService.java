@@ -142,7 +142,7 @@ public class SecurityService {
 
     private void registrationAuthRedisCheck(AuthPipelineContext<RegistrationAuthRequest> context) {
         redisCheck(context.getJwtUserData().id(), subjectId -> redisSecurityStore.registrationSecurityCheck(
-            RedisKeys.registrationNonceKey(subjectId),
+            RedisKeys.registrationNonceKey(subjectId, context.getRequest().nonce()),
             RedisKeys.registrationRateLimitKey(subjectId),
             registrationProperties.nonceTtl(),
             registrationProperties.rateLimitTtl(),
@@ -154,7 +154,7 @@ public class SecurityService {
         redisCheck(context.getRequest().publicId(),
             subjectId -> redisSecurityStore.deviceAuthSecurityCheck(
                 RedisKeys.authDeviceRevokedKey(subjectId),
-                RedisKeys.authNonceKey(subjectId),
+                RedisKeys.authNonceKey(subjectId, context.getRequest().nonce()),
                 RedisKeys.authRateLimitKey(subjectId),
                 authProperties.nonceTtl(),
                 authProperties.rateLimitTtl(),

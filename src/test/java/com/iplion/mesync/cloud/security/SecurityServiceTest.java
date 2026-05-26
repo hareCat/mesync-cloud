@@ -20,6 +20,7 @@ import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -39,6 +40,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -89,7 +91,7 @@ public class SecurityServiceTest {
         RegistrationAuthRequest request = new RegistrationAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
-            UUID.randomUUID(),
+            testContext.nonce(),
             testContext.base64PublicKey,
             UUID.randomUUID()
         );
@@ -99,7 +101,7 @@ public class SecurityServiceTest {
         RegistrationAuthResult result = securityService.verifyRegistrationRequest(request);
 
         verify(redisSecurityStore).registrationSecurityCheck(
-            eq(RedisKeys.registrationNonceKey(testContext.authId())),
+            eq(RedisKeys.registrationNonceKey(testContext.authId(), testContext.nonce())),
             eq(RedisKeys.registrationRateLimitKey(testContext.authId())),
             eq(regProps.nonceTtl()),
             eq(regProps.rateLimitTtl()),
@@ -117,7 +119,7 @@ public class SecurityServiceTest {
         var request = new SaveInviteAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
-            UUID.randomUUID(),
+            testContext.nonce(),
             testContext.publicId(),
             UUID.randomUUID(),
             "encryptedMasterKey",
@@ -131,7 +133,7 @@ public class SecurityServiceTest {
         verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
             eq(RedisKeys.authDeviceRevokedKey(request.publicId())),
-            eq(RedisKeys.authNonceKey(request.publicId())),
+            eq(RedisKeys.authNonceKey(request.publicId(), testContext.nonce())),
             eq(RedisKeys.authRateLimitKey(request.publicId())),
             eq(authProps.nonceTtl()),
             eq(authProps.rateLimitTtl()),
@@ -150,7 +152,7 @@ public class SecurityServiceTest {
         var request = new RegistrationAuthRequest(
             brokenJwt,
             testContext.base64Signature(),
-            UUID.randomUUID(),
+            testContext.nonce(),
             testContext.base64PublicKey(),
             UUID.randomUUID()
         );
@@ -199,7 +201,7 @@ public class SecurityServiceTest {
         var request = new TestDeviceAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
-            UUID.randomUUID(),
+            testContext.nonce(),
             testContext.publicId()
         );
 
@@ -210,7 +212,7 @@ public class SecurityServiceTest {
         verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
             eq(RedisKeys.authDeviceRevokedKey(request.publicId())),
-            eq(RedisKeys.authNonceKey(request.publicId())),
+            eq(RedisKeys.authNonceKey(request.publicId(), testContext.nonce())),
             eq(RedisKeys.authRateLimitKey(request.publicId())),
             eq(authProps.nonceTtl()),
             eq(authProps.rateLimitTtl()),
@@ -228,7 +230,7 @@ public class SecurityServiceTest {
         var request = new TestDeviceAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
-            UUID.randomUUID(),
+            testContext.nonce(),
             testContext.publicId()
         );
 
@@ -252,6 +254,83 @@ public class SecurityServiceTest {
         verify(keySignatureService, never()).verify(any(), any(), any());
     }
 
+    @Test
+    void verifyRegistrationRequest_shouldUseRequestNonceInRedisNonceKey() {
+        UUID firstNonce = UUID.randomUUID();
+        UUID secondNonce = UUID.randomUUID();
+        var firstRequest = new RegistrationAuthRequest(
+            testContext.jwt(),
+            testContext.base64Signature(),
+            firstNonce,
+            testContext.base64PublicKey,
+            UUID.randomUUID()
+        );
+        var secondRequest = new RegistrationAuthRequest(
+            testContext.jwt(),
+            testContext.base64Signature(),
+            secondNonce,
+            testContext.base64PublicKey,
+            UUID.randomUUID()
+        );
+
+        when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
+
+        securityService.verifyRegistrationRequest(firstRequest);
+        securityService.verifyRegistrationRequest(secondRequest);
+
+        ArgumentCaptor<String> nonceKeyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(redisSecurityStore, times(2)).registrationSecurityCheck(
+            nonceKeyCaptor.capture(),
+            eq(RedisKeys.registrationRateLimitKey(testContext.authId())),
+            eq(regProps.nonceTtl()),
+            eq(regProps.rateLimitTtl()),
+            eq(regProps.attempts())
+        );
+
+        assertThat(nonceKeyCaptor.getAllValues().get(0))
+            .isEqualTo(RedisKeys.registrationNonceKey(testContext.authId(), firstNonce));
+        assertThat(nonceKeyCaptor.getAllValues().get(1))
+            .isEqualTo(RedisKeys.registrationNonceKey(testContext.authId(), secondNonce));
+    }
+
+    @Test
+    void verifyMessagingRequest_shouldUseRequestNonceInRedisNonceKey() {
+        UUID firstNonce = UUID.randomUUID();
+        UUID secondNonce = UUID.randomUUID();
+        var firstRequest = new TestDeviceAuthRequest(
+            testContext.jwt(),
+            testContext.base64Signature(),
+            firstNonce,
+            testContext.publicId()
+        );
+        var secondRequest = new TestDeviceAuthRequest(
+            testContext.jwt(),
+            testContext.base64Signature(),
+            secondNonce,
+            testContext.publicId()
+        );
+
+        when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
+
+        securityService.verifyMessagingRequest(firstRequest);
+        securityService.verifyMessagingRequest(secondRequest);
+
+        ArgumentCaptor<String> nonceKeyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(redisSecurityStore, times(2)).deviceAuthSecurityCheck(
+            eq(RedisKeys.authDeviceRevokedKey(testContext.publicId())),
+            nonceKeyCaptor.capture(),
+            eq(RedisKeys.authRateLimitKey(testContext.publicId())),
+            eq(authProps.nonceTtl()),
+            eq(authProps.rateLimitTtl()),
+            eq(authProps.attempts())
+        );
+
+        assertThat(nonceKeyCaptor.getAllValues().get(0))
+            .isEqualTo(RedisKeys.authNonceKey(testContext.publicId(), firstNonce));
+        assertThat(nonceKeyCaptor.getAllValues().get(1))
+            .isEqualTo(RedisKeys.authNonceKey(testContext.publicId(), secondNonce));
+    }
+
     // test-context
 
     private record TestContext(
@@ -261,6 +340,7 @@ public class SecurityServiceTest {
         PublicKey publicKey,
         String base64Signature,
         UUID publicId,
+        UUID nonce,
         DeviceAuthData deviceAuthData
     ) {
     }
@@ -294,6 +374,7 @@ public class SecurityServiceTest {
             keyPair.getPublic(),
             base64Signature,
             publicId,
+            UUID.randomUUID(),
             deviceAuthData
         );
     }
