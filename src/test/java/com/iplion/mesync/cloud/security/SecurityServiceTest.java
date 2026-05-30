@@ -10,7 +10,6 @@ import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
 import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
@@ -115,7 +114,7 @@ public class SecurityServiceTest {
     }
 
     @Test
-    public void verifySaveInviteRequest_shouldReturnResult_whenRequestValid() {
+    public void verifyDeviceManagerRequest_shouldReturnResult_whenRequestValid() {
         var request = new SaveInviteAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
@@ -128,7 +127,7 @@ public class SecurityServiceTest {
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
 
-        SaveInviteAuthResult result = securityService.verifySaveInviteRequest(request);
+        DeviceAuthData result = securityService.verifyDeviceManagerRequest(request);
 
         verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
@@ -141,8 +140,7 @@ public class SecurityServiceTest {
         );
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
-        assertThat(result.jwtUserData()).isNotNull();
-        assertThat(result.deviceAuthData()).isEqualTo(testContext.deviceAuthData());
+        assertThat(result).isEqualTo(testContext.deviceAuthData());
     }
 
     @Test
@@ -165,7 +163,7 @@ public class SecurityServiceTest {
     }
 
     @Test
-    void verifySaveInviteRequest_shouldThrow_whenOwnershipMismatch() {
+    void verifyDeviceManagerRequest_shouldThrow_whenOwnershipMismatch() {
         var request = new SaveInviteAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
@@ -189,7 +187,7 @@ public class SecurityServiceTest {
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(wrongOwnerDevice);
 
-        assertThatThrownBy(() -> securityService.verifySaveInviteRequest(request))
+        assertThatThrownBy(() -> securityService.verifyDeviceManagerRequest(request))
             .isInstanceOf(AuthException.class)
             .hasMessageContaining("owner");
 

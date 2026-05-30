@@ -17,7 +17,6 @@ import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
 import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
@@ -54,7 +53,7 @@ public class SecurityService {
         );
     }
 
-    public SaveInviteAuthResult verifySaveInviteRequest(SaveInviteAuthRequest request) {
+    public DeviceAuthData verifyDeviceManagerRequest(SaveInviteAuthRequest request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -62,10 +61,7 @@ public class SecurityService {
             this::verifySignature
         ));
 
-        return new SaveInviteAuthResult(
-            context.getJwtUserData(),
-            context.getDeviceAuthData()
-        );
+        return context.getDeviceAuthData();
     }
 
     public <T extends DeviceAuthRequest> DeviceAuthData verifyMessagingRequest(T request) {

@@ -17,7 +17,6 @@ import com.iplion.mesync.cloud.security.SecurityService;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -41,11 +40,10 @@ public class DeviceRegistrationService {
     private final KeySignatureService keySignatureService;
 
     public SaveInviteResponseDto saveInviteToken(Jwt jwt, SaveInviteRequestDto request) {
-        SaveInviteAuthResult authResult = securityService.verifySaveInviteRequest(
+        DeviceAuthData deviceAuthData = securityService.verifyDeviceManagerRequest(
             SaveInviteAuthRequest.from(jwt, request)
         );
 
-        DeviceAuthData deviceAuthData = authResult.deviceAuthData();
         if (deviceAuthData.userKeyVersion() > request.keyVersion()) {
             throw DeviceRegistrationException.masterKeyVersionMismatch(
                 deviceAuthData.userAuthId(),
@@ -56,7 +54,7 @@ public class DeviceRegistrationService {
         }
 
         Instant expiresAt = invitationService.createInvite(
-            authResult.jwtUserData().id(),
+            deviceAuthData.userAuthId(),
             request.inviteToken(),
             request.encryptedMasterKey(),
             request.keyVersion(),

@@ -13,7 +13,6 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthResult;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
@@ -67,22 +66,19 @@ class DeviceRegistrationServiceTest {
 
     @Test
     void saveInviteToken_shouldSaveToken() {
-        DeviceType deviceType = DeviceType.DESKTOP;
         Instant expiredAt = Instant.now();
         Jwt jwt = mock(Jwt.class);
         DeviceAuthData deviceAuthData = deviceAuthData();
 
-        var ctx = createContext(deviceType);
         var request = saveInviteRequestDto();
-        var result = new SaveInviteAuthResult(ctx.jwtUserData(), deviceAuthData);
 
-        when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
+        when(securityService.verifyDeviceManagerRequest(any())).thenReturn(deviceAuthData);
         when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
 
         SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(jwt, request);
 
         ArgumentCaptor<SaveInviteAuthRequest> captor = ArgumentCaptor.forClass(SaveInviteAuthRequest.class);
-        verify(securityService).verifySaveInviteRequest(captor.capture());
+        verify(securityService).verifyDeviceManagerRequest(captor.capture());
         SaveInviteAuthRequest authRequestData = captor.getValue();
 
         verify(invitationService).createInvite(
@@ -107,7 +103,6 @@ class DeviceRegistrationServiceTest {
     void saveInviteToken_shouldThrow_whenDeviceMasterKeyVersionOutdated() {
         DeviceType deviceType = DeviceType.MOBILE;
 
-        var ctx = createContext(deviceType);
         var request = new SaveInviteRequestDto(
             UUID.randomUUID(),
             UUID.randomUUID(),
@@ -117,9 +112,8 @@ class DeviceRegistrationServiceTest {
             UUID.randomUUID(),
             Base64.getEncoder().encodeToString(new byte[64])
         );
-        var result = new SaveInviteAuthResult(ctx.jwtUserData(), deviceAuthData());
 
-        when(securityService.verifySaveInviteRequest(any())).thenReturn(result);
+        when(securityService.verifyDeviceManagerRequest(any())).thenReturn(deviceAuthData());
 
         assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(mock(Jwt.class), request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
