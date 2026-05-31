@@ -6,11 +6,11 @@ import com.iplion.mesync.cloud.controller.DeviceController;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
+import com.iplion.mesync.cloud.testUtils.TestUri;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -20,6 +20,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.junit.jupiter.Container;
@@ -37,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(DeviceController.class)
 @Import(SecurityConfig.class)
-@AutoConfigureMockMvc
 @Testcontainers
 @ActiveProfiles("test")
 public class KeycloakIT {
@@ -82,7 +82,10 @@ public class KeycloakIT {
         String json = new String(Base64.getUrlDecoder().decode(payload));
 
         Assertions.assertTrue(
-            json.contains("realm_access") && json.contains("messages.read") && json.contains("messages.write")
+            json.contains("realm_access")
+                && json.contains("messages.read")
+                && json.contains("messages.write")
+                && json.contains("messages.publish")
         );
     }
 
@@ -100,12 +103,7 @@ public class KeycloakIT {
 
     @Test
     void registerDevice_shouldReturn201_whenTokenAndRolesValid() throws Exception {
-        var requestDto = deviceRegisterRequestDto();
-
-        mockMvc.perform(post("/api/v1/devices/register")
-                .header("Authorization", "Bearer " + getAccessToken(DeviceType.MOBILE))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDto)))
+        registerDevice(getAccessToken(DeviceType.MOBILE), deviceRegisterRequestDto())
             .andExpect(status().isCreated());
 
         verify(deviceRegistrationService).registerDevice(
@@ -116,12 +114,7 @@ public class KeycloakIT {
 
     @Test
     void registerDevice_shouldReturn401_whenTokenInvalid() throws Exception {
-        var requestDto = deviceRegisterRequestDto();
-
-        mockMvc.perform(post("/api/v1/devices/register")
-                .header("Authorization", "Bearer " + "InvalidToken")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDto)))
+        registerDevice("InvalidToken", deviceRegisterRequestDto())
             .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(deviceRegistrationService);
@@ -129,11 +122,9 @@ public class KeycloakIT {
 
     @Test
     void registerDevice_shouldReturn401_whenTokenMissing() throws Exception {
-        var requestDto = deviceRegisterRequestDto();
-
-        mockMvc.perform(post("/api/v1/devices/register")
+        mockMvc.perform(post(TestUri.REGISTER_URI)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDto)))
+                .content(objectMapper.writeValueAsString(deviceRegisterRequestDto())))
             .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(deviceRegistrationService);
@@ -141,18 +132,23 @@ public class KeycloakIT {
 
     @Test
     void registerDevice_shouldReturn403_whenRolesWrong() throws Exception {
-        var requestDto = deviceRegisterRequestDto();
-
-        mockMvc.perform(post("/api/v1/devices/register")
-                .header("Authorization", "Bearer " + getAccessToken(DeviceType.MANAGER))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDto)))
+        registerDevice(getAccessToken(DeviceType.MANAGER), deviceRegisterRequestDto())
             .andExpect(status().isForbidden());
 
         verifyNoInteractions(deviceRegistrationService);
     }
 
     // helpers
+
+    private ResultActions registerDevice(
+        String accessToken,
+        DeviceRegisterRequestDto requestDto
+    ) throws Exception {
+        return mockMvc.perform(post(TestUri.REGISTER_URI)
+            .header("Authorization", "Bearer " + accessToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(requestDto)));
+    }
 
     private String getAccessToken(DeviceType deviceType) {
         return getAccessToken(deviceType.getClientId());
