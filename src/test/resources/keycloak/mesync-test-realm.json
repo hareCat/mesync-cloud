@@ -47,16 +47,16 @@
   "failureFactor" : 30,
   "roles" : {
     "realm" : [ {
-      "id" : "ca3458b0-0696-4b87-8b3f-564f0af7dc37",
-      "name" : "messages.read",
-      "description" : "",
+      "id" : "27da1643-7970-434f-a0d8-39cbc1147056",
+      "name" : "devices.revoke",
+      "description" : "revoke a registered device",
       "composite" : false,
       "clientRole" : false,
       "containerId" : "8b9733ac-8af7-48e0-87ef-d7f29cac549b",
       "attributes" : { }
     }, {
-      "id" : "e59dcbeb-a292-47d4-8bba-54597f96a77a",
-      "name" : "devices.admin",
+      "id" : "ca3458b0-0696-4b87-8b3f-564f0af7dc37",
+      "name" : "messages.read",
       "description" : "",
       "composite" : false,
       "clientRole" : false,
@@ -98,14 +98,6 @@
       "id" : "efe9e12b-1f7e-4843-8aec-c51b414370ea",
       "name" : "messages.publish",
       "description" : "",
-      "composite" : false,
-      "clientRole" : false,
-      "containerId" : "8b9733ac-8af7-48e0-87ef-d7f29cac549b",
-      "attributes" : { }
-    }, {
-      "id" : "6b0142c0-cfa8-404e-a694-4dc75dab531e",
-      "name" : "devices.remove",
-      "description" : "remove a registered device",
       "composite" : false,
       "clientRole" : false,
       "containerId" : "8b9733ac-8af7-48e0-87ef-d7f29cac549b",
@@ -394,7 +386,7 @@
     "path" : "/users",
     "subGroups" : [ ],
     "attributes" : { },
-    "realmRoles" : [ "messages.read", "devices.invite", "messages.write", "devices.remove" ],
+    "realmRoles" : [ "messages.read", "devices.revoke", "devices.invite", "messages.write", "messages.publish" ],
     "clientRoles" : { }
   } ],
   "defaultRole" : {
@@ -470,7 +462,7 @@
     "roles" : [ "messages.read" ]
   }, {
     "client" : "mesync-device-manager",
-    "roles" : [ "devices.invite", "devices.remove" ]
+    "roles" : [ "devices.revoke", "devices.invite" ]
   }, {
     "client" : "mesync-mobile",
     "roles" : [ "messages.write", "messages.read", "messages.publish" ]
