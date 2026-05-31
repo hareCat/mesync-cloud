@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.error;
 
 import org.springframework.http.HttpStatus;
 
-public class MessagingException extends ApplicationException {
+public class MessagingException extends ApiException {
 
     private MessagingException(HttpStatus status, String internalMessage, String clientMessage, Throwable cause) {
         super(status, internalMessage, clientMessage, cause);

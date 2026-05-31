@@ -2,11 +2,11 @@ package com.iplion.mesync.cloud.error;
 
 import org.springframework.http.HttpStatus;
 
-public class InvalidDeviceTypeException extends ApiException {
+public class DeviceNotFoundException extends ApiException {
     private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
-    private static final String MESSAGE = "Invalid device type";
+    private static final String MESSAGE = "Device not found.";
 
-    public InvalidDeviceTypeException(String internalMessage) {
+    public DeviceNotFoundException(String internalMessage) {
         super(STATUS, internalMessage, MESSAGE);
     }
 }

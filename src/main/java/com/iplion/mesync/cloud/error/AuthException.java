@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 
 import java.util.UUID;
 
-public class AuthException extends ApplicationException {
+public class AuthException extends ApiException {
     private static final String DEFAULT_CLIENT_MESSAGE = "Unable to verify your device.";
 
     private AuthException(HttpStatus status, String internalMessage, String clientMessage) {

@@ -14,6 +14,11 @@ import java.util.UUID;
 
 @Repository
 public interface DeviceRepository extends JpaRepository<Device, Long> {
+    Optional<Device> findByUserIdAndPublicId(
+        Long userId,
+        UUID publicId
+    );
+
     @Query("""
             select
                 d.id as id,
@@ -80,4 +85,5 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
         Instant lastActiveAt,
         String extras
     );
+
 }

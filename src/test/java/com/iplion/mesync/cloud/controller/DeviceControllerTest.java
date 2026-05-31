@@ -6,6 +6,7 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
+import com.iplion.mesync.cloud.service.DeviceRevocationService;
 import com.iplion.mesync.cloud.service.InvitationService;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestUri;
@@ -46,6 +47,9 @@ public class DeviceControllerTest {
 
     @MockitoBean
     private InvitationService invitationService;
+
+    @MockitoBean
+    DeviceRevocationService deviceRevocationService;
 
     @Test
     void saveInvite_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {

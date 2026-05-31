@@ -1,12 +1,12 @@
 package com.iplion.mesync.cloud.service;
 
-import com.iplion.mesync.cloud.config.RegistrationProperties;
+import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
+import com.iplion.mesync.cloud.security.redis.RedisKeys;
+import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,7 @@ public class InvitationService {
     private static final String LOCK_VALUE = "1";
 
     private final RedisSecurityStore redisSecurityStore;
-    private final RegistrationProperties props;
+    private final AppProperties props;
 
     public Instant createInvite(
         UUID authId,
@@ -29,8 +29,8 @@ public class InvitationService {
         Integer keyVersion,
         DeviceType deviceType
     ) {
-        Duration cooldown = props.inviteCooldown();
-        Duration ttl = props.inviteTtl();
+        Duration cooldown = props.registration().inviteCooldown();
+        Duration ttl = props.registration().inviteTtl();
 
         try {
             if (!redisSecurityStore.setIfAbsent(

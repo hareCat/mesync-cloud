@@ -22,3 +22,5 @@ app:
     rate-limit-ttl: 60s
     attempts: 120
     nonce-ttl: 30s
+  revoke-ttl: 30d
+

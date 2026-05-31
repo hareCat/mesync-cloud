@@ -6,6 +6,7 @@ import com.iplion.mesync.cloud.controller.DeviceController;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
+import com.iplion.mesync.cloud.service.DeviceRevocationService;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import org.junit.jupiter.api.Assertions;
@@ -62,6 +63,9 @@ public class KeycloakIT {
 
     @MockitoBean
     DeviceRegistrationService deviceRegistrationService;
+
+    @MockitoBean
+    DeviceRevocationService deviceRevocationService;
 
     @Test
     void keycloak_shouldRejectUnknownClient() {

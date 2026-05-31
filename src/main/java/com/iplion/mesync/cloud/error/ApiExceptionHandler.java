@@ -31,8 +31,8 @@ public class ApiExceptionHandler {
         return detail;
     }
 
-    @ExceptionHandler(ApplicationException.class)
-    public ProblemDetail handleApplicationException(ApplicationException e, HttpServletRequest request) {
+    @ExceptionHandler(ApiException.class)
+    public ProblemDetail handleApiException(ApiException e, HttpServletRequest request) {
         if (e.getHttpStatus().is5xxServerError()) {
             log.error(e.getMessage(), e);
         } else {

@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import java.time.Duration;
 import java.util.UUID;
 
-public class DeviceRegistrationException extends ApplicationException {
+public class DeviceRegistrationException extends ApiException {
     private static final String DEFAULT_CLIENT_MESSAGE = "Unable to complete device registration. Please try again.";
 
     private DeviceRegistrationException(HttpStatus status, String internalMessage, String clientMessage) {

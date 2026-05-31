@@ -1,7 +1,6 @@
 package com.iplion.mesync.cloud.security;
 
-import com.iplion.mesync.cloud.config.AuthProperties;
-import com.iplion.mesync.cloud.config.RegistrationProperties;
+import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.AuthException;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceException;
@@ -16,7 +15,6 @@ import com.iplion.mesync.cloud.security.auth.AuthRequest;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
 import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
@@ -37,8 +35,7 @@ public class SecurityService {
     private final KeySignatureService keySignatureService;
     private final DeviceService deviceService;
 
-    private final RegistrationProperties registrationProperties;
-    private final AuthProperties authProperties;
+    private final AppProperties appProperties;
 
     public RegistrationAuthResult verifyRegistrationRequest(RegistrationAuthRequest request) {
         var context = runPipeline(request, List.of(
@@ -53,7 +50,7 @@ public class SecurityService {
         );
     }
 
-    public DeviceAuthData verifyDeviceManagerRequest(SaveInviteAuthRequest request) {
+    public <T extends DeviceAuthRequest> DeviceAuthData verifyDeviceManagerRequest(T request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -137,6 +134,8 @@ public class SecurityService {
     }
 
     private void registrationAuthRedisCheck(AuthPipelineContext<RegistrationAuthRequest> context) {
+        var registrationProperties = appProperties.registration();
+
         redisCheck(context.getJwtUserData().id(), subjectId -> redisSecurityStore.registrationSecurityCheck(
             RedisKeys.registrationNonceKey(subjectId, context.getRequest().nonce()),
             RedisKeys.registrationRateLimitKey(subjectId),
@@ -147,6 +146,8 @@ public class SecurityService {
     }
 
     private void deviceAuthRedisCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
+        var authProperties = appProperties.auth();
+
         redisCheck(context.getRequest().publicId(),
             subjectId -> redisSecurityStore.deviceAuthSecurityCheck(
                 RedisKeys.authDeviceRevokedKey(subjectId),

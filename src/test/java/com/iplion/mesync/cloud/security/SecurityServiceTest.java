@@ -1,7 +1,6 @@
 package com.iplion.mesync.cloud.security;
 
-import com.iplion.mesync.cloud.config.AuthProperties;
-import com.iplion.mesync.cloud.config.RegistrationProperties;
+import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.AuthException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
@@ -54,19 +53,23 @@ public class SecurityServiceTest {
     @Mock
     DeviceService deviceService;
 
-    RegistrationProperties regProps = new RegistrationProperties(
-        Duration.ofMinutes(10),
-        Duration.ofSeconds(60),
-        Duration.ofSeconds(30),
-        Duration.ofMinutes(10),
-        10
+    AppProperties appProperties = new AppProperties(
+        new AppProperties.Registration(
+            Duration.ofMinutes(10),
+            Duration.ofSeconds(60),
+            Duration.ofSeconds(30),
+            Duration.ofMinutes(10),
+            10
+        ),
+        new AppProperties.Auth(
+            Duration.ofSeconds(30),
+            Duration.ofSeconds(60),
+            120
+        ),
+        null
     );
-
-    AuthProperties authProps = new AuthProperties(
-        Duration.ofSeconds(30),
-        Duration.ofSeconds(60),
-        120
-    );
+    AppProperties.Registration regProps = appProperties.registration();
+    AppProperties.Auth authProps = appProperties.auth();
 
     SecurityService securityService;
 
@@ -78,8 +81,7 @@ public class SecurityServiceTest {
             redisSecurityStore,
             keySignatureService,
             deviceService,
-            regProps,
-            authProps
+            appProperties
         );
 
         testContext = createContext();

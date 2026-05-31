@@ -1,6 +1,6 @@
 package com.iplion.mesync.cloud.service;
 
-import com.iplion.mesync.cloud.config.RegistrationProperties;
+import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
@@ -32,19 +32,24 @@ public class InvitationServiceTest {
     @Mock
     RedisSecurityStore redisSecurityStore;
 
-    RegistrationProperties props = new RegistrationProperties(
-        Duration.ofMinutes(10),
-        Duration.ofSeconds(60),
-        Duration.ofMinutes(10),
-        Duration.ofSeconds(30),
-        10
+    AppProperties appProperties = new AppProperties(
+        new AppProperties.Registration(
+            Duration.ofMinutes(10),
+            Duration.ofSeconds(60),
+            Duration.ofMinutes(10),
+            Duration.ofSeconds(30),
+            10
+        ),
+        null,
+        null
     );
+    AppProperties.Registration regProps = appProperties.registration();
 
     InvitationService invitationService;
 
     @BeforeEach
     public void setUp() {
-        invitationService = new InvitationService(redisSecurityStore, props);
+        invitationService = new InvitationService(redisSecurityStore, appProperties);
     }
 
     @Test
@@ -105,7 +110,7 @@ public class InvitationServiceTest {
     public void createInvite_shouldCreateInviteAndReturnExpiredAt() {
         UUID authId = UUID.randomUUID();
         UUID inviteToken = UUID.randomUUID();
-        Instant expiresAt = Instant.now().plus(props.inviteTtl());
+        Instant expiresAt = Instant.now().plus(regProps.inviteTtl());
         DeviceType deviceType = DeviceType.MOBILE;
         String encryptedMasterKey = "encryptedMasterKey";
         Integer keyVersion = 1;
@@ -130,12 +135,12 @@ public class InvitationServiceTest {
         verify(redisSecurityStore).setIfAbsent(
             eq(RedisKeys.registrationInviteCooldownKey(authId)),
             any(String.class),
-            eq(props.inviteCooldown())
+            eq(regProps.inviteCooldown())
         );
         verify(redisSecurityStore).set(
             eq(RedisKeys.registrationInviteKey(authId, inviteToken)),
             eq(deviceInviteData),
-            eq(props.inviteTtl())
+            eq(regProps.inviteTtl())
         );
     }
 

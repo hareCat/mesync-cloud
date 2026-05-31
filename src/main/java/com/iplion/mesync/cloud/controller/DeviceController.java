@@ -1,10 +1,13 @@
 package com.iplion.mesync.cloud.controller;
 
-import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
-import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
+import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
+import com.iplion.mesync.cloud.controller.dto.DeviceRevokeResponseDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
+import com.iplion.mesync.cloud.service.DeviceRevocationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class DeviceController {
     private final DeviceRegistrationService deviceRegistrationService;
+    private final DeviceRevocationService deviceRevocationService;
 
     @PostMapping("/register")
     @PreAuthorize("hasAuthority('messages.read')")
@@ -42,4 +46,14 @@ public class DeviceController {
     ) {
         return deviceRegistrationService.saveInviteToken(jwt, request);
     }
+
+    @PostMapping("/revoke")
+    @PreAuthorize("hasAuthority('devices.revoke')")
+    public DeviceRevokeResponseDto revoke(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody DeviceRevokeRequestDto request
+    ) {
+        return deviceRevocationService.revokeDevice(jwt, request);
+    }
+
 }
