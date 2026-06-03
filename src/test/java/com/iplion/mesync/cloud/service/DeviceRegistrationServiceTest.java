@@ -155,7 +155,7 @@ class DeviceRegistrationServiceTest {
         assertThat(authRequestData.nonce()).isEqualTo(request.nonce());
         assertThat(authRequestData.inviteToken()).isEqualTo(request.inviteToken());
         assertThat(authRequestData.base64PublicKey()).isEqualTo(request.base64PublicKey());
-        assertThat(response.deviceId()).isNotNull();
+        assertThat(response.publicId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(request.deviceName());
         assertThat(response.encryptedMasterKey()).isEqualTo(ctx.encryptedMasterKey());
         assertThat(response.keyVersion()).isEqualTo(ctx.user().getKeyVersion());
@@ -178,7 +178,7 @@ class DeviceRegistrationServiceTest {
 
         verifyNoInteractions(invitationService);
 
-        assertThat(response.deviceId()).isNotNull();
+        assertThat(response.publicId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(request.deviceName());
         assertThat(response.encryptedMasterKey()).isNull();
     }

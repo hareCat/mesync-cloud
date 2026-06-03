@@ -163,7 +163,7 @@ class DeviceControllerIT extends BaseIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.deviceId").exists())
+            .andExpect(jsonPath("$.publicId").exists())
             .andExpect(jsonPath("$.deviceName").value(deviceGeneratedName))
             .andExpect(jsonPath("$.encryptedMasterKey").value(context.encryptedMasterKey))
             .andExpect(jsonPath("$.keyVersion").value(context.keyVersion));

@@ -217,7 +217,7 @@ Response:
 
 ```json
 {
-  "deviceId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "publicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
   "deviceName": "Pixel 8",
   "encryptedMasterKey": null,
   "keyVersion": 1

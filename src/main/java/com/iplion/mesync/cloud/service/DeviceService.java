@@ -22,8 +22,8 @@ public class DeviceService {
     private final KeySignatureService keySignatureService;
     private final ObjectMapper objectMapper;
 
-    public DeviceAuthData getDeviceAuthData(UUID deviceId) {
-        return deviceAuthDataCache.get(deviceId, this::loadDeviceAuthDataCache);
+    public DeviceAuthData getDeviceAuthData(UUID publicId) {
+        return deviceAuthDataCache.get(publicId, this::loadDeviceAuthDataCache);
     }
 
     private DeviceAuthData loadDeviceAuthDataCache(UUID publicId) {
