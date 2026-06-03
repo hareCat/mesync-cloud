@@ -13,10 +13,10 @@ import java.util.UUID;
 
 public record MessagePublishRequestDto(
     @NotNull
-    UUID publicId,
+    UUID devicePublicId,
 
     @NotNull
-    UUID messageId,
+    UUID messagePublicId,
 
     @NotBlank
     @Size(max = 64)

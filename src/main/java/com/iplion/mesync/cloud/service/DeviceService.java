@@ -22,14 +22,14 @@ public class DeviceService {
     private final KeySignatureService keySignatureService;
     private final ObjectMapper objectMapper;
 
-    public DeviceAuthData getDeviceAuthData(UUID publicId) {
-        return deviceAuthDataCache.get(publicId, this::loadDeviceAuthDataCache);
+    public DeviceAuthData getDeviceAuthData(UUID devicePublicId) {
+        return deviceAuthDataCache.get(devicePublicId, this::loadDeviceAuthDataCache);
     }
 
-    private DeviceAuthData loadDeviceAuthDataCache(UUID publicId) {
-        return deviceRepository.findAuthDataByPublicId(publicId)
+    private DeviceAuthData loadDeviceAuthDataCache(UUID devicePublicId) {
+        return deviceRepository.findAuthDataByPublicId(devicePublicId)
             .map(projection -> projection.toDeviceAuthData(keySignatureService))
-            .orElseThrow(() -> new DeviceException("Device not found. publicId: " + publicId));
+            .orElseThrow(() -> new DeviceException("Device not found. devicePublicId: " + devicePublicId));
     }
 
     public void saveWithRetry(Device device) {

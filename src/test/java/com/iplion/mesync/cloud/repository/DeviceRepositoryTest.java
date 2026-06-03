@@ -41,7 +41,7 @@ public class DeviceRepositoryTest {
         DeviceAuthProjection authData = deviceRepository.findAuthDataByPublicId(device.getPublicId())
             .orElseThrow();
 
-        assertThat(authData.getPublicId()).isEqualTo(device.getPublicId());
+        assertThat(authData.getDevicePublicId()).isEqualTo(device.getPublicId());
         assertThat(authData.getUserId()).isEqualTo(user.getId());
         assertThat(authData.getUserAuthId()).isEqualTo(user.getAuthId());
         assertThat(authData.getDeviceType()).isEqualTo(device.getDeviceType());

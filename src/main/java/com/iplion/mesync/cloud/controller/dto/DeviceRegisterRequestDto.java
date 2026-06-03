@@ -38,5 +38,5 @@ public record DeviceRegisterRequestDto(
     )
     String base64Signature
 
-) implements  SignedRequest {
+) implements SignedRequest {
 }

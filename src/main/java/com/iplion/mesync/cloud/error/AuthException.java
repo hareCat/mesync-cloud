@@ -86,16 +86,16 @@ public class AuthException extends ApiException {
 
     public static AuthException deviceTypeMismatch(
         UUID authId,
-        UUID publicId,
+        UUID devicePublicId,
         DeviceType jwtDeviceType,
         DeviceType dbDeviceType
     ) {
         return new AuthException(
             HttpStatus.FORBIDDEN,
             String.format(
-                "Device type mismatch. authId: %s, publicId: %s, jwtDT: %s, dbDT: %s",
+                "Device type mismatch. authId: %s, devicePublicId: %s, jwtDT: %s, dbDT: %s",
                 authId.toString(),
-                publicId.toString(),
+                devicePublicId.toString(),
                 jwtDeviceType.name(),
                 dbDeviceType.name()
             ),

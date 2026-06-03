@@ -92,7 +92,7 @@ Known device client ids:
 
 Device-authenticated requests include:
 
-- `publicId`: registered device public id
+- `devicePublicId`: registered device public id
 - `nonce`: request UUID used for replay protection
 - `base64Signature`: Ed25519 signature over the canonical payload
 
@@ -125,7 +125,7 @@ REGISTRATION
 ```text
 v1
 INVITATION
-{publicId}
+{devicePublicId}
 {inviteToken}
 {encryptedMasterKey}
 {keyVersion}
@@ -137,8 +137,8 @@ INVITATION
 ```text
 v1
 MESSAGE_PUBLISH
-{publicId}
-{messageId}
+{devicePublicId}
+{messagePublicId}
 {address}
 {messageType}
 {direction}
@@ -153,7 +153,7 @@ MESSAGE_PUBLISH
 ```text
 v1
 MESSAGE_SYNC
-{publicId}
+{devicePublicId}
 {lastMessageId}
 {limit}
 {nonce}
@@ -217,7 +217,7 @@ Response:
 
 ```json
 {
-  "publicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
   "deviceName": "Pixel 8",
   "encryptedMasterKey": null,
   "keyVersion": 1
@@ -234,7 +234,7 @@ Request:
 
 ```json
 {
-  "publicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
   "inviteToken": "123e4567-e89b-12d3-a456-426614174000",
   "encryptedMasterKey": "YmFzZTY0LWVuY3J5cHRlZC1tYXN0ZXIta2V5",
   "keyVersion": 1,
@@ -263,8 +263,8 @@ Request:
 
 ```json
 {
-  "publicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
-  "messageId": "8f678e8c-58f7-4975-8c9e-ff2f9e82d7ef",
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "messagePublicId": "8f678e8c-58f7-4975-8c9e-ff2f9e82d7ef",
   "address": "+995123456789",
   "messageType": "SMS",
   "direction": "INCOMING",
@@ -295,7 +295,7 @@ Request:
 
 ```json
 {
-  "publicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
   "lastMessageId": 0,
   "limit": 20,
   "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
@@ -310,7 +310,7 @@ Response:
   "messages": [
     {
       "id": 42,
-      "publicId": "8f678e8c-58f7-4975-8c9e-ff2f9e82d7ef",
+      "messagePublicId": "8f678e8c-58f7-4975-8c9e-ff2f9e82d7ef",
       "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
       "address": "+995123456789",
       "messageType": "SMS",

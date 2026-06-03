@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public record MessageSyncRequestDto(
     @NotNull
-    UUID publicId,
+    UUID devicePublicId,
 
     @PositiveOrZero
     long lastMessageId,

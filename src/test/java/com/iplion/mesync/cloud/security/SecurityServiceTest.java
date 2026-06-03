@@ -121,7 +121,7 @@ public class SecurityServiceTest {
             testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
-            testContext.publicId(),
+            testContext.devicePublicId(),
             UUID.randomUUID(),
             "encryptedMasterKey",
             1
@@ -131,11 +131,11 @@ public class SecurityServiceTest {
 
         DeviceAuthData result = securityService.verifyDeviceManagerRequest(request);
 
-        verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
+        verify(deviceService).getDeviceAuthData(eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
-            eq(RedisKeys.authDeviceRevokedKey(request.publicId())),
-            eq(RedisKeys.authNonceKey(request.publicId(), testContext.nonce())),
-            eq(RedisKeys.authRateLimitKey(request.publicId())),
+            eq(RedisKeys.authDeviceRevokedKey(request.devicePublicId())),
+            eq(RedisKeys.authNonceKey(request.devicePublicId(), testContext.nonce())),
+            eq(RedisKeys.authRateLimitKey(request.devicePublicId())),
             eq(authProps.nonceTtl()),
             eq(authProps.rateLimitTtl()),
             eq(authProps.attempts())
@@ -170,7 +170,7 @@ public class SecurityServiceTest {
             testContext.jwt(),
             testContext.base64Signature(),
             UUID.randomUUID(),
-            testContext.publicId(),
+            testContext.devicePublicId(),
             UUID.randomUUID(),
             "encryptedMasterKey",
             1
@@ -178,8 +178,8 @@ public class SecurityServiceTest {
 
         DeviceAuthData fromContext = testContext.deviceAuthData;
         DeviceAuthData wrongOwnerDevice = new DeviceAuthData(
-            fromContext.id(),
-            fromContext.publicId(),
+            fromContext.deviceId(),
+            fromContext.devicePublicId(),
             fromContext.userId(),
             UUID.randomUUID(),
             fromContext.deviceType(),
@@ -202,18 +202,18 @@ public class SecurityServiceTest {
             testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
-            testContext.publicId()
+            testContext.devicePublicId()
         );
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
 
         DeviceAuthData result = securityService.verifyMessagingRequest(request);
 
-        verify(deviceService).getDeviceAuthData(eq(testContext.publicId));
+        verify(deviceService).getDeviceAuthData(eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
-            eq(RedisKeys.authDeviceRevokedKey(request.publicId())),
-            eq(RedisKeys.authNonceKey(request.publicId(), testContext.nonce())),
-            eq(RedisKeys.authRateLimitKey(request.publicId())),
+            eq(RedisKeys.authDeviceRevokedKey(request.devicePublicId())),
+            eq(RedisKeys.authNonceKey(request.devicePublicId(), testContext.nonce())),
+            eq(RedisKeys.authRateLimitKey(request.devicePublicId())),
             eq(authProps.nonceTtl()),
             eq(authProps.rateLimitTtl()),
             eq(authProps.attempts())
@@ -231,13 +231,13 @@ public class SecurityServiceTest {
             testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
-            testContext.publicId()
+            testContext.devicePublicId()
         );
 
         DeviceAuthData fromContext = testContext.deviceAuthData;
         DeviceAuthData wrongtypeDevice = new DeviceAuthData(
-            fromContext.id(),
-            fromContext.publicId(),
+            fromContext.deviceId(),
+            fromContext.devicePublicId(),
             fromContext.userId(),
             fromContext.userAuthId(),
             DeviceType.BROWSER,
@@ -301,13 +301,13 @@ public class SecurityServiceTest {
             testContext.jwt(),
             testContext.base64Signature(),
             firstNonce,
-            testContext.publicId()
+            testContext.devicePublicId()
         );
         var secondRequest = new TestDeviceAuthRequest(
             testContext.jwt(),
             testContext.base64Signature(),
             secondNonce,
-            testContext.publicId()
+            testContext.devicePublicId()
         );
 
         when(deviceService.getDeviceAuthData(any())).thenReturn(testContext.deviceAuthData);
@@ -317,18 +317,18 @@ public class SecurityServiceTest {
 
         ArgumentCaptor<String> nonceKeyCaptor = ArgumentCaptor.forClass(String.class);
         verify(redisSecurityStore, times(2)).deviceAuthSecurityCheck(
-            eq(RedisKeys.authDeviceRevokedKey(testContext.publicId())),
+            eq(RedisKeys.authDeviceRevokedKey(testContext.devicePublicId())),
             nonceKeyCaptor.capture(),
-            eq(RedisKeys.authRateLimitKey(testContext.publicId())),
+            eq(RedisKeys.authRateLimitKey(testContext.devicePublicId())),
             eq(authProps.nonceTtl()),
             eq(authProps.rateLimitTtl()),
             eq(authProps.attempts())
         );
 
         assertThat(nonceKeyCaptor.getAllValues().get(0))
-            .isEqualTo(RedisKeys.authNonceKey(testContext.publicId(), firstNonce));
+            .isEqualTo(RedisKeys.authNonceKey(testContext.devicePublicId(), firstNonce));
         assertThat(nonceKeyCaptor.getAllValues().get(1))
-            .isEqualTo(RedisKeys.authNonceKey(testContext.publicId(), secondNonce));
+            .isEqualTo(RedisKeys.authNonceKey(testContext.devicePublicId(), secondNonce));
     }
 
     // test-context
@@ -339,7 +339,7 @@ public class SecurityServiceTest {
         String base64PublicKey,
         PublicKey publicKey,
         String base64Signature,
-        UUID publicId,
+        UUID devicePublicId,
         UUID nonce,
         DeviceAuthData deviceAuthData
     ) {
@@ -347,7 +347,7 @@ public class SecurityServiceTest {
 
     private TestContext createContext() throws NoSuchAlgorithmException {
         UUID authId = UUID.randomUUID();
-        UUID publicId = UUID.randomUUID();
+        UUID devicePublicId = UUID.randomUUID();
         DeviceType deviceType = DeviceType.MOBILE;
 
         Jwt jwt = TestJwtBuilder
@@ -359,7 +359,7 @@ public class SecurityServiceTest {
         String base64Signature = Base64.getEncoder().encodeToString(new byte[64]);
         DeviceAuthData deviceAuthData = new DeviceAuthData(
             1L,
-            publicId,
+            devicePublicId,
             1L,
             authId,
             deviceType,
@@ -373,7 +373,7 @@ public class SecurityServiceTest {
             base64PublicKey,
             keyPair.getPublic(),
             base64Signature,
-            publicId,
+            devicePublicId,
             UUID.randomUUID(),
             deviceAuthData
         );
@@ -383,7 +383,7 @@ public class SecurityServiceTest {
         Jwt jwt,
         String base64Signature,
         UUID nonce,
-        UUID publicId
+        UUID devicePublicId
     ) implements DeviceAuthRequest {
 
         @Override

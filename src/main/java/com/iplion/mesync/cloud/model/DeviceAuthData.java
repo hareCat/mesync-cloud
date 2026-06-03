@@ -4,8 +4,8 @@ import java.security.PublicKey;
 import java.util.UUID;
 
 public record DeviceAuthData(
-    Long id,
-    UUID publicId,
+    Long deviceId,
+    UUID devicePublicId,
     Long userId,
     UUID userAuthId,
     DeviceType deviceType,

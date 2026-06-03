@@ -47,18 +47,18 @@ public class MessagingService {
             message = messageRepository.save(buildMessage(request, deviceAuthData));
         } catch (IllegalArgumentException e) {
             throw MessagingException.cryptographyFailed(
-                String.format("Invalid base64 ciphertext. messageId: %s, userId: %d, deviceId: %d",
-                    request.messageId(),
+                String.format("Invalid base64 ciphertext. messagePublicId: %s, userId: %d, deviceId: %d",
+                    request.messagePublicId(),
                     deviceAuthData.userId(),
-                    deviceAuthData.id()
+                    deviceAuthData.deviceId()
                 ), e
             );
         } catch (DataIntegrityViolationException e) {
             throw MessagingException.messageSaving(
-                String.format("Message saving error. messageId: %s, userId: %d, deviceId: %d",
-                    request.messageId(),
+                String.format("Message saving error. messagePublicId: %s, userId: %d, deviceId: %d",
+                    request.messagePublicId(),
                     deviceAuthData.userId(),
-                    deviceAuthData.id()
+                    deviceAuthData.deviceId()
                 ), e
             );
         }
@@ -66,7 +66,7 @@ public class MessagingService {
         applicationEventPublisher.publishEvent(
             new MessagePublishedEvent(
                 deviceAuthData.userId(),
-                deviceAuthData.id()
+                deviceAuthData.deviceId()
             )
         );
 
@@ -78,7 +78,7 @@ public class MessagingService {
 
         List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(
             deviceAuthData.userId(),
-            deviceAuthData.id(),
+            deviceAuthData.deviceId(),
             request.lastMessageId(),
             PageRequest.of(0, Math.min(MAX_MESSAGES_PER_SYNC_REQUEST, request.limit()))
         );
@@ -90,9 +90,9 @@ public class MessagingService {
         byte[] ciphertext = Base64.getDecoder().decode(request.base64Ciphertext());
 
         Message message = new Message();
-        message.setPublicId(request.messageId());
+        message.setPublicId(request.messagePublicId());
         message.setUser(userRepository.getReferenceById(deviceAuthData.userId()));
-        message.setDevice(deviceRepository.getReferenceById(deviceAuthData.id()));
+        message.setDevice(deviceRepository.getReferenceById(deviceAuthData.deviceId()));
         message.setAddress(request.address());
         message.setMessageType(request.messageType());
         message.setDirection(request.direction());

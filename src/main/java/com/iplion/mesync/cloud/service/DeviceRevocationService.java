@@ -36,12 +36,12 @@ public class DeviceRevocationService {
             .orElseThrow(() -> new DeviceNotFoundException(String.format(
                 "Revoking device not found. userId: %d, deviceId: %d, targetDevicePublicId: %s",
                 deviceAuthData.userId(),
-                deviceAuthData.id(),
+                deviceAuthData.deviceId(),
                 request.targetDevicePublicId()
             )));
 
         if (targetDevice.getRevokedAt() != null) {
-            throw new DeviceRevokeException(deviceAuthData.userId(), deviceAuthData.id(), request.targetDevicePublicId());
+            throw new DeviceRevokeException(deviceAuthData.userId(), deviceAuthData.deviceId(), request.targetDevicePublicId());
         }
 
         deviceAuthDataCache.invalidate(request.targetDevicePublicId());
@@ -51,6 +51,7 @@ public class DeviceRevocationService {
 
         eventPublisher.publishEvent(new DeviceRevokedEvent(request.targetDevicePublicId()));
 
+//        if (request.targetDevicePublicId())
         return new DeviceRevokeResponseDto(targetDevice.getPublicId());
     }
 

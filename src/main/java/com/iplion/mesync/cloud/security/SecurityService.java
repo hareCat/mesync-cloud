@@ -95,15 +95,15 @@ public class SecurityService {
     }
 
     private <T extends DeviceAuthRequest> void getDeviceAuthData(AuthPipelineContext<T> context) {
-        UUID publicId = context.getRequest().publicId();
+        UUID devicePublicId = context.getRequest().devicePublicId();
         DeviceAuthData deviceAuthData;
         try {
-            deviceAuthData = deviceService.getDeviceAuthData(publicId);
+            deviceAuthData = deviceService.getDeviceAuthData(devicePublicId);
         } catch (DeviceException e) {
             throw AuthException.deviceNotFound(context.getJwtUserData().id(), e);
         }
 
-        context.setSecuritySubjectId(deviceAuthData.publicId());
+        context.setSecuritySubjectId(deviceAuthData.devicePublicId());
         context.setDeviceAuthData(deviceAuthData);
         context.setPublicKey(deviceAuthData.publicKey());
 
@@ -115,7 +115,7 @@ public class SecurityService {
         if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
             throw AuthException.deviceTypeMismatch(
                 deviceAuthData.userAuthId(),
-                deviceAuthData.publicId(),
+                deviceAuthData.devicePublicId(),
                 jwtDeviceType,
                 deviceAuthData.deviceType()
             );
@@ -148,7 +148,7 @@ public class SecurityService {
     private void deviceAuthRedisCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
         var authProperties = appProperties.auth();
 
-        redisCheck(context.getRequest().publicId(),
+        redisCheck(context.getRequest().devicePublicId(),
             subjectId -> redisSecurityStore.deviceAuthSecurityCheck(
                 RedisKeys.authDeviceRevokedKey(subjectId),
                 RedisKeys.authNonceKey(subjectId, context.getRequest().nonce()),

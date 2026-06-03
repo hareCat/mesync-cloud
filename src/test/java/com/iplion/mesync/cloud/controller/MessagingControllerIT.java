@@ -90,13 +90,13 @@ class MessagingControllerIT extends BaseIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.messageId").exists());
+            .andExpect(jsonPath("$.messagePublicId").exists());
 
         List<Message> messages = messageRepository.findAll();
         assertThat(messages).hasSize(1);
         Message message = messages.get(0);
 
-        assertThat(message.getPublicId()).isEqualTo(requestDto.messageId());
+        assertThat(message.getPublicId()).isEqualTo(requestDto.messagePublicId());
         assertThat(message.getUser().getId()).isEqualTo(context.user.getId());
         assertThat(message.getDevice().getId()).isEqualTo(context.device.getId());
         assertThat(message.getAddress()).isEqualTo(requestDto.address());
@@ -136,9 +136,9 @@ class MessagingControllerIT extends BaseIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.messages").isArray())
             .andExpect(jsonPath("$.messages.length()").value(2))
-            .andExpect(jsonPath("$.messages[0].publicId").value(first.getPublicId().toString()))
+            .andExpect(jsonPath("$.messages[0].messagePublicId").value(first.getPublicId().toString()))
             .andExpect(jsonPath("$.messages[0].devicePublicId").value(anotherDevice.getPublicId().toString()))
-            .andExpect(jsonPath("$.messages[1].publicId").value(second.getPublicId().toString()))
+            .andExpect(jsonPath("$.messages[1].messagePublicId").value(second.getPublicId().toString()))
             .andExpect(jsonPath("$.messages[1].devicePublicId").value(Matchers.nullValue()));
     }
 

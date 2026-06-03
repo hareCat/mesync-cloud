@@ -10,7 +10,7 @@ public record SaveInviteAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    UUID publicId,
+    UUID devicePublicId,
 
     UUID inviteToken,
     String encryptedMasterKey,
@@ -21,7 +21,7 @@ public record SaveInviteAuthRequest(
     public byte[] payload() {
         return PayloadBuilder.build(
             "INVITATION",
-            publicId().toString(),
+            devicePublicId().toString(),
             inviteToken().toString(),
             encryptedMasterKey,
             keyVersion.toString(),
@@ -34,7 +34,7 @@ public record SaveInviteAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),
-            request.publicId(),
+            request.devicePublicId(),
             request.inviteToken(),
             request.encryptedMasterKey(),
             request.keyVersion()

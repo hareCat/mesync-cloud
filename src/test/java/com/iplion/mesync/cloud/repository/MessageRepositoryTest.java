@@ -71,7 +71,7 @@ public class MessageRepositoryTest {
         );
 
         assertThat(result)
-            .extracting(SyncMessageDto::id, SyncMessageDto::publicId, SyncMessageDto::devicePublicId)
+            .extracting(SyncMessageDto::id, SyncMessageDto::messagePublicId, SyncMessageDto::devicePublicId)
             .containsExactly(
                 tuple(anotherDeviceMessage.getId(), anotherDeviceMessage.getPublicId(), anotherDevice.getPublicId()),
                 tuple(nullDeviceMessage.getId(), nullDeviceMessage.getPublicId(), null)

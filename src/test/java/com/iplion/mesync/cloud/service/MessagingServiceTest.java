@@ -80,9 +80,9 @@ class MessagingServiceTest {
         verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
 
         verify(userRepository).getReferenceById(deviceAuthData.userId());
-        verify(deviceRepository).getReferenceById(deviceAuthData.id());
+        verify(deviceRepository).getReferenceById(deviceAuthData.deviceId());
 
-        assertThat(savedMessage.getPublicId()).isEqualTo(request.messageId());
+        assertThat(savedMessage.getPublicId()).isEqualTo(request.messagePublicId());
         assertThat(savedMessage.getAddress()).isEqualTo(request.address());
         assertThat(savedMessage.getMessageType()).isEqualTo(request.messageType());
         assertThat(savedMessage.getDirection()).isEqualTo(request.direction());
@@ -91,9 +91,9 @@ class MessagingServiceTest {
         assertThat(savedMessage.getCiphertext()).isEqualTo(Base64.getDecoder().decode(request.base64Ciphertext()));
 
         assertThat(eventCaptor.getValue().userId()).isEqualTo(deviceAuthData.userId());
-        assertThat(eventCaptor.getValue().excludeDeviceId()).isEqualTo(deviceAuthData.id());
+        assertThat(eventCaptor.getValue().excludeDeviceId()).isEqualTo(deviceAuthData.deviceId());
 
-        assertThat(result.messageId()).isEqualTo(message.getPublicId());
+        assertThat(result.messagePublicId()).isEqualTo(message.getPublicId());
     }
 
     @Test
@@ -152,7 +152,7 @@ class MessagingServiceTest {
         );
 
         assertThat(captorUserId.getValue()).isEqualTo(deviceAuthData.userId());
-        assertThat(captorDeviceId.getValue()).isEqualTo(deviceAuthData.id());
+        assertThat(captorDeviceId.getValue()).isEqualTo(deviceAuthData.deviceId());
         assertThat(captorLastMessageId.getValue()).isEqualTo(request.lastMessageId());
 
         Pageable pageable = captorPageable.getValue();

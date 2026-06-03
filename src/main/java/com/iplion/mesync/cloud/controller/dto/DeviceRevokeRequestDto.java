@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.controller.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -9,12 +10,15 @@ import java.util.UUID;
 
 public record DeviceRevokeRequestDto(
     @NotNull
-    UUID publicId,
+    UUID devicePublicId,
 
     @NotNull
     UUID targetDevicePublicId,
 
     boolean rotateMasterKey,
+
+    @Min(1)
+    int deviceMasterKeyVersion,
 
     @NotNull
     UUID nonce,
@@ -27,5 +31,5 @@ public record DeviceRevokeRequestDto(
     )
     String base64Signature
 
-) implements SignedRequest{
+) implements SignedRequest {
 }

@@ -47,7 +47,7 @@ public class DeviceRegistrationService {
         if (deviceAuthData.userKeyVersion() > request.keyVersion()) {
             throw DeviceRegistrationException.masterKeyVersionMismatch(
                 deviceAuthData.userAuthId(),
-                deviceAuthData.publicId(),
+                deviceAuthData.devicePublicId(),
                 deviceAuthData.userKeyVersion(),
                 request.keyVersion()
             );

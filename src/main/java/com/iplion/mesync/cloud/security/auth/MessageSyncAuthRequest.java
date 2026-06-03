@@ -10,7 +10,7 @@ public record MessageSyncAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    UUID publicId,
+    UUID devicePublicId,
 
     Long lastMessageId,
     Integer limit
@@ -20,7 +20,7 @@ public record MessageSyncAuthRequest(
     public byte[] payload() {
         return PayloadBuilder.build(
             "MESSAGE_SYNC",
-            publicId().toString(),
+            devicePublicId().toString(),
             lastMessageId().toString(),
             limit().toString(),
             nonce().toString()
@@ -32,7 +32,7 @@ public record MessageSyncAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),
-            request.publicId(),
+            request.devicePublicId(),
             request.lastMessageId(),
             request.limit()
         );

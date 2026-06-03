@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public record SaveInviteRequestDto(
     @NotNull
-    UUID publicId,
+    UUID devicePublicId,
 
     @NotNull
     UUID inviteToken,

@@ -86,14 +86,14 @@ class DeviceControllerIT extends BaseIT {
 
         TestDataFactory.saveNewUserWithDevice(
             context,
-            context.publicId,
+            context.devicePublicId,
             context.publicKeyBytes,
             deviceRepository,
             userRepository
         );
 
         var requestDto = new SaveInviteRequestDto(
-            context.publicId,
+            context.devicePublicId,
             context.inviteToken,
             context.encryptedMasterKey,
             context.keyVersion,
@@ -163,7 +163,7 @@ class DeviceControllerIT extends BaseIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.publicId").exists())
+            .andExpect(jsonPath("$.devicePublicId").exists())
             .andExpect(jsonPath("$.deviceName").value(deviceGeneratedName))
             .andExpect(jsonPath("$.encryptedMasterKey").value(context.encryptedMasterKey))
             .andExpect(jsonPath("$.keyVersion").value(context.keyVersion));
@@ -242,7 +242,7 @@ class DeviceControllerIT extends BaseIT {
 
     public static class TestContext {
         UUID authId;
-        UUID publicId;
+        UUID devicePublicId;
         String deviceName;
         DeviceType deviceType;
         UUID inviteToken;
@@ -262,7 +262,7 @@ class DeviceControllerIT extends BaseIT {
                 null,
                 null,
                 context.nonce,
-                context.publicId,
+                context.devicePublicId,
                 context.inviteToken,
                 context.encryptedMasterKey,
                 context.keyVersion
@@ -293,7 +293,7 @@ class DeviceControllerIT extends BaseIT {
         private static TestContext createContext(KeyPair keyPair) {
             var context = new TestContext();
             context.authId = UUID.randomUUID();
-            context.publicId = UUID.randomUUID();
+            context.devicePublicId = UUID.randomUUID();
             context.deviceName = "test name";
             context.deviceType = DeviceType.MOBILE;
             context.inviteToken = UUID.randomUUID();
@@ -309,7 +309,7 @@ class DeviceControllerIT extends BaseIT {
 
         public static void saveNewUserWithDevice(
             TestContext context,
-            UUID publicId,
+            UUID devicePublicId,
             byte[] publicKeyBytes,
             DeviceRepository deviceRepository,
             UserRepository userRepository
@@ -319,7 +319,7 @@ class DeviceControllerIT extends BaseIT {
             userRepository.saveAndFlush(user);
 
             Device device = new Device();
-            device.setPublicId(publicId);
+            device.setPublicId(devicePublicId);
             device.setUser(user);
             device.setDeviceType(context.deviceType);
             device.setName(context.deviceName);

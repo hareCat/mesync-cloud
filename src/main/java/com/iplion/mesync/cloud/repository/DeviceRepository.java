@@ -14,25 +14,22 @@ import java.util.UUID;
 
 @Repository
 public interface DeviceRepository extends JpaRepository<Device, Long> {
-    Optional<Device> findByUserIdAndPublicId(
-        Long userId,
-        UUID publicId
-    );
+    Optional<Device> findByUserIdAndPublicId(Long userId, UUID publicId);
 
     @Query("""
             select
                 d.id as id,
-                d.publicId as publicId,
+                d.publicId as devicePublicId,
                 d.user.id as userId,
                 d.user.authId as userAuthId,
                 d.deviceType as deviceType,
                 d.publicKeyBytes as publicKeyBytes,
                 d.user.keyVersion as userKeyVersion
             from Device d
-            where d.publicId = :publicId
+            where d.publicId = :devicePublicId
               and d.revokedAt is null
         """)
-    Optional<DeviceAuthProjection> findAuthDataByPublicId(UUID publicId);
+    Optional<DeviceAuthProjection> findAuthDataByPublicId(UUID devicePublicId);
 
     @Query("""
             select d
@@ -63,7 +60,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
             extras
         )
         VALUES (
-            :publicId,
+            :devicePublicId,
             :userId,
             :deviceType,
             :name,
@@ -76,7 +73,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
         DO NOTHING
         """, nativeQuery = true)
     int trySave(
-        UUID publicId,
+        UUID devicePublicId,
         Long userId,
         String deviceType,
         String name,

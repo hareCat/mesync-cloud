@@ -13,9 +13,9 @@ public record MessagePublishAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    UUID publicId,
+    UUID devicePublicId,
 
-    UUID messageId,
+    UUID messagePublicId,
     String address,
     MessageType messageType,
     MessageDirection direction,
@@ -28,8 +28,8 @@ public record MessagePublishAuthRequest(
     public byte[] payload() {
         return PayloadBuilder.build(
             "MESSAGE_PUBLISH",
-            publicId().toString(),
-            messageId().toString(),
+            devicePublicId().toString(),
+            messagePublicId().toString(),
             address(),
             messageType().name(),
             direction().name(),
@@ -45,8 +45,8 @@ public record MessagePublishAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),
-            request.publicId(),
-            request.messageId(),
+            request.devicePublicId(),
+            request.messagePublicId(),
             request.address(),
             request.messageType(),
             request.direction(),

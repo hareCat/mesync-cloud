@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public interface DeviceAuthProjection {
     Long getId();
-    UUID getPublicId();
+    UUID getDevicePublicId();
     Long getUserId();
     UUID getUserAuthId();
     DeviceType getDeviceType();
@@ -16,7 +16,7 @@ public interface DeviceAuthProjection {
     default DeviceAuthData toDeviceAuthData(KeySignatureService keySignatureService) {
         return new DeviceAuthData(
             getId(),
-            getPublicId(),
+            getDevicePublicId(),
             getUserId(),
             getUserAuthId(),
             getDeviceType(),

@@ -10,17 +10,19 @@ public record DeviceRevokeAuthRequest(
     Jwt jwt,
     String base64Signature,
     UUID nonce,
-    UUID publicId,
+    UUID devicePublicId,
 
-    UUID targetDevicePublicId
+    UUID targetDevicePublicId,
+    Integer currentMasterKeyVersion
 ) implements DeviceAuthRequest {
 
     @Override
     public byte[] payload() {
         return PayloadBuilder.build(
             "REVOCATION",
-            publicId().toString(),
+            devicePublicId().toString(),
             targetDevicePublicId().toString(),
+            currentMasterKeyVersion().toString(),
             nonce().toString()
         );
     }
@@ -30,8 +32,9 @@ public record DeviceRevokeAuthRequest(
             jwt,
             request.base64Signature(),
             request.nonce(),
-            request.publicId(),
-            request.targetDevicePublicId()
+            request.devicePublicId(),
+            request.targetDevicePublicId(),
+            request.deviceMasterKeyVersion()
         );
     }
 
