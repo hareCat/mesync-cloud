@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.security.redis;
 
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.error.AuthException;
+import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;

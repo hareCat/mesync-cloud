@@ -1,15 +1,19 @@
 package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
+import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
@@ -29,6 +33,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
@@ -67,6 +73,9 @@ class DeviceControllerIT extends BaseIT {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Autowired
+    private Cache<UUID, DeviceAuthData> deviceAuthDataCache;
+
     @AfterEach
     void cleanUp() {
         jdbcTemplate.execute("""
@@ -82,7 +91,7 @@ class DeviceControllerIT extends BaseIT {
 
     @Test
     void saveInvite_shouldReturn201CreatedAndStoreInviteInRedis() throws Exception {
-        TestContext context = TestDataFactory.createInviteContext(TestCrypto.generateKeyPair());
+        var context = TestDataFactory.createInviteContext();
 
         TestDataFactory.saveNewUserWithDevice(
             context,
@@ -92,15 +101,7 @@ class DeviceControllerIT extends BaseIT {
             userRepository
         );
 
-        var requestDto = new SaveInviteRequestDto(
-            context.devicePublicId,
-            context.inviteToken,
-            context.encryptedMasterKey,
-            context.keyVersion,
-            context.deviceType,
-            context.nonce,
-            context.base64Signature
-        );
+        var requestDto = TestDataFactory.saveInviteRequestDto(context);
 
         mockMvc.perform(post(TestUri.INVITE_URI)
                 .with(TestJwtBuilder.forDevice(context.authId, context.deviceType)
@@ -123,10 +124,10 @@ class DeviceControllerIT extends BaseIT {
     }
 
     @Test
-    void registerDevice_shouldReturn201CreatedAndGenerateNewName_whenNameAlreadyExists() throws Exception {
+    void register_shouldReturn201CreatedAndGenerateNewName_whenNameAlreadyExists() throws Exception {
         KeyPair newDeviceKeyPair = TestCrypto.generateKeyPair();
 
-        TestContext context = TestDataFactory.createRegistrationContext(newDeviceKeyPair);
+        var context = TestDataFactory.createRegistrationContext(newDeviceKeyPair);
 
         DeviceType newDeviceType = DeviceType.BROWSER;
         String deviceRequiredName = context.deviceName;
@@ -140,14 +141,7 @@ class DeviceControllerIT extends BaseIT {
             userRepository
         );
 
-        var requestDto = new DeviceRegisterRequestDto(
-            context.deviceName,
-            Base64.getEncoder().encodeToString(newDeviceKeyPair.getPublic().getEncoded()),
-            context.extras,
-            context.inviteToken,
-            context.nonce,
-            context.base64Signature
-        );
+        var requestDto = TestDataFactory.deviceRegisterRequestDto(context, newDeviceKeyPair);
 
         invitationService.createInvite(
             context.authId,
@@ -196,17 +190,10 @@ class DeviceControllerIT extends BaseIT {
     }
 
     @Test
-    void registerDevice_shouldReturn403Forbidden_whenPublicKeyInvalid() throws Exception {
-        TestContext context = TestDataFactory.createRegistrationContext(TestCrypto.generateKeyPair());
+    void register_shouldReturn403Forbidden_whenPublicKeyInvalid() throws Exception {
+        var context = TestDataFactory.createRegistrationContext(TestCrypto.generateKeyPair());
 
-        var requestDto = new DeviceRegisterRequestDto(
-            context.deviceName,
-            Base64.getEncoder().encodeToString(TestCrypto.generateKeyPair().getPublic().getEncoded()),
-            context.extras,
-            context.inviteToken,
-            context.nonce,
-            context.base64Signature
-        );
+        var requestDto = TestDataFactory.deviceRegisterRequestDto(context, TestCrypto.generateKeyPair());
 
         invitationService.createInvite(
             context.authId,
@@ -238,26 +225,80 @@ class DeviceControllerIT extends BaseIT {
         assertThat(inviteData).isNotNull();
     }
 
-    // helpers ------------------------
+    @Test
+    void revoke_shouldRevokeDeviceAndInvalidateDeviceAuthCache() throws Exception {
+        UUID targetDevicePublicId = UUID.randomUUID();
+        var context = TestDataFactory.createRevocationContext(targetDevicePublicId);
+        var requestDto = TestDataFactory.deviceRevokeRequestDto(context, targetDevicePublicId);
+        PublicKey targetDevicePublicKey = TestCrypto.generateKeyPair().getPublic();
 
-    public static class TestContext {
-        UUID authId;
-        UUID devicePublicId;
-        String deviceName;
-        DeviceType deviceType;
-        UUID inviteToken;
-        UUID nonce;
-        String encryptedMasterKey;
-        Integer keyVersion;
-        byte[] publicKeyBytes;
-        String base64Signature;
-        String base64PublicKey;
-        Map<String, String> extras;
+        User user = TestDataFactory.saveNewUser(
+            context.authId,
+            userRepository
+        );
+        TestDataFactory.saveNewDevice(
+            context,
+            context.devicePublicId,
+            user,
+            context.publicKeyBytes,
+            context.deviceName,
+            deviceRepository
+        );
+        Device targetDevice = TestDataFactory.saveNewDevice(
+            context,
+            targetDevicePublicId,
+            user,
+            targetDevicePublicKey.getEncoded(),
+            "target " + context.deviceName,
+            deviceRepository
+        );
+        deviceAuthDataCache.put(targetDevicePublicId, new DeviceAuthData(
+            targetDevice.getId(),
+            targetDevice.getPublicId(),
+            user.getId(),
+            user.getAuthId(),
+            targetDevice.getDeviceType(),
+            targetDevicePublicKey,
+            user.getKeyVersion()
+        ));
+
+        mockMvc.perform(post(TestUri.REVOKE_URI)
+                .with(TestJwtBuilder.forDevice(context.authId, context.deviceType)
+                    .buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("devices.revoke")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.revokedDevicePublicId").value(targetDevicePublicId.toString()))
+            .andExpect(jsonPath("$.revokedAt").isNotEmpty());
+
+        assertThat(deviceAuthDataCache.getIfPresent(targetDevicePublicId)).isNull();
+
+        Device revokedDevice = deviceRepository.findById(targetDevice.getId()).get();
+        assertThat(revokedDevice.getRevokedAt()).isNotNull();
     }
 
+    // helpers ------------------------
+
     private static class TestDataFactory {
-        public static TestContext createInviteContext(KeyPair keyPair) throws GeneralSecurityException {
-            TestContext context = TestDataFactory.createContext(keyPair);
+        public static class TestContext {
+            UUID authId;
+            UUID devicePublicId;
+            String deviceName;
+            DeviceType deviceType;
+            UUID inviteToken;
+            UUID nonce;
+            String encryptedMasterKey;
+            Integer keyVersion;
+            byte[] publicKeyBytes;
+            String base64Signature;
+            String base64PublicKey;
+            Map<String, String> extras;
+        }
+
+        public static TestContext createInviteContext() throws GeneralSecurityException {
+            KeyPair keyPair = TestCrypto.generateKeyPair();
+            TestContext context = TestDataFactory.prepareContext(keyPair);
             byte[] payload = new SaveInviteAuthRequest(
                 null,
                 null,
@@ -267,15 +308,13 @@ class DeviceControllerIT extends BaseIT {
                 context.encryptedMasterKey,
                 context.keyVersion
             ).payload();
-            context.base64Signature = Base64.getEncoder().encodeToString(
-                TestCrypto.sign(keyPair.getPrivate(), payload)
-            );
+            context.base64Signature = sign(keyPair.getPrivate(), payload);
 
             return context;
         }
 
         public static TestContext createRegistrationContext(KeyPair keyPair) throws GeneralSecurityException {
-            TestContext context = TestDataFactory.createContext(keyPair);
+            TestContext context = TestDataFactory.prepareContext(keyPair);
             byte[] payload = new RegistrationAuthRequest(
                 null,
                 null,
@@ -283,14 +322,28 @@ class DeviceControllerIT extends BaseIT {
                 context.base64PublicKey,
                 context.inviteToken
             ).payload();
-            context.base64Signature = Base64.getEncoder().encodeToString(
-                TestCrypto.sign(keyPair.getPrivate(), payload)
-            );
+            context.base64Signature = sign(keyPair.getPrivate(), payload);
 
             return context;
         }
 
-        private static TestContext createContext(KeyPair keyPair) {
+        public static TestContext createRevocationContext(UUID targetDevicePublicId) throws GeneralSecurityException {
+            KeyPair keyPair = TestCrypto.generateKeyPair();
+            TestContext context = TestDataFactory.prepareContext(keyPair);
+            byte[] payload = new DeviceRevokeAuthRequest(
+                null,
+                null,
+                context.nonce,
+                context.devicePublicId,
+                targetDevicePublicId,
+                context.keyVersion + 1
+            ).payload();
+            context.base64Signature = sign(keyPair.getPrivate(), payload);
+
+            return context;
+        }
+
+        private static TestContext prepareContext(KeyPair keyPair) {
             var context = new TestContext();
             context.authId = UUID.randomUUID();
             context.devicePublicId = UUID.randomUUID();
@@ -299,7 +352,7 @@ class DeviceControllerIT extends BaseIT {
             context.inviteToken = UUID.randomUUID();
             context.nonce = UUID.randomUUID();
             context.encryptedMasterKey = "a".repeat(32);
-            context.keyVersion = 2;
+            context.keyVersion = 1;
             context.publicKeyBytes = keyPair.getPublic().getEncoded();
             context.base64PublicKey = Base64.getEncoder().encodeToString(context.publicKeyBytes);
             context.extras = Map.of("platform", "android");
@@ -314,23 +367,80 @@ class DeviceControllerIT extends BaseIT {
             DeviceRepository deviceRepository,
             UserRepository userRepository
         ) {
+            User user = saveNewUser(context.authId, userRepository);
+            saveNewDevice(context, devicePublicId, user, publicKeyBytes, context.deviceName, deviceRepository);
+        }
+
+        public static User saveNewUser(UUID authId, UserRepository userRepository) {
             User user = new User();
-            user.setAuthId(context.authId);
+            user.setAuthId(authId);
             userRepository.saveAndFlush(user);
 
+            return user;
+        }
+
+        public static Device saveNewDevice(
+            TestContext context,
+            UUID devicePublicId,
+            User user,
+            byte[] publicKeyBytes,
+            String deviceName,
+            DeviceRepository deviceRepository
+        ) {
             Device device = new Device();
             device.setPublicId(devicePublicId);
             device.setUser(user);
             device.setDeviceType(context.deviceType);
-            device.setName(context.deviceName);
+            device.setName(deviceName);
             device.setPublicKeyBytes(publicKeyBytes);
             device.setKeyCreatedAt(Instant.now());
             device.setLastActiveAt(Instant.now());
             device.setExtras(context.extras);
             deviceRepository.saveAndFlush(device);
+
+            return device;
+        }
+
+        public static DeviceRegisterRequestDto deviceRegisterRequestDto(TestContext context, KeyPair keyPair) {
+            return new DeviceRegisterRequestDto(
+                context.deviceName,
+                Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded()),
+                context.extras,
+                context.inviteToken,
+                context.nonce,
+                context.base64Signature
+            );
+        }
+
+        public static SaveInviteRequestDto saveInviteRequestDto(TestContext context) {
+            return new SaveInviteRequestDto(
+                context.devicePublicId,
+                context.inviteToken,
+                context.encryptedMasterKey,
+                context.keyVersion,
+                context.deviceType,
+                context.nonce,
+                context.base64Signature
+            );
+        }
+
+        public static DeviceRevokeRequestDto deviceRevokeRequestDto(TestContext context, UUID targetDevicePublicId) {
+            return new DeviceRevokeRequestDto(
+                context.devicePublicId,
+                targetDevicePublicId,
+                true,
+                context.keyVersion + 1,
+                context.nonce,
+                context.base64Signature
+            );
+        }
+
+        private static String sign(PrivateKey privateKey, byte[] payload) throws GeneralSecurityException {
+            return Base64.getEncoder().encodeToString(
+                TestCrypto.sign(privateKey, payload)
+            );
         }
 
     }
 
 }
-

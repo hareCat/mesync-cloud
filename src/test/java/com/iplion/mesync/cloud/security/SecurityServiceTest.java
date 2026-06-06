@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.security;
 
 import com.iplion.mesync.cloud.config.AppProperties;
-import com.iplion.mesync.cloud.error.AuthException;
+import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;

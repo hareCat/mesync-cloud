@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.error.api.UpdateMasterKeyVersionException;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -37,4 +38,21 @@ public class UserService {
                 }
             });
     }
+
+    @Transactional
+    public void updateMasterKeyVersion(User user, int newMasterKeyVersion) {
+        if (newMasterKeyVersion != user.getKeyVersion() + 1) {
+            throw new UpdateMasterKeyVersionException(String.format(
+                "Master key version does not match expected. userId: %d, userKeyVer: %d, newKeyver: %d",
+                user.getId(),
+                user.getKeyVersion(),
+                newMasterKeyVersion
+            ));
+        }
+
+        user.setKeyVersion(newMasterKeyVersion);
+
+        userRepository.save(user);
+    }
+
 }

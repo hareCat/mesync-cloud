@@ -1,6 +1,6 @@
 package com.iplion.mesync.cloud.model;
 
-import com.iplion.mesync.cloud.error.InvalidDeviceTypeException;
+import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
 import lombok.Getter;
 
 @Getter

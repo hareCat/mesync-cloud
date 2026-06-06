@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.error.api.UpdateMasterKeyVersionException;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,8 @@ import java.util.UUID;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -114,6 +117,35 @@ public class UserServiceTest {
         var result = userService.syncOrCreateUser(authId, email, true);
 
         assertThat(result).isEqualTo(existing);
+    }
+
+    @Test
+    void updateMasterKeyVersion_shouldUpdateMasterKeyVersion() {
+        int currentMasterKeyVersion = 1;
+        int newMasterKeyVersion = 2;
+
+        User user = new User();
+        user.setKeyVersion(currentMasterKeyVersion);
+
+        userService.updateMasterKeyVersion(user, newMasterKeyVersion);
+
+        assertThat(user.getKeyVersion()).isEqualTo(newMasterKeyVersion);
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void updateMasterKeyVersion_shouldThrown_whenNewKeyVersionInvalid() {
+        int currentMasterKeyVersion = 1;
+        int newMasterKeyVersion = 3;
+
+        User user = new User();
+        user.setKeyVersion(currentMasterKeyVersion);
+
+        assertThatThrownBy(() -> userService.updateMasterKeyVersion(user, newMasterKeyVersion))
+            .isInstanceOf(UpdateMasterKeyVersionException.class);
+
+        verifyNoInteractions(userRepository);
     }
 
 }

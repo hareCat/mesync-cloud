@@ -1,6 +1,6 @@
 package com.iplion.mesync.cloud.model;
 
-import com.iplion.mesync.cloud.error.InvalidDeviceTypeException;
+import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

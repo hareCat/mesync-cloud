@@ -4,11 +4,12 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRevokeResponseDto;
 import com.iplion.mesync.cloud.entity.Device;
-import com.iplion.mesync.cloud.error.DeviceNotFoundException;
-import com.iplion.mesync.cloud.error.DeviceRevokeException;
+import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
+import com.iplion.mesync.cloud.error.api.DeviceAlreadyRevokedException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
+import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.SecurityService;
 import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DeviceRevocationService {
     private final DeviceRepository deviceRepository;
+    private final UserRepository userRepository;
     private final SecurityService securityService;
     private final Cache<UUID, DeviceAuthData> deviceAuthDataCache;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserService userService;
 
     @Transactional
     public DeviceRevokeResponseDto revokeDevice(Jwt jwt, DeviceRevokeRequestDto request) {
@@ -41,18 +44,25 @@ public class DeviceRevocationService {
             )));
 
         if (targetDevice.getRevokedAt() != null) {
-            throw new DeviceRevokeException(deviceAuthData.userId(), deviceAuthData.deviceId(), request.targetDevicePublicId());
+            throw new DeviceAlreadyRevokedException(deviceAuthData.userId(), deviceAuthData.deviceId(), request.targetDevicePublicId());
         }
 
         deviceAuthDataCache.invalidate(request.targetDevicePublicId());
 
-        targetDevice.setRevokedAt(Instant.now());
+        Instant revokedAt = Instant.now();
+        targetDevice.setRevokedAt(revokedAt);
         deviceRepository.save(targetDevice);
 
         eventPublisher.publishEvent(new DeviceRevokedEvent(request.targetDevicePublicId()));
 
-//        if (request.targetDevicePublicId())
-        return new DeviceRevokeResponseDto(targetDevice.getPublicId());
+        if (request.rotateMasterKey()) {
+            userService.updateMasterKeyVersion(
+                userRepository.getReferenceById(deviceAuthData.userId()),
+                request.deviceMasterKeyVersion()
+            );
+        }
+
+        return new DeviceRevokeResponseDto(targetDevice.getPublicId(), revokedAt);
     }
 
 }

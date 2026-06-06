@@ -1,4 +1,4 @@
-package com.iplion.mesync.cloud.error;
+package com.iplion.mesync.cloud.error.api;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;

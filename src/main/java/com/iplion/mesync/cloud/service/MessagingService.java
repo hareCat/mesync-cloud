@@ -5,7 +5,7 @@ import com.iplion.mesync.cloud.controller.dto.MessagePublishResponseDto;
 import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.controller.dto.MessageSyncResponseDto;
 import com.iplion.mesync.cloud.entity.Message;
-import com.iplion.mesync.cloud.error.MessagingException;
+import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.SyncMessageDto;
@@ -40,7 +40,9 @@ public class MessagingService {
 
     @Transactional
     public MessagePublishResponseDto publish(Jwt jwt, MessagePublishRequestDto request) {
-        DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(MessagePublishAuthRequest.from(jwt, request));
+        DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(
+            MessagePublishAuthRequest.from(jwt, request)
+        );
 
         Message message;
         try {
@@ -74,7 +76,9 @@ public class MessagingService {
     }
 
     public MessageSyncResponseDto sync(Jwt jwt, MessageSyncRequestDto request) {
-        DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(MessageSyncAuthRequest.from(jwt, request));
+        DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(
+            MessageSyncAuthRequest.from(jwt, request)
+        );
 
         List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(
             deviceAuthData.userId(),

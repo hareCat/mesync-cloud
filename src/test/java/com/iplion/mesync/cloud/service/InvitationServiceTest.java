@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.config.AppProperties;
-import com.iplion.mesync.cloud.error.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.security.redis.RedisKeys;
 import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;

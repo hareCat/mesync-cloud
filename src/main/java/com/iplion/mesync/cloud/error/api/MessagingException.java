@@ -1,4 +1,4 @@
-package com.iplion.mesync.cloud.error;
+package com.iplion.mesync.cloud.error.api;
 
 import org.springframework.http.HttpStatus;
 

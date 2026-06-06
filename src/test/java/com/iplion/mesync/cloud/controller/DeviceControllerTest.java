@@ -3,6 +3,7 @@ package com.iplion.mesync.cloud.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.SecurityConfig;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
@@ -52,6 +53,21 @@ public class DeviceControllerTest {
     DeviceRevocationService deviceRevocationService;
 
     @Test
+    void register_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
+        var requestDto = deviceRegisterRequestDto();
+
+        mockMvc.perform(post(TestUri.REGISTER_URI)
+                .with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE).buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("devices.remove")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.status").value(403))
+            .andExpect(jsonPath("$.title").exists())
+            .andExpect(jsonPath("$.instance").exists());
+    }
+
+    @Test
     void saveInvite_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
         var requestDto = saveInviteRequestDto();
 
@@ -68,12 +84,13 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void registerDevice_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
-        var requestDto = deviceRegisterRequestDto();
+    void revoke_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
+        var requestDto = deviceRevokeRequestDto();
 
-        mockMvc.perform(post(TestUri.REGISTER_URI)
-                .with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE).buildMockMvcJwt()
-                    .authorities(new SimpleGrantedAuthority("devices.remove")))
+        mockMvc.perform(post(TestUri.REVOKE_URI)
+                .with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+                    .buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("messages.read")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isForbidden())
@@ -83,7 +100,7 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void registerDevice_shouldReturn401_whenNoJwt() throws Exception {
+    void register_shouldReturn401_whenNoJwt() throws Exception {
         var requestDto = deviceRegisterRequestDto();
 
         mockMvc.perform(post(TestUri.REGISTER_URI)
@@ -93,7 +110,7 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void saveInviteToken_shouldReturn401_whenNoJwt() throws Exception {
+    void saveInvite_shouldReturn401_whenNoJwt() throws Exception {
         var requestDto = saveInviteRequestDto();
 
         mockMvc.perform(post(TestUri.INVITE_URI)
@@ -103,7 +120,17 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void registerDevice_shouldReturnHttpError_whenServiceException() throws Exception {
+    void revoke_shouldReturn401_whenNoJwt() throws Exception {
+        var requestDto = deviceRevokeRequestDto();
+
+        mockMvc.perform(post(TestUri.REVOKE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void register_shouldReturnHttpError_whenServiceException() throws Exception {
         when(deviceRegistrationService.registerDevice(any(), any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(registerMockRequest(deviceRegisterRequestDto()))
@@ -112,7 +139,7 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void saveInviteTiken_shouldReturnHttpError_whenServiceException() throws Exception {
+    void saveInvite_shouldReturnHttpError_whenServiceException() throws Exception {
         when(deviceRegistrationService.saveInviteToken(any(), any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(saveInviteMockRequest(saveInviteRequestDto()))
@@ -121,7 +148,16 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void registerDevice_shouldReturn400_whenRequestFieldBlank() throws Exception {
+    void revoke_shouldReturnHttpError_whenServiceException() throws Exception {
+        when(deviceRevocationService.revokeDevice(any(), any())).thenThrow(new RuntimeException());
+
+        mockMvc.perform(revokeMockRequest(deviceRevokeRequestDto()))
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.detail", containsString("try again")));
+    }
+
+    @Test
+    void register_shouldReturn400_whenRequestFieldBlank() throws Exception {
         mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
                 "",
                 "a".repeat(44), Map.of(), UUID.randomUUID(), UUID.randomUUID(), "a".repeat(80)
@@ -143,7 +179,7 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void saveInviteToken_shouldReturn400_whenRequestFieldBlank() throws Exception {
+    void saveInvite_shouldReturn400_whenRequestFieldBlank() throws Exception {
         mockMvc.perform(saveInviteMockRequest(new SaveInviteRequestDto(
                 UUID.randomUUID(), UUID.randomUUID(),
                 "",
@@ -159,7 +195,16 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void registerDevice_shouldReturn201AndCallService() throws Exception {
+    void revoke_shouldReturn400_whenRequestFieldBlank() throws Exception {
+        mockMvc.perform(revokeMockRequest(new DeviceRevokeRequestDto(
+                UUID.randomUUID(), UUID.randomUUID(), true, 1, UUID.randomUUID(),
+                ""
+            )))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void register_shouldReturn201AndCallService() throws Exception {
         var requestDto = deviceRegisterRequestDto();
         mockMvc.perform(post(TestUri.REGISTER_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                     .buildMockMvcJwt()
@@ -172,7 +217,7 @@ public class DeviceControllerTest {
     }
 
     @Test
-    void saveInviteToken_shouldReturn201AndCallService() throws Exception {
+    void saveInvite_shouldReturn201AndCallService() throws Exception {
         var requestDto = saveInviteRequestDto();
         mockMvc.perform(post(TestUri.INVITE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                     .buildMockMvcJwt()
@@ -182,6 +227,19 @@ public class DeviceControllerTest {
             .andExpect(status().isCreated());
 
         verify(deviceRegistrationService).saveInviteToken(any(Jwt.class), eq(requestDto));
+    }
+
+    @Test
+    void revoke_shouldReturn200AndCallService() throws Exception {
+        var requestDto = deviceRevokeRequestDto();
+        mockMvc.perform(post(TestUri.REVOKE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+                    .buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("devices.revoke")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isOk());
+
+        verify(deviceRevocationService).revokeDevice(any(Jwt.class), eq(requestDto));
     }
 
     // helpers
@@ -198,6 +256,14 @@ public class DeviceControllerTest {
         return post(TestUri.INVITE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                 .buildMockMvcJwt()
                 .authorities(new SimpleGrantedAuthority("devices.invite")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(requestDto));
+    }
+
+    MockHttpServletRequestBuilder revokeMockRequest(DeviceRevokeRequestDto requestDto) throws Exception {
+        return post(TestUri.REVOKE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+                .buildMockMvcJwt()
+                .authorities(new SimpleGrantedAuthority("devices.revoke")))
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(requestDto));
     }
@@ -220,6 +286,17 @@ public class DeviceControllerTest {
             "a".repeat(32),
             1,
             DeviceType.BROWSER,
+            UUID.randomUUID(),
+            "a".repeat(80)
+        );
+    }
+
+    public static DeviceRevokeRequestDto deviceRevokeRequestDto() {
+        return new DeviceRevokeRequestDto(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            true,
+            3,
             UUID.randomUUID(),
             "a".repeat(80)
         );

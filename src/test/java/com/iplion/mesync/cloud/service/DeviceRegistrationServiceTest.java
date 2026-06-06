@@ -6,7 +6,7 @@ import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
-import com.iplion.mesync.cloud.error.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
