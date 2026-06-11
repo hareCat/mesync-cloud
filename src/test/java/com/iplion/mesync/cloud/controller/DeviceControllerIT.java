@@ -307,7 +307,6 @@ class DeviceControllerIT extends BaseIT {
             TestContext context = TestDataFactory.prepareContext(keyPair);
             byte[] payload = new SaveInviteAuthRequest(
                 null,
-                null,
                 context.nonce,
                 context.devicePublicId,
                 context.inviteToken,
@@ -323,7 +322,6 @@ class DeviceControllerIT extends BaseIT {
             TestContext context = TestDataFactory.prepareContext(keyPair);
             byte[] payload = new RegistrationAuthRequest(
                 null,
-                null,
                 context.nonce,
                 context.base64PublicKey,
                 context.inviteToken
@@ -337,7 +335,6 @@ class DeviceControllerIT extends BaseIT {
             KeyPair keyPair = TestCrypto.generateKeyPair();
             TestContext context = TestDataFactory.prepareContext(keyPair);
             byte[] payload = new DeviceRevokeAuthRequest(
-                null,
                 null,
                 context.nonce,
                 context.devicePublicId,

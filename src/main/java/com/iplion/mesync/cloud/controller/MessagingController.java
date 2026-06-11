@@ -9,8 +9,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,19 +25,17 @@ public class MessagingController {
     @PreAuthorize("hasAuthority('messages.publish')")
     @ResponseStatus(HttpStatus.CREATED)
     public MessagePublishResponseDto publish(
-        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody MessagePublishRequestDto request
     ) {
-        return messagingService.publish(jwt, request);
+        return messagingService.publish(request);
     }
 
     @PostMapping("/sync")
     @PreAuthorize("hasAuthority('messages.read')")
     public MessageSyncResponseDto sync(
-        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody MessageSyncRequestDto request
     ) {
-        return messagingService.sync(jwt, request);
+        return messagingService.sync(request);
     }
 
 }

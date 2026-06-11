@@ -2,12 +2,10 @@ package com.iplion.mesync.cloud.security.auth;
 
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.UUID;
 
 public record SaveInviteAuthRequest(
-    Jwt jwt,
     String base64Signature,
     UUID nonce,
     UUID devicePublicId,
@@ -29,9 +27,8 @@ public record SaveInviteAuthRequest(
         );
     }
 
-    public static SaveInviteAuthRequest from(Jwt jwt, SaveInviteRequestDto request) {
+    public static SaveInviteAuthRequest from(SaveInviteRequestDto request) {
         return new SaveInviteAuthRequest(
-            jwt,
             request.base64Signature(),
             request.nonce(),
             request.devicePublicId(),

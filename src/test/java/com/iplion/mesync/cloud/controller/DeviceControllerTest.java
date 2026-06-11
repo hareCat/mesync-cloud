@@ -17,7 +17,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -131,7 +130,7 @@ public class DeviceControllerTest {
 
     @Test
     void register_shouldReturnHttpError_whenServiceException() throws Exception {
-        when(deviceRegistrationService.registerDevice(any(), any())).thenThrow(new RuntimeException());
+        when(deviceRegistrationService.registerDevice(any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(registerMockRequest(deviceRegisterRequestDto()))
             .andExpect(status().isInternalServerError())
@@ -140,7 +139,7 @@ public class DeviceControllerTest {
 
     @Test
     void saveInvite_shouldReturnHttpError_whenServiceException() throws Exception {
-        when(deviceRegistrationService.saveInviteToken(any(), any())).thenThrow(new RuntimeException());
+        when(deviceRegistrationService.saveInviteToken(any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(saveInviteMockRequest(saveInviteRequestDto()))
             .andExpect(status().isInternalServerError())
@@ -149,7 +148,7 @@ public class DeviceControllerTest {
 
     @Test
     void revoke_shouldReturnHttpError_whenServiceException() throws Exception {
-        when(deviceRevocationService.revokeDevice(any(), any())).thenThrow(new RuntimeException());
+        when(deviceRevocationService.revokeDevice(any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(revokeMockRequest(deviceRevokeRequestDto()))
             .andExpect(status().isInternalServerError())
@@ -213,7 +212,7 @@ public class DeviceControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated());
 
-        verify(deviceRegistrationService).registerDevice(any(Jwt.class), eq(requestDto));
+        verify(deviceRegistrationService).registerDevice(eq(requestDto));
     }
 
     @Test
@@ -226,7 +225,7 @@ public class DeviceControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated());
 
-        verify(deviceRegistrationService).saveInviteToken(any(Jwt.class), eq(requestDto));
+        verify(deviceRegistrationService).saveInviteToken(eq(requestDto));
     }
 
     @Test
@@ -239,7 +238,7 @@ public class DeviceControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isOk());
 
-        verify(deviceRevocationService).revokeDevice(any(Jwt.class), eq(requestDto));
+        verify(deviceRevocationService).revokeDevice(eq(requestDto));
     }
 
     // helpers

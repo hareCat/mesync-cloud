@@ -16,7 +16,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -98,7 +97,7 @@ public class MessagingControllerTest {
 
     @Test
     void publish_shouldReturnHttpError_whenServiceException() throws Exception {
-        when(messagingService.publish(any(), any())).thenThrow(new RuntimeException());
+        when(messagingService.publish(any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(publishMockRequest(messagePublishRequestDto()))
             .andExpect(status().isInternalServerError())
@@ -107,7 +106,7 @@ public class MessagingControllerTest {
 
     @Test
     void sync_shouldReturnHttpError_whenServiceException() throws Exception {
-        when(messagingService.sync(any(), any())).thenThrow(new RuntimeException());
+        when(messagingService.sync(any())).thenThrow(new RuntimeException());
 
         mockMvc.perform(syncMockRequest(messageSyncRequestDto()))
             .andExpect(status().isInternalServerError())
@@ -161,7 +160,7 @@ public class MessagingControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isCreated());
 
-        verify(messagingService).publish(any(Jwt.class), eq(requestDto));
+        verify(messagingService).publish(eq(requestDto));
     }
 
     @Test
@@ -174,7 +173,7 @@ public class MessagingControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isOk());
 
-        verify(messagingService).sync(any(Jwt.class), eq(requestDto));
+        verify(messagingService).sync(eq(requestDto));
     }
 
     // helpers

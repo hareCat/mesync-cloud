@@ -2,12 +2,10 @@ package com.iplion.mesync.cloud.security.auth;
 
 import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.UUID;
 
 public record DeviceRevokeAuthRequest(
-    Jwt jwt,
     String base64Signature,
     UUID nonce,
     UUID devicePublicId,
@@ -27,9 +25,8 @@ public record DeviceRevokeAuthRequest(
         );
     }
 
-    public static DeviceRevokeAuthRequest from(Jwt jwt, DeviceRevokeRequestDto request) {
+    public static DeviceRevokeAuthRequest from(DeviceRevokeRequestDto request) {
         return new DeviceRevokeAuthRequest(
-            jwt,
             request.base64Signature(),
             request.nonce(),
             request.devicePublicId(),

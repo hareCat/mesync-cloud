@@ -8,8 +8,6 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
-import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;
@@ -18,6 +16,8 @@ import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +28,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.security.PublicKey;
 import java.time.Instant;
@@ -72,7 +71,7 @@ class MessagingServiceTest {
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenReturn(message);
 
-        var result = messagingService.publish(mock(Jwt.class), request);
+        var result = messagingService.publish(request);
 
         ArgumentCaptor<Message> savedMessageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageRepository).save(savedMessageCaptor.capture());
@@ -104,7 +103,7 @@ class MessagingServiceTest {
 
         when(authService.verifyMessagingRequest(any())).thenReturn(authContext());
 
-        assertThatThrownBy(() -> messagingService.publish(mock(Jwt.class), request))
+        assertThatThrownBy(() -> messagingService.publish(request))
             .isInstanceOf(MessagingException.class)
             .hasCauseInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("ciphertext");
@@ -122,7 +121,7 @@ class MessagingServiceTest {
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
 
-        assertThatThrownBy(() -> messagingService.publish(mock(Jwt.class), messagePublishRequestDto()))
+        assertThatThrownBy(() -> messagingService.publish(messagePublishRequestDto()))
             .isInstanceOf(MessagingException.class)
             .hasCauseInstanceOf(DataIntegrityViolationException.class)
             .hasMessageContaining("saving");
@@ -140,7 +139,7 @@ class MessagingServiceTest {
         when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
-        var result = messagingService.sync(mock(Jwt.class), request);
+        var result = messagingService.sync(request);
 
         ArgumentCaptor<Long> captorUserId = ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<Long> captorDeviceId = ArgumentCaptor.forClass(Long.class);
@@ -178,7 +177,7 @@ class MessagingServiceTest {
         when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
-        var result = messagingService.sync(mock(Jwt.class), request);
+        var result = messagingService.sync(request);
 
         ArgumentCaptor<Pageable> captorPageable = ArgumentCaptor.forClass(Pageable.class);
         verify(messageRepository).findNextAfterIdByUserExcludingDevice(
@@ -199,7 +198,7 @@ class MessagingServiceTest {
         when(authService.verifyMessagingRequest(any()))
             .thenThrow(AuthException.wrongRequestData("bad", null));
 
-        assertThatThrownBy(() -> messagingService.sync(mock(Jwt.class), request))
+        assertThatThrownBy(() -> messagingService.sync(request))
             .isInstanceOf(AuthException.class)
             .hasMessageContaining("bad");
     }

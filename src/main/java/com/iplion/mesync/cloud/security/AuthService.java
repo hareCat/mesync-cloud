@@ -79,7 +79,7 @@ public class AuthService {
         AuthPipelineContext<T> context = new AuthPipelineContext<>(request);
 
         try {
-            JwtUserData jwtUserData = JwtUtils.extractUserData(request.jwt());
+            JwtUserData jwtUserData = JwtUtils.extractUserData(SecurityUtils.getJwtFromSecurityContext());
             context.setJwtUserData(jwtUserData);
             context.setSecuritySubjectId(jwtUserData.authId());
         } catch (InvalidTokenException e) {

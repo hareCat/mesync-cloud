@@ -4,18 +4,17 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRevokeResponseDto;
 import com.iplion.mesync.cloud.entity.Device;
-import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.error.api.DeviceAlreadyRevokedException;
+import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
-import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +32,8 @@ public class DeviceRevocationService {
     private final UserService userService;
 
     @Transactional
-    public DeviceRevokeResponseDto revokeDevice(Jwt jwt, DeviceRevokeRequestDto request) {
-        AuthData authData = authService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(jwt, request));
+    public DeviceRevokeResponseDto revokeDevice(DeviceRevokeRequestDto request) {
+        AuthData authData = authService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(request));
 
         Device targetDevice = deviceRepository.findByUserIdAndPublicId(
                 authData.userAuthData().id(),

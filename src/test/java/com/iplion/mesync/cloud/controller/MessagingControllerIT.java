@@ -203,7 +203,6 @@ class MessagingControllerIT extends BaseIT {
             TestContext context = TestDataFactory.createContext(keyPair, userRepository, deviceRepository);
             byte[] payload = new MessagePublishAuthRequest(
                 null,
-                null,
                 context.nonce,
                 context.device.getPublicId(),
                 context.messageId,
@@ -242,7 +241,6 @@ class MessagingControllerIT extends BaseIT {
             KeyPair keyPair = TestCrypto.generateKeyPair();
             TestContext context = TestDataFactory.createContext(keyPair, userRepository, deviceRepository);
             byte[] payload = new MessageSyncAuthRequest(
-                null,
                 null,
                 context.nonce,
                 context.device.getPublicId(),

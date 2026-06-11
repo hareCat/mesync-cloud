@@ -215,7 +215,6 @@ class TtlIT extends BaseIT {
 
         byte[] payload = new SaveInviteAuthRequest(
             null,
-            null,
             nonce,
             context.device.getPublicId(),
             inviteToken,
@@ -238,7 +237,6 @@ class TtlIT extends BaseIT {
         long lastMessageId = 0L;
         int limit = 100;
         byte[] payload = new MessageSyncAuthRequest(
-            null,
             null,
             nonce,
             context.device.getPublicId(),

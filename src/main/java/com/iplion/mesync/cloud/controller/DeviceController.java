@@ -12,8 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,29 +29,26 @@ public class DeviceController {
     @PreAuthorize("hasAuthority('messages.read')")
     @ResponseStatus(HttpStatus.CREATED)
     public DeviceRegisterResponseDto register(
-        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody DeviceRegisterRequestDto request
     ) {
-        return deviceRegistrationService.registerDevice(jwt, request);
+        return deviceRegistrationService.registerDevice(request);
     }
 
     @PostMapping("/invite")
     @PreAuthorize("hasAuthority('devices.invite')")
     @ResponseStatus(HttpStatus.CREATED)
     public SaveInviteResponseDto saveInvite(
-        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody SaveInviteRequestDto request
     ) {
-        return deviceRegistrationService.saveInviteToken(jwt, request);
+        return deviceRegistrationService.saveInviteToken(request);
     }
 
     @PostMapping("/revoke")
     @PreAuthorize("hasAuthority('devices.revoke')")
     public DeviceRevokeResponseDto revoke(
-        @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody DeviceRevokeRequestDto request
     ) {
-        return deviceRevocationService.revokeDevice(jwt, request);
+        return deviceRevocationService.revokeDevice(request);
     }
 
 }

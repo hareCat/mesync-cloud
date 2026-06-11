@@ -9,7 +9,6 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
-import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -17,9 +16,9 @@ import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,9 +38,9 @@ public class DeviceRegistrationService {
     private final AuthService authService;
     private final KeySignatureService keySignatureService;
 
-    public SaveInviteResponseDto saveInviteToken(Jwt jwt, SaveInviteRequestDto request) {
+    public SaveInviteResponseDto saveInviteToken(SaveInviteRequestDto request) {
         AuthData authData = authService.verifyDeviceManagerRequest(
-            SaveInviteAuthRequest.from(jwt, request)
+            SaveInviteAuthRequest.from(request)
         );
 
         if (authData.userAuthData().keyVersion() > request.keyVersion()) {
@@ -67,9 +66,9 @@ public class DeviceRegistrationService {
     }
 
     @Transactional
-    public DeviceRegisterResponseDto registerDevice(Jwt jwt, DeviceRegisterRequestDto request) {
+    public DeviceRegisterResponseDto registerDevice(DeviceRegisterRequestDto request) {
         RegistrationAuthResult authResult = authService.verifyRegistrationRequest(
-            RegistrationAuthRequest.from(jwt, request)
+            RegistrationAuthRequest.from(request)
         );
 
         UUID authId = authResult.jwtUserData().authId();

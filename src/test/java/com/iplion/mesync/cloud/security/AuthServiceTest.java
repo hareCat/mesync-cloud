@@ -1,19 +1,19 @@
 package com.iplion.mesync.cloud.security;
 
 import com.iplion.mesync.cloud.config.AppProperties;
-import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
-import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
+import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
-import com.iplion.mesync.cloud.security.cache.UserAuthData;
-import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.UserAuthData;
+import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +22,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
@@ -87,12 +89,13 @@ public class AuthServiceTest {
         );
 
         testContext = createContext();
+
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(testContext.jwt));
     }
 
     @Test
     public void verifyRegistrationRequest_shouldReturnResult_whenRequestValid() {
         RegistrationAuthRequest request = new RegistrationAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.base64PublicKey,
@@ -120,7 +123,6 @@ public class AuthServiceTest {
     @Test
     public void verifyDeviceManagerRequest_shouldReturnResult_whenRequestValid() {
         var request = new SaveInviteAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.devicePublicId(),
@@ -149,10 +151,9 @@ public class AuthServiceTest {
 
     @Test
     public void verifyRegistrationRequest_shouldThrow_whenJwtInvalid() {
-        Jwt brokenJwt = mock(Jwt.class);
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(mock(Jwt.class)));
 
         var request = new RegistrationAuthRequest(
-            brokenJwt,
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.base64PublicKey(),
@@ -169,7 +170,6 @@ public class AuthServiceTest {
     @Test
     void verifyDeviceManagerRequest_shouldThrow_whenOwnershipMismatch() {
         var request = new SaveInviteAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             UUID.randomUUID(),
             testContext.devicePublicId(),
@@ -205,7 +205,6 @@ public class AuthServiceTest {
     @Test
     void verifyMessagingRequest_shouldReturnDeviceAuthData_whenRequestValid() {
         var request = new TestDeviceAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.devicePublicId()
@@ -234,7 +233,6 @@ public class AuthServiceTest {
     @Test
     void verifyMessagingRequest_shouldThrow_whenRequestDeviceTypeMismatch() {
         var request = new TestDeviceAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.devicePublicId()
@@ -269,14 +267,12 @@ public class AuthServiceTest {
         UUID firstNonce = UUID.randomUUID();
         UUID secondNonce = UUID.randomUUID();
         var firstRequest = new RegistrationAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             firstNonce,
             testContext.base64PublicKey,
             UUID.randomUUID()
         );
         var secondRequest = new RegistrationAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             secondNonce,
             testContext.base64PublicKey,
@@ -308,13 +304,11 @@ public class AuthServiceTest {
         UUID firstNonce = UUID.randomUUID();
         UUID secondNonce = UUID.randomUUID();
         var firstRequest = new TestDeviceAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             firstNonce,
             testContext.devicePublicId()
         );
         var secondRequest = new TestDeviceAuthRequest(
-            testContext.jwt(),
             testContext.base64Signature(),
             secondNonce,
             testContext.devicePublicId()
@@ -394,7 +388,6 @@ public class AuthServiceTest {
     }
 
     private record TestDeviceAuthRequest(
-        Jwt jwt,
         String base64Signature,
         UUID nonce,
         UUID devicePublicId

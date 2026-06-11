@@ -7,7 +7,6 @@ import com.iplion.mesync.cloud.controller.dto.MessageSyncResponseDto;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
-import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.model.SyncMessageDto;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
@@ -15,11 +14,11 @@ import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.MessagePublishAuthRequest;
 import com.iplion.mesync.cloud.security.auth.MessageSyncAuthRequest;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,9 +38,9 @@ public class MessagingService {
     private static final int MAX_MESSAGES_PER_SYNC_REQUEST = 20;
 
     @Transactional
-    public MessagePublishResponseDto publish(Jwt jwt, MessagePublishRequestDto request) {
+    public MessagePublishResponseDto publish(MessagePublishRequestDto request) {
         AuthData authData = authService.verifyMessagingRequest(
-            MessagePublishAuthRequest.from(jwt, request)
+            MessagePublishAuthRequest.from(request)
         );
 
         Message message;
@@ -75,9 +74,9 @@ public class MessagingService {
         return new MessagePublishResponseDto(message.getPublicId());
     }
 
-    public MessageSyncResponseDto sync(Jwt jwt, MessageSyncRequestDto request) {
+    public MessageSyncResponseDto sync(MessageSyncRequestDto request) {
         AuthData authData = authService.verifyMessagingRequest(
-            MessageSyncAuthRequest.from(jwt, request)
+            MessageSyncAuthRequest.from(request)
         );
 
         List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(

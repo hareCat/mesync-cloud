@@ -8,11 +8,11 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.api.DeviceAlreadyRevokedException;
 import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
-import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +21,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -31,7 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -67,7 +65,7 @@ class DeviceRevocationServiceTest {
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
         when(userRepository.getReferenceById(authData.userAuthData().id())).thenReturn(user);
 
-        DeviceRevokeResponseDto responseDto = deviceRevocationService.revokeDevice(mock(Jwt.class), request);
+        DeviceRevokeResponseDto responseDto = deviceRevocationService.revokeDevice(request);
 
         assertThat(targetDevice.getRevokedAt()).isNotNull();
 
@@ -98,7 +96,7 @@ class DeviceRevocationServiceTest {
         when(authService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
 
-        DeviceRevokeResponseDto responseDto = deviceRevocationService.revokeDevice(mock(Jwt.class), request);
+        DeviceRevokeResponseDto responseDto = deviceRevocationService.revokeDevice(request);
 
         assertThat(targetDevice.getRevokedAt()).isNotNull();
 
@@ -125,7 +123,7 @@ class DeviceRevocationServiceTest {
         when(authService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> deviceRevocationService.revokeDevice(mock(Jwt.class), request))
+        assertThatThrownBy(() -> deviceRevocationService.revokeDevice(request))
             .isInstanceOf(DeviceNotFoundException.class)
             .hasMessageContaining("found");
 
@@ -144,7 +142,7 @@ class DeviceRevocationServiceTest {
         when(authService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
 
-        assertThatThrownBy(() -> deviceRevocationService.revokeDevice(mock(Jwt.class), request))
+        assertThatThrownBy(() -> deviceRevocationService.revokeDevice(request))
             .isInstanceOf(DeviceAlreadyRevokedException.class)
             .hasMessageContaining("already");
 

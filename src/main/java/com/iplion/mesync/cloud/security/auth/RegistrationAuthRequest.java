@@ -2,12 +2,10 @@ package com.iplion.mesync.cloud.security.auth;
 
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.UUID;
 
 public record RegistrationAuthRequest(
-    Jwt jwt,
     String base64Signature,
     UUID nonce,
 
@@ -25,9 +23,8 @@ public record RegistrationAuthRequest(
         );
     }
 
-    public static RegistrationAuthRequest from(Jwt jwt, DeviceRegisterRequestDto request) {
+    public static RegistrationAuthRequest from(DeviceRegisterRequestDto request) {
         return new RegistrationAuthRequest(
-            jwt,
             request.base64Signature(),
             request.nonce(),
             request.base64PublicKey(),

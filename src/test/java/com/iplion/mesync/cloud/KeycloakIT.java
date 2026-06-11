@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -110,10 +109,7 @@ public class KeycloakIT {
         registerDevice(getAccessToken(DeviceType.MOBILE), deviceRegisterRequestDto())
             .andExpect(status().isCreated());
 
-        verify(deviceRegistrationService).registerDevice(
-            any(Jwt.class),
-            any(DeviceRegisterRequestDto.class)
-        );
+        verify(deviceRegistrationService).registerDevice(any(DeviceRegisterRequestDto.class));
     }
 
     @Test
