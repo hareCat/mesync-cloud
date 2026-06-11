@@ -84,6 +84,14 @@ public class AuthException extends ApiException {
         );
     }
 
+    public static AuthException securityContextError(String internalMessage) {
+        return new AuthException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            internalMessage,
+            "Authentication context error"
+        );
+    }
+
     public static AuthException deviceTypeMismatch(
         UUID authId,
         UUID devicePublicId,

@@ -79,7 +79,7 @@ public class AuthService {
         AuthPipelineContext<T> context = new AuthPipelineContext<>(request);
 
         try {
-            JwtUserData jwtUserData = JwtUtils.extractUserData(SecurityUtils.getJwtFromSecurityContext());
+            JwtUserData jwtUserData = JwtUtils.extractUserData(SecurityContextUtils.getJwt());
             context.setJwtUserData(jwtUserData);
             context.setSecuritySubjectId(jwtUserData.authId());
         } catch (InvalidTokenException e) {
@@ -94,13 +94,17 @@ public class AuthService {
     }
 
     private <T extends DeviceAuthRequest> void getDeviceAuthData(AuthPipelineContext<T> context) {
-        UUID devicePublicId = context.getRequest().devicePublicId();
         AuthData authData;
         try {
-            authData = authContextService.getAuthContext(context.getJwtUserData().authId(), devicePublicId);
+            authData = authContextService.getAuthContext(
+                context.getJwtUserData().authId(),
+                context.getRequest().devicePublicId()
+            );
         } catch (DeviceException e) {
             throw AuthException.deviceNotFound(context.getJwtUserData().authId(), e);
         }
+
+        SecurityContextUtils.setAuthData(authData);
 
         context.setSecuritySubjectId(authData.deviceAuthData().publicId());
         context.setAuthData(authData);

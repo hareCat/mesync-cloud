@@ -13,8 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtUtilsTest {
-    private final UUID TEST_SUBJECT_UUID = UUID.randomUUID();
-    private final DeviceType TEST_DEVICE_TYPE = DeviceType.BROWSER;
+    private static final UUID TEST_SUBJECT_UUID = UUID.randomUUID();
+    private static final DeviceType TEST_DEVICE_TYPE = DeviceType.BROWSER;
 
     @Test
     void extractSubjectUuid_returnsParsedUuid() {

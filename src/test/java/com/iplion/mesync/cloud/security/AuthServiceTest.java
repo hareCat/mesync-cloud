@@ -16,6 +16,7 @@ import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -93,6 +94,11 @@ public class AuthServiceTest {
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(testContext.jwt));
     }
 
+    @AfterEach
+    void tearDownSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     public void verifyRegistrationRequest_shouldReturnResult_whenRequestValid() {
         RegistrationAuthRequest request = new RegistrationAuthRequest(
@@ -147,6 +153,7 @@ public class AuthServiceTest {
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
         assertThat(result).isEqualTo(testContext.authData());
+        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(result);
     }
 
     @Test
@@ -226,8 +233,7 @@ public class AuthServiceTest {
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
         assertThat(result).isEqualTo(testContext.authData());
-
-
+        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(result);
     }
 
     @Test
