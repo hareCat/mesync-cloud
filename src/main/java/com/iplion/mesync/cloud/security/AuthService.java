@@ -1,13 +1,12 @@
 package com.iplion.mesync.cloud.security;
 
 import com.iplion.mesync.cloud.config.AppProperties;
-import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.security.auth.AuthPipelineContext;
@@ -15,10 +14,10 @@ import com.iplion.mesync.cloud.security.auth.AuthRequest;
 import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.RedisKeys;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
-import com.iplion.mesync.cloud.service.DeviceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,10 +29,10 @@ import java.util.function.Consumer;
 // TODO check request lastMessageId with saved device lastMessageId from caffeine
 @Service
 @RequiredArgsConstructor
-public class SecurityService {
+public class AuthService {
     private final RedisSecurityStore redisSecurityStore;
     private final KeySignatureService keySignatureService;
-    private final DeviceService deviceService;
+    private final AuthContextService authContextService;
 
     private final AppProperties appProperties;
 
@@ -50,7 +49,7 @@ public class SecurityService {
         );
     }
 
-    public <T extends DeviceAuthRequest> DeviceAuthData verifyDeviceManagerRequest(T request) {
+    public <T extends DeviceAuthRequest> AuthData verifyDeviceManagerRequest(T request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -58,10 +57,10 @@ public class SecurityService {
             this::verifySignature
         ));
 
-        return context.getDeviceAuthData();
+        return context.getAuthData();
     }
 
-    public <T extends DeviceAuthRequest> DeviceAuthData verifyMessagingRequest(T request) {
+    public <T extends DeviceAuthRequest> AuthData verifyMessagingRequest(T request) {
         var context = runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
@@ -70,7 +69,7 @@ public class SecurityService {
             this::verifySignature
         ));
 
-        return context.getDeviceAuthData();
+        return context.getAuthData();
     }
 
     private <T extends AuthRequest> AuthPipelineContext<T> runPipeline(
@@ -82,7 +81,7 @@ public class SecurityService {
         try {
             JwtUserData jwtUserData = JwtUtils.extractUserData(request.jwt());
             context.setJwtUserData(jwtUserData);
-            context.setSecuritySubjectId(jwtUserData.id());
+            context.setSecuritySubjectId(jwtUserData.authId());
         } catch (InvalidTokenException e) {
             throw AuthException.wrongRequestData("Wrong JWT token.", e);
         }
@@ -96,35 +95,35 @@ public class SecurityService {
 
     private <T extends DeviceAuthRequest> void getDeviceAuthData(AuthPipelineContext<T> context) {
         UUID devicePublicId = context.getRequest().devicePublicId();
-        DeviceAuthData deviceAuthData;
+        AuthData authData;
         try {
-            deviceAuthData = deviceService.getDeviceAuthData(devicePublicId);
+            authData = authContextService.getAuthContext(context.getJwtUserData().authId(), devicePublicId);
         } catch (DeviceException e) {
-            throw AuthException.deviceNotFound(context.getJwtUserData().id(), e);
+            throw AuthException.deviceNotFound(context.getJwtUserData().authId(), e);
         }
 
-        context.setSecuritySubjectId(deviceAuthData.devicePublicId());
-        context.setDeviceAuthData(deviceAuthData);
-        context.setPublicKey(deviceAuthData.publicKey());
+        context.setSecuritySubjectId(authData.deviceAuthData().publicId());
+        context.setAuthData(authData);
+        context.setPublicKey(authData.deviceAuthData().publicKey());
 
     }
 
     private void deviceTypeCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
         DeviceType jwtDeviceType = DeviceType.fromClientId(context.getJwtUserData().clientId());
-        DeviceAuthData deviceAuthData = context.getDeviceAuthData();
-        if (!jwtDeviceType.equals(deviceAuthData.deviceType())) {
+        AuthData authData = context.getAuthData();
+        if (!jwtDeviceType.equals(authData.deviceAuthData().deviceType())) {
             throw AuthException.deviceTypeMismatch(
-                deviceAuthData.userAuthId(),
-                deviceAuthData.devicePublicId(),
+                authData.userAuthData().authId(),
+                authData.deviceAuthData().publicId(),
                 jwtDeviceType,
-                deviceAuthData.deviceType()
+                authData.deviceAuthData().deviceType()
             );
         }
     }
 
     private void deviceOwnerCheck(AuthPipelineContext<? extends DeviceAuthRequest> context) {
-        UUID jwtAuthId = context.getJwtUserData().id();
-        UUID dbAuthId = context.getDeviceAuthData().userAuthId();
+        UUID jwtAuthId = context.getJwtUserData().authId();
+        UUID dbAuthId = context.getAuthData().userAuthData().authId();
         if (!dbAuthId.equals(jwtAuthId)) {
             throw AuthException.deviceOwnershipMismatch(
                 jwtAuthId,
@@ -136,7 +135,7 @@ public class SecurityService {
     private void registrationAuthRedisCheck(AuthPipelineContext<RegistrationAuthRequest> context) {
         var registrationProperties = appProperties.registration();
 
-        redisCheck(context.getJwtUserData().id(), subjectId -> redisSecurityStore.registrationSecurityCheck(
+        redisCheck(context.getJwtUserData().authId(), subjectId -> redisSecurityStore.registrationSecurityCheck(
             RedisKeys.registrationNonceKey(subjectId, context.getRequest().nonce()),
             RedisKeys.registrationRateLimitKey(subjectId),
             registrationProperties.nonceTtl(),

@@ -8,7 +8,8 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;
@@ -16,7 +17,8 @@ import com.iplion.mesync.cloud.model.SyncMessageDto;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.SecurityService;
+import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -52,7 +54,7 @@ class MessagingServiceTest {
     @Mock
     MessageRepository messageRepository;
     @Mock
-    SecurityService securityService;
+    AuthService authService;
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
 
@@ -61,11 +63,11 @@ class MessagingServiceTest {
 
     @Test
     void publish_shouldPublishNewMessage() {
-        DeviceAuthData deviceAuthData = deviceAuthData();
+        AuthData authData = authContext();
         Message message = message();
         MessagePublishRequestDto request = messagePublishRequestDto();
 
-        when(securityService.verifyMessagingRequest(any())).thenReturn(deviceAuthData);
+        when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenReturn(message);
@@ -79,8 +81,8 @@ class MessagingServiceTest {
         ArgumentCaptor<MessagePublishedEvent> eventCaptor = ArgumentCaptor.forClass(MessagePublishedEvent.class);
         verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
 
-        verify(userRepository).getReferenceById(deviceAuthData.userId());
-        verify(deviceRepository).getReferenceById(deviceAuthData.deviceId());
+        verify(userRepository).getReferenceById(authData.userAuthData().id());
+        verify(deviceRepository).getReferenceById(authData.deviceAuthData().id());
 
         assertThat(savedMessage.getPublicId()).isEqualTo(request.messagePublicId());
         assertThat(savedMessage.getAddress()).isEqualTo(request.address());
@@ -90,8 +92,8 @@ class MessagingServiceTest {
         assertThat(savedMessage.getKeyVersion()).isEqualTo(request.keyVersion());
         assertThat(savedMessage.getCiphertext()).isEqualTo(Base64.getDecoder().decode(request.base64Ciphertext()));
 
-        assertThat(eventCaptor.getValue().userId()).isEqualTo(deviceAuthData.userId());
-        assertThat(eventCaptor.getValue().excludeDeviceId()).isEqualTo(deviceAuthData.deviceId());
+        assertThat(eventCaptor.getValue().userId()).isEqualTo(authData.userAuthData().id());
+        assertThat(eventCaptor.getValue().excludeDeviceId()).isEqualTo(authData.deviceAuthData().id());
 
         assertThat(result.messagePublicId()).isEqualTo(message.getPublicId());
     }
@@ -100,7 +102,7 @@ class MessagingServiceTest {
     void publish_shouldThrow_whenCiphertextInvalid() {
         MessagePublishRequestDto request = messagePublishRequestDto("invalid  base64 !");
 
-        when(securityService.verifyMessagingRequest(any())).thenReturn(deviceAuthData());
+        when(authService.verifyMessagingRequest(any())).thenReturn(authContext());
 
         assertThatThrownBy(() -> messagingService.publish(mock(Jwt.class), request))
             .isInstanceOf(MessagingException.class)
@@ -115,7 +117,7 @@ class MessagingServiceTest {
 
     @Test
     void publish_shouldThrow_whenSavingMessageError() {
-        when(securityService.verifyMessagingRequest(any())).thenReturn(deviceAuthData());
+        when(authService.verifyMessagingRequest(any())).thenReturn(authContext());
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
@@ -128,14 +130,14 @@ class MessagingServiceTest {
 
     @Test
     void sync_shouldGetMessagesAfterId() {
-        DeviceAuthData deviceAuthData = deviceAuthData();
+        AuthData authData = authContext();
         int messagesRequestNum = 3;
         List<SyncMessageDto> messages = LongStream.rangeClosed(8L, 50L)
             .mapToObj(this::syncMessageDto)
             .toList();
         MessageSyncRequestDto request = messageSyncRequestDto(10L, messagesRequestNum);
 
-        when(securityService.verifyMessagingRequest(any())).thenReturn(deviceAuthData);
+        when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
         var result = messagingService.sync(mock(Jwt.class), request);
@@ -151,8 +153,8 @@ class MessagingServiceTest {
             captorPageable.capture()
         );
 
-        assertThat(captorUserId.getValue()).isEqualTo(deviceAuthData.userId());
-        assertThat(captorDeviceId.getValue()).isEqualTo(deviceAuthData.deviceId());
+        assertThat(captorUserId.getValue()).isEqualTo(authData.userAuthData().id());
+        assertThat(captorDeviceId.getValue()).isEqualTo(authData.deviceAuthData().id());
         assertThat(captorLastMessageId.getValue()).isEqualTo(request.lastMessageId());
 
         Pageable pageable = captorPageable.getValue();
@@ -165,7 +167,7 @@ class MessagingServiceTest {
 
     @Test
     void sync_shouldGetMessagesAfterIdWithMaxPerSyncLimit() {
-        DeviceAuthData deviceAuthData = deviceAuthData();
+        AuthData authData = authContext();
         int messagesRequestNum = 100;
         final int MAX_MESSAGES_PER_SYNC_REQUEST = 20;
         List<SyncMessageDto> messages = LongStream.rangeClosed(8L, 50L)
@@ -173,7 +175,7 @@ class MessagingServiceTest {
             .toList();
         MessageSyncRequestDto request = messageSyncRequestDto(10L, messagesRequestNum);
 
-        when(securityService.verifyMessagingRequest(any())).thenReturn(deviceAuthData);
+        when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
         var result = messagingService.sync(mock(Jwt.class), request);
@@ -194,7 +196,7 @@ class MessagingServiceTest {
     void sync_shouldThrow_whenAuthVerifyError() {
         MessageSyncRequestDto request = messageSyncRequestDto(0L, 10);
 
-        when(securityService.verifyMessagingRequest(any()))
+        when(authService.verifyMessagingRequest(any()))
             .thenThrow(AuthException.wrongRequestData("bad", null));
 
         assertThatThrownBy(() -> messagingService.sync(mock(Jwt.class), request))
@@ -233,15 +235,17 @@ class MessagingServiceTest {
         );
     }
 
-    private DeviceAuthData deviceAuthData() {
-        return new DeviceAuthData(
-            1L,
-            UUID.randomUUID(),
-            1L,
-            UUID.randomUUID(),
-            DeviceType.MOBILE,
-            mock(PublicKey.class),
-            2
+    private AuthData authContext() {
+        return new AuthData(
+            new UserAuthData(
+                1L, UUID.randomUUID(), 2
+            ),
+            new DeviceAuthData(
+                1L,
+                UUID.randomUUID(),
+                DeviceType.MOBILE,
+                mock(PublicKey.class)
+            )
         );
     }
 

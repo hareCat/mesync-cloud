@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record JwtUserData(
-    @NotNull UUID id,
+    @NotNull UUID authId,
     @NotNull String clientId,
     String email,
     boolean emailVerified

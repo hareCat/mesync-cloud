@@ -1,4 +1,4 @@
-package com.iplion.mesync.cloud.security.redis;
+package com.iplion.mesync.cloud.security.cache;
 
 import java.util.UUID;
 

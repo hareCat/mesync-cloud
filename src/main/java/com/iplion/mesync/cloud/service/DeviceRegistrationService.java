@@ -9,11 +9,11 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
-import com.iplion.mesync.cloud.security.SecurityService;
+import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
@@ -36,25 +36,25 @@ public class DeviceRegistrationService {
     private final UserService userService;
     private final InvitationService invitationService;
     private final DeviceService deviceService;
-    private final SecurityService securityService;
+    private final AuthService authService;
     private final KeySignatureService keySignatureService;
 
     public SaveInviteResponseDto saveInviteToken(Jwt jwt, SaveInviteRequestDto request) {
-        DeviceAuthData deviceAuthData = securityService.verifyDeviceManagerRequest(
+        AuthData authData = authService.verifyDeviceManagerRequest(
             SaveInviteAuthRequest.from(jwt, request)
         );
 
-        if (deviceAuthData.userKeyVersion() > request.keyVersion()) {
+        if (authData.userAuthData().keyVersion() > request.keyVersion()) {
             throw DeviceRegistrationException.masterKeyVersionMismatch(
-                deviceAuthData.userAuthId(),
-                deviceAuthData.devicePublicId(),
-                deviceAuthData.userKeyVersion(),
+                authData.userAuthData().id(),
+                authData.deviceAuthData().id(),
+                authData.userAuthData().keyVersion(),
                 request.keyVersion()
             );
         }
 
         Instant expiresAt = invitationService.createInvite(
-            deviceAuthData.userAuthId(),
+            authData.userAuthData().authId(),
             request.inviteToken(),
             request.encryptedMasterKey(),
             request.keyVersion(),
@@ -68,11 +68,11 @@ public class DeviceRegistrationService {
 
     @Transactional
     public DeviceRegisterResponseDto registerDevice(Jwt jwt, DeviceRegisterRequestDto request) {
-        RegistrationAuthResult authResult = securityService.verifyRegistrationRequest(
+        RegistrationAuthResult authResult = authService.verifyRegistrationRequest(
             RegistrationAuthRequest.from(jwt, request)
         );
 
-        UUID authId = authResult.jwtUserData().id();
+        UUID authId = authResult.jwtUserData().authId();
         DeviceType deviceType;
         try {
             deviceType = DeviceType.fromClientId(authResult.jwtUserData().clientId());
@@ -80,7 +80,7 @@ public class DeviceRegistrationService {
             throw DeviceRegistrationException.wrongRegisterData(
                 String.format("Invalid jwt clientId: %s, authId: %s",
                     authResult.jwtUserData().clientId(),
-                    authResult.jwtUserData().id()
+                    authResult.jwtUserData().authId()
                 ),
                 e
             );

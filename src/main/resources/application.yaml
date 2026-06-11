@@ -22,5 +22,12 @@ app:
     rate-limit-ttl: 60s
     attempts: 120
     nonce-ttl: 30s
-  revoke-ttl: 30d
+  revoke:
+    ttl: 30d
+  cache:
+    ttl: 12h
+    user-cache-size: 40_000
+    device-cache-size: 100_000
+
+
 

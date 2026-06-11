@@ -3,7 +3,7 @@ package com.iplion.mesync.cloud.repository;
 import com.iplion.mesync.cloud.config.PostgresContainerConfig;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.model.DeviceAuthProjection;
+import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
 import com.iplion.mesync.cloud.model.DeviceType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,7 @@ public class DeviceRepositoryTest {
     TestEntityManager em;
 
     @Test
-    void findAuthDataByPublicId_shouldReturnProjection_whenDeviceActive() {
+    void findAuthContextByPublicId_shouldReturnProjection_whenDeviceActive() {
         User user = TestDataFactory.user();
         em.persistAndFlush(user);
 
@@ -38,7 +38,7 @@ public class DeviceRepositoryTest {
 
         em.clear();
 
-        DeviceAuthProjection authData = deviceRepository.findAuthDataByPublicId(device.getPublicId())
+        AuthDataProjection authData = deviceRepository.findAuthContextByPublicId(device.getPublicId())
             .orElseThrow();
 
         assertThat(authData.getDevicePublicId()).isEqualTo(device.getPublicId());
@@ -49,7 +49,7 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void findAuthDataByPublicId_shouldReturnEmpty_whenDeviceRevoked() {
+    void findAuthContextByPublicId_shouldReturnEmpty_whenDeviceRevoked() {
         User user = TestDataFactory.user();
         em.persistAndFlush(user);
 
@@ -59,14 +59,14 @@ public class DeviceRepositoryTest {
 
         em.clear();
 
-        Optional<DeviceAuthProjection> authData = deviceRepository.findAuthDataByPublicId(device.getPublicId());
+        Optional<AuthDataProjection> authData = deviceRepository.findAuthContextByPublicId(device.getPublicId());
 
         assertThat(authData).isEmpty();
     }
 
     @Test
-    void findAuthDataByPublicId_shouldReturnEmpty_whenDeviceNotExists() {
-        Optional<DeviceAuthProjection> authData = deviceRepository.findAuthDataByPublicId(UUID.randomUUID());
+    void findAuthContextByPublicId_shouldReturnEmpty_whenDeviceNotExists() {
+        Optional<AuthDataProjection> authData = deviceRepository.findAuthContextByPublicId(UUID.randomUUID());
 
         assertThat(authData).isEmpty();
     }

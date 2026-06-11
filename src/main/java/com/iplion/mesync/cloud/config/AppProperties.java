@@ -13,7 +13,8 @@ import java.time.Duration;
 public record AppProperties(
     @Valid Registration registration,
     @Valid Auth auth,
-    @NotNull Duration revokeTtl
+    @Valid Revoke revoke,
+    @Valid Cache cache
 ) {
     public record Registration(
         @NotNull Duration inviteTtl,
@@ -28,6 +29,16 @@ public record AppProperties(
         @NotNull Duration nonceTtl,
         @NotNull Duration rateLimitTtl,
         @Min(1) int attempts
+    ) {}
+
+    public record Revoke(
+        @NotNull Duration ttl
+    ) {}
+
+    public record Cache(
+        @NotNull Duration ttl,
+        int userCacheSize,
+        int deviceCacheSize
     ) {}
 
 }

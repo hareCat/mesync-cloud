@@ -7,15 +7,17 @@ import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
-import com.iplion.mesync.cloud.security.SecurityService;
+import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,7 +59,7 @@ class DeviceRegistrationServiceTest {
     @Mock
     DeviceService deviceService;
     @Mock
-    SecurityService securityService;
+    AuthService authService;
     @Mock
     KeySignatureService keySignatureService;
 
@@ -68,17 +70,17 @@ class DeviceRegistrationServiceTest {
     void saveInviteToken_shouldSaveToken() {
         Instant expiredAt = Instant.now();
         Jwt jwt = mock(Jwt.class);
-        DeviceAuthData deviceAuthData = deviceAuthData();
+        AuthData authData = authContext();
 
         var request = saveInviteRequestDto();
 
-        when(securityService.verifyDeviceManagerRequest(any())).thenReturn(deviceAuthData);
+        when(authService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
 
         SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(jwt, request);
 
         ArgumentCaptor<SaveInviteAuthRequest> captor = ArgumentCaptor.forClass(SaveInviteAuthRequest.class);
-        verify(securityService).verifyDeviceManagerRequest(captor.capture());
+        verify(authService).verifyDeviceManagerRequest(captor.capture());
         SaveInviteAuthRequest authRequestData = captor.getValue();
 
         verify(invitationService).createInvite(
@@ -113,7 +115,7 @@ class DeviceRegistrationServiceTest {
             Base64.getEncoder().encodeToString(new byte[64])
         );
 
-        when(securityService.verifyDeviceManagerRequest(any())).thenReturn(deviceAuthData());
+        when(authService.verifyDeviceManagerRequest(any())).thenReturn(authContext());
 
         assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(mock(Jwt.class), request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
@@ -137,8 +139,8 @@ class DeviceRegistrationServiceTest {
             deviceType
         );
 
-        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(true);
+        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
             .thenReturn(deviceInviteData);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
@@ -147,7 +149,7 @@ class DeviceRegistrationServiceTest {
         DeviceRegisterResponseDto response = deviceRegistrationService.registerDevice(jwt, request);
 
         ArgumentCaptor<RegistrationAuthRequest> captor = ArgumentCaptor.forClass(RegistrationAuthRequest.class);
-        verify(securityService).verifyRegistrationRequest(captor.capture());
+        verify(authService).verifyRegistrationRequest(captor.capture());
         RegistrationAuthRequest authRequestData = captor.getValue();
 
         assertThat(authRequestData.jwt()).isEqualTo(jwt);
@@ -169,8 +171,8 @@ class DeviceRegistrationServiceTest {
         var request = deviceRegistrationRequest();
         var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(false);
+        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
         doNothing().when(deviceService).saveWithRetry(any());
 
@@ -189,8 +191,8 @@ class DeviceRegistrationServiceTest {
         var request = deviceRegistrationRequest();
         var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
-        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().id()))).thenReturn(false);
+        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(false);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
@@ -214,7 +216,7 @@ class DeviceRegistrationServiceTest {
         );
         var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
@@ -232,7 +234,7 @@ class DeviceRegistrationServiceTest {
         var request = deviceRegistrationRequest();
         var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenThrow(IllegalStateException.class);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(mock(Jwt.class), request))
@@ -252,7 +254,7 @@ class DeviceRegistrationServiceTest {
         var request = deviceRegistrationRequest();
         var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(securityService.verifyRegistrationRequest(any())).thenReturn(result);
+        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
         doThrow(DeviceException.class).when(deviceService).saveWithRetry(any());
 
@@ -313,15 +315,17 @@ class DeviceRegistrationServiceTest {
         );
     }
 
-    public DeviceAuthData deviceAuthData() {
-        return new DeviceAuthData(
-            1L,
-            UUID.randomUUID(),
-            1L,
-            UUID.randomUUID(),
-            DeviceType.MOBILE,
-            mock(PublicKey.class),
-            2
+    public AuthData authContext() {
+        return new AuthData(
+            new UserAuthData(
+                1L, UUID.randomUUID(), 2
+            ),
+            new DeviceAuthData(
+                1L,
+                UUID.randomUUID(),
+                DeviceType.MOBILE,
+                mock(PublicKey.class)
+            )
         );
     }
 }

@@ -7,12 +7,12 @@ import com.iplion.mesync.cloud.controller.dto.MessageSyncResponseDto;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.model.SyncMessageDto;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.SecurityService;
+import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.MessagePublishAuthRequest;
 import com.iplion.mesync.cloud.security.auth.MessageSyncAuthRequest;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MessagingService {
 
-    private final SecurityService securityService;
+    private final AuthService authService;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final DeviceRepository deviceRepository;
@@ -40,35 +40,35 @@ public class MessagingService {
 
     @Transactional
     public MessagePublishResponseDto publish(Jwt jwt, MessagePublishRequestDto request) {
-        DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(
+        AuthData authData = authService.verifyMessagingRequest(
             MessagePublishAuthRequest.from(jwt, request)
         );
 
         Message message;
         try {
-            message = messageRepository.save(buildMessage(request, deviceAuthData));
+            message = messageRepository.save(buildMessage(request, authData));
         } catch (IllegalArgumentException e) {
             throw MessagingException.cryptographyFailed(
                 String.format("Invalid base64 ciphertext. messagePublicId: %s, userId: %d, deviceId: %d",
                     request.messagePublicId(),
-                    deviceAuthData.userId(),
-                    deviceAuthData.deviceId()
+                    authData.userAuthData().id(),
+                    authData.deviceAuthData().id()
                 ), e
             );
         } catch (DataIntegrityViolationException e) {
             throw MessagingException.messageSaving(
                 String.format("Message saving error. messagePublicId: %s, userId: %d, deviceId: %d",
                     request.messagePublicId(),
-                    deviceAuthData.userId(),
-                    deviceAuthData.deviceId()
+                    authData.userAuthData().id(),
+                    authData.deviceAuthData().id()
                 ), e
             );
         }
 
         applicationEventPublisher.publishEvent(
             new MessagePublishedEvent(
-                deviceAuthData.userId(),
-                deviceAuthData.deviceId()
+                authData.userAuthData().id(),
+                authData.deviceAuthData().id()
             )
         );
 
@@ -76,13 +76,13 @@ public class MessagingService {
     }
 
     public MessageSyncResponseDto sync(Jwt jwt, MessageSyncRequestDto request) {
-        DeviceAuthData deviceAuthData = securityService.verifyMessagingRequest(
+        AuthData authData = authService.verifyMessagingRequest(
             MessageSyncAuthRequest.from(jwt, request)
         );
 
         List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(
-            deviceAuthData.userId(),
-            deviceAuthData.deviceId(),
+            authData.userAuthData().id(),
+            authData.deviceAuthData().id(),
             request.lastMessageId(),
             PageRequest.of(0, Math.min(MAX_MESSAGES_PER_SYNC_REQUEST, request.limit()))
         );
@@ -90,13 +90,13 @@ public class MessagingService {
         return new MessageSyncResponseDto(syncMessageDtos);
     }
 
-    private Message buildMessage(MessagePublishRequestDto request, DeviceAuthData deviceAuthData) {
+    private Message buildMessage(MessagePublishRequestDto request, AuthData authData) {
         byte[] ciphertext = Base64.getDecoder().decode(request.base64Ciphertext());
 
         Message message = new Message();
         message.setPublicId(request.messagePublicId());
-        message.setUser(userRepository.getReferenceById(deviceAuthData.userId()));
-        message.setDevice(deviceRepository.getReferenceById(deviceAuthData.deviceId()));
+        message.setUser(userRepository.getReferenceById(authData.userAuthData().id()));
+        message.setDevice(deviceRepository.getReferenceById(authData.deviceAuthData().id()));
         message.setAddress(request.address());
         message.setMessageType(request.messageType());
         message.setDirection(request.direction());

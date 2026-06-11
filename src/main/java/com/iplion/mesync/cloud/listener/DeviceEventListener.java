@@ -3,8 +3,8 @@ package com.iplion.mesync.cloud.listener;
 import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.RedisKeys;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,7 +24,7 @@ public class DeviceEventListener {
             redisSecurityStore.set(
                 RedisKeys.authDeviceRevokedKey(event.targetDevicePublicId()),
                 true,
-                appProperties.revokeTtl()
+                appProperties.revoke().ttl()
             );
         } catch (RedisOperationException e) {
             log.warn(

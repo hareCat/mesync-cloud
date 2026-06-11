@@ -5,8 +5,8 @@ import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.RedisKeys;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

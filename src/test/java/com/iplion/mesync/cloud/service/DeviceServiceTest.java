@@ -34,9 +34,7 @@ class DeviceServiceTest {
     @BeforeEach
     void setUp() {
         deviceService = new DeviceService(
-            null,
             deviceRepository,
-            null,
             new ObjectMapper()
         );
     }

@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.repository;
 
 import com.iplion.mesync.cloud.entity.Device;
-import com.iplion.mesync.cloud.model.DeviceAuthProjection;
+import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -29,7 +29,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
             where d.publicId = :devicePublicId
               and d.revokedAt is null
         """)
-    Optional<DeviceAuthProjection> findAuthDataByPublicId(UUID devicePublicId);
+    Optional<AuthDataProjection> findAuthContextByPublicId(UUID devicePublicId);
 
     @Query("""
             select d

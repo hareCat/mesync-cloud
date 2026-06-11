@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.security.auth;
 
-import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.JwtUserData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import lombok.Data;
 
 import java.security.PublicKey;
@@ -13,6 +13,5 @@ public class AuthPipelineContext<T extends AuthRequest> {
     JwtUserData jwtUserData;
     UUID securitySubjectId;
     PublicKey publicKey;
-    DeviceAuthData deviceAuthData;
-
+    AuthData authData;
 }

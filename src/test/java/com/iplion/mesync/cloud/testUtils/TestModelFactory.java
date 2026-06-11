@@ -3,10 +3,12 @@ package com.iplion.mesync.cloud.testUtils;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.UserAuthData;
 
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -36,15 +38,15 @@ public final class TestModelFactory {
         return user;
     }
 
-    public static DeviceAuthData deviceAuthData() throws NoSuchAlgorithmException {
-        return new DeviceAuthData(
-            1L,
-            UUID.randomUUID(),
-            1L,
-            UUID.randomUUID(),
-            DEVICE_TYPE,
-            TestCrypto.generateKeyPair().getPublic(),
-            MASTER_KEY_VERSION
+    public static AuthData authContext() throws NoSuchAlgorithmException {
+        return new AuthData(
+            new UserAuthData(1L, UUID.randomUUID(), MASTER_KEY_VERSION),
+            new DeviceAuthData(
+                1L,
+                UUID.randomUUID(),
+                DEVICE_TYPE,
+                TestCrypto.generateKeyPair().getPublic()
+            )
         );
     }
 

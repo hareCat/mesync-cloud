@@ -65,7 +65,7 @@ class JwtUtilsTest {
 
         JwtUserData result = JwtUtils.extractUserData(jwt);
 
-        assertThat(result.id()).isEqualTo(TEST_SUBJECT_UUID);
+        assertThat(result.authId()).isEqualTo(TEST_SUBJECT_UUID);
         assertThat(result.clientId()).isEqualTo(TEST_DEVICE_TYPE.getClientId());
         assertThat(result.email()).isEqualTo(normalizedEmail);
         assertThat(result.emailVerified()).isTrue();

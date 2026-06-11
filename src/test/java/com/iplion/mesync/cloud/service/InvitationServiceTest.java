@@ -3,8 +3,8 @@ package com.iplion.mesync.cloud.service;
 import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.RedisOperationException;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.RedisKeys;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +40,7 @@ public class InvitationServiceTest {
             Duration.ofSeconds(30),
             10
         ),
+        null,
         null,
         null
     );

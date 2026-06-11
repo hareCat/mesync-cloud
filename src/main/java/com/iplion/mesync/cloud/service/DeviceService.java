@@ -2,12 +2,9 @@ package com.iplion.mesync.cloud.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.error.DeviceException;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
-import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,20 +14,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class DeviceService {
-    private final Cache<UUID, DeviceAuthData> deviceAuthDataCache;
     private final DeviceRepository deviceRepository;
-    private final KeySignatureService keySignatureService;
     private final ObjectMapper objectMapper;
-
-    public DeviceAuthData getDeviceAuthData(UUID devicePublicId) {
-        return deviceAuthDataCache.get(devicePublicId, this::loadDeviceAuthDataCache);
-    }
-
-    private DeviceAuthData loadDeviceAuthDataCache(UUID devicePublicId) {
-        return deviceRepository.findAuthDataByPublicId(devicePublicId)
-            .map(projection -> projection.toDeviceAuthData(keySignatureService))
-            .orElseThrow(() -> new DeviceException("Device not found. devicePublicId: " + devicePublicId));
-    }
 
     public void saveWithRetry(Device device) {
         final int attempts = 3;

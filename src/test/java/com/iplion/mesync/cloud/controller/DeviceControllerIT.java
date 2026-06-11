@@ -8,7 +8,7 @@ import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
@@ -16,8 +16,9 @@ import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
-import com.iplion.mesync.cloud.security.redis.RedisKeys;
-import com.iplion.mesync.cloud.security.redis.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.RedisKeys;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.service.InvitationService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
@@ -74,7 +75,10 @@ class DeviceControllerIT extends BaseIT {
     private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
-    private Cache<UUID, DeviceAuthData> deviceAuthDataCache;
+    private Cache<UUID, DeviceAuthData> deviceAuthCache;
+
+    @Autowired
+    private Cache<UUID, UserAuthData> userAuthCache;
 
     @AfterEach
     void cleanUp() {
@@ -252,13 +256,15 @@ class DeviceControllerIT extends BaseIT {
             "target " + context.deviceName,
             deviceRepository
         );
-        deviceAuthDataCache.put(targetDevicePublicId, new DeviceAuthData(
+        deviceAuthCache.put(targetDevicePublicId, new DeviceAuthData(
             targetDevice.getId(),
             targetDevice.getPublicId(),
+            targetDevice.getDeviceType(),
+            targetDevicePublicKey
+        ));
+        userAuthCache.put(user.getAuthId(), new UserAuthData(
             user.getId(),
             user.getAuthId(),
-            targetDevice.getDeviceType(),
-            targetDevicePublicKey,
             user.getKeyVersion()
         ));
 
@@ -272,7 +278,7 @@ class DeviceControllerIT extends BaseIT {
             .andExpect(jsonPath("$.revokedDevicePublicId").value(targetDevicePublicId.toString()))
             .andExpect(jsonPath("$.revokedAt").isNotEmpty());
 
-        assertThat(deviceAuthDataCache.getIfPresent(targetDevicePublicId)).isNull();
+        assertThat(deviceAuthCache.getIfPresent(targetDevicePublicId)).isNull();
 
         Device revokedDevice = deviceRepository.findById(targetDevice.getId()).get();
         assertThat(revokedDevice.getRevokedAt()).isNotNull();

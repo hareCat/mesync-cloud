@@ -44,16 +44,16 @@ public class DeviceRegistrationException extends ApiException {
     }
 
     public static DeviceRegistrationException masterKeyVersionMismatch(
-        UUID authId,
-        UUID devicePublicId,
+        long userId,
+        long deviceId,
         Integer userMasterKeyVersion,
         Integer deviceMasterKeyVersion
     ) {
         return new DeviceRegistrationException(
             HttpStatus.CONFLICT,
             String.format("Master key version mismatch. " +
-                    "authId: %s, devicePublicId: %s, userMasterKeyVersion: %d, deviceMasterKeyVersion: %d",
-                authId, devicePublicId, userMasterKeyVersion, deviceMasterKeyVersion
+                    "userId: %d, deviceId: %d, userMasterKeyVersion: %d, deviceMasterKeyVersion: %d",
+                userId, deviceId, userMasterKeyVersion, deviceMasterKeyVersion
             ),
             "Your master key version is outdated. Please update it."
         );

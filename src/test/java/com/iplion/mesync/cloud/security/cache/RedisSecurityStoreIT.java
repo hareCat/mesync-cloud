@@ -1,4 +1,4 @@
-package com.iplion.mesync.cloud.security.redis;
+package com.iplion.mesync.cloud.security.cache;
 
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.error.api.AuthException;

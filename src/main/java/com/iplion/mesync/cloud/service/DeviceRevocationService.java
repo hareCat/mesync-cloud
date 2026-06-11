@@ -7,10 +7,11 @@ import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.error.api.DeviceAlreadyRevokedException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
-import com.iplion.mesync.cloud.model.DeviceAuthData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
+import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.SecurityService;
+import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,25 +27,32 @@ import java.util.UUID;
 public class DeviceRevocationService {
     private final DeviceRepository deviceRepository;
     private final UserRepository userRepository;
-    private final SecurityService securityService;
+    private final AuthService authService;
     private final Cache<UUID, DeviceAuthData> deviceAuthDataCache;
     private final ApplicationEventPublisher eventPublisher;
     private final UserService userService;
 
     @Transactional
     public DeviceRevokeResponseDto revokeDevice(Jwt jwt, DeviceRevokeRequestDto request) {
-        DeviceAuthData deviceAuthData = securityService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(jwt, request));
+        AuthData authData = authService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(jwt, request));
 
-        Device targetDevice = deviceRepository.findByUserIdAndPublicId(deviceAuthData.userId(), request.targetDevicePublicId())
+        Device targetDevice = deviceRepository.findByUserIdAndPublicId(
+                authData.userAuthData().id(),
+                request.targetDevicePublicId()
+            )
             .orElseThrow(() -> new DeviceNotFoundException(String.format(
                 "Revoking device not found. userId: %d, deviceId: %d, targetDevicePublicId: %s",
-                deviceAuthData.userId(),
-                deviceAuthData.deviceId(),
+                authData.userAuthData().id(),
+                authData.deviceAuthData().id(),
                 request.targetDevicePublicId()
             )));
 
         if (targetDevice.getRevokedAt() != null) {
-            throw new DeviceAlreadyRevokedException(deviceAuthData.userId(), deviceAuthData.deviceId(), request.targetDevicePublicId());
+            throw new DeviceAlreadyRevokedException(
+                authData.userAuthData().id(),
+                authData.deviceAuthData().id(),
+                request.targetDevicePublicId()
+            );
         }
 
         deviceAuthDataCache.invalidate(request.targetDevicePublicId());
@@ -57,7 +65,7 @@ public class DeviceRevocationService {
 
         if (request.rotateMasterKey()) {
             userService.updateMasterKeyVersion(
-                userRepository.getReferenceById(deviceAuthData.userId()),
+                userRepository.getReferenceById(authData.userAuthData().id()),
                 request.deviceMasterKeyVersion()
             );
         }
