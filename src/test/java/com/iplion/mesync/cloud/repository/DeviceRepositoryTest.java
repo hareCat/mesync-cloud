@@ -3,15 +3,16 @@ package com.iplion.mesync.cloud.repository;
 import com.iplion.mesync.cloud.config.PostgresContainerConfig;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
 import com.iplion.mesync.cloud.model.DeviceType;
+import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
-import java.security.SecureRandom;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -29,11 +30,11 @@ public class DeviceRepositoryTest {
     TestEntityManager em;
 
     @Test
-    void findAuthContextByPublicId_shouldReturnProjection_whenDeviceActive() {
-        User user = TestDataFactory.user();
+    void findAuthContextByPublicId_shouldReturnProjection_whenDeviceActive() throws Exception {
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
-        Device device = TestDataFactory.device(user, "test-device");
+        Device device = TestModelFactory.device(user);
         em.persistAndFlush(device);
 
         em.clear();
@@ -49,11 +50,11 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void findAuthContextByPublicId_shouldReturnEmpty_whenDeviceRevoked() {
-        User user = TestDataFactory.user();
+    void findAuthContextByPublicId_shouldReturnEmpty_whenDeviceRevoked() throws Exception {
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
-        Device device = TestDataFactory.device(user, "test-device");
+        Device device = TestModelFactory.device(user);
         device.setRevokedAt(Instant.now());
         em.persistAndFlush(device);
 
@@ -72,14 +73,14 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void findActiveByUserAuthId_shouldReturnOnlyActiveDevices() {
-        User user = TestDataFactory.user();
+    void findActiveByUserAuthId_shouldReturnOnlyActiveDevices() throws NoSuchAlgorithmException {
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
-        Device active = TestDataFactory.device(user, "active-device");
+        Device active = TestModelFactory.device(user, "active-device");
         em.persistAndFlush(active);
 
-        Device revoked = TestDataFactory.device(user, "revoked-device");
+        Device revoked = TestModelFactory.device(user, "revoked-device");
         revoked.setRevokedAt(Instant.now());
         em.persistAndFlush(revoked);
 
@@ -93,14 +94,14 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void findActiveByUserAuthId_shouldReturnOnlyDevicesOfGivenUser() {
-        User user1 = TestDataFactory.user();
-        User user2 = TestDataFactory.user();
+    void findActiveByUserAuthId_shouldReturnOnlyDevicesOfGivenUser() throws Exception {
+        User user1 = TestModelFactory.user();
+        User user2 = TestModelFactory.user();
         em.persistAndFlush(user1);
         em.persistAndFlush(user2);
 
-        Device device1 = TestDataFactory.device(user1, "user1-device");
-        Device device2 = TestDataFactory.device(user2, "user2-device");
+        Device device1 = TestModelFactory.device(user1, "user1-device");
+        Device device2 = TestModelFactory.device(user2, "user2-device");
         em.persistAndFlush(device1);
         em.persistAndFlush(device2);
 
@@ -116,7 +117,7 @@ public class DeviceRepositoryTest {
     void trySave_shouldSaveDeviceAndReturn1() {
         String deviceName = "test device";
 
-        User user = TestDataFactory.user();
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
         int result = deviceRepository.trySave(
@@ -141,13 +142,13 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void trySave_shouldNotSaveDeviceAndReturn0_whenDeviceNameAlreadyExists() {
+    void trySave_shouldNotSaveDeviceAndReturn0_whenDeviceNameAlreadyExists() throws Exception {
         String deviceName = "test device";
 
-        User user = TestDataFactory.user();
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
-        Device device = TestDataFactory.device(user, deviceName);
+        Device device = TestModelFactory.device(user, deviceName);
         em.persistAndFlush(device);
 
         int result = deviceRepository.trySave(
@@ -170,13 +171,13 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void trySave_shouldSaveDeviceAndReturn1_whenDeviceNameAlreadyExistsAndRevokedAtNotNull() {
+    void trySave_shouldSaveDeviceAndReturn1_whenDeviceNameAlreadyExistsAndRevokedAtNotNull() throws Exception {
         String deviceName = "test device";
 
-        User user = TestDataFactory.user();
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
-        Device device = TestDataFactory.device(user, deviceName);
+        Device device = TestModelFactory.device(user, deviceName);
         device.setRevokedAt(Instant.now());
         em.persistAndFlush(device);
 
@@ -204,46 +205,17 @@ public class DeviceRepositoryTest {
     }
 
     @Test
-    void existsActiveByUserAuthId_shouldReturnFalse_whenOnlyRevokedDevices() {
-        User user = TestDataFactory.user();
+    void existsActiveByUserAuthId_shouldReturnFalse_whenOnlyRevokedDevices() throws Exception {
+        User user = TestModelFactory.user();
         em.persistAndFlush(user);
 
-        Device device = TestDataFactory.device(user, "test");
+        Device device = TestModelFactory.device(user, "test");
         device.setRevokedAt(Instant.now());
         em.persistAndFlush(device);
 
         boolean exists = deviceRepository.existsActiveByUserAuthId(user.getAuthId());
 
         assertThat(exists).isFalse();
-    }
-
-    private static class TestDataFactory {
-        static Device device(User user, String deviceName) {
-            Device device = new Device();
-            device.setPublicId(UUID.randomUUID());
-            device.setUser(user);
-            device.setDeviceType(DeviceType.MOBILE);
-            device.setName(deviceName);
-            device.setPublicKeyBytes(generatePublicKeyBytes());
-            device.setKeyCreatedAt(Instant.now());
-
-            return device;
-        }
-
-        static User user() {
-            User user = new User();
-            user.setAuthId(UUID.randomUUID());
-
-            return user;
-        }
-
-        private static byte[] generatePublicKeyBytes() {
-            byte[] publicKey = new byte[44];
-            new SecureRandom().nextBytes(publicKey);
-
-            return publicKey;
-        }
-
     }
 
 }

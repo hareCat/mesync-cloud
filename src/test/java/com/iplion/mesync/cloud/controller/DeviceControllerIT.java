@@ -22,6 +22,7 @@ import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.service.InvitationService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -375,8 +376,7 @@ class DeviceControllerIT extends BaseIT {
         }
 
         public static User saveNewUser(UUID authId, UserRepository userRepository) {
-            User user = new User();
-            user.setAuthId(authId);
+            User user = TestModelFactory.user(authId);
             userRepository.saveAndFlush(user);
 
             return user;

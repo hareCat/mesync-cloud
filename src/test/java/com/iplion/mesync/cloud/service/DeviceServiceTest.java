@@ -2,10 +2,9 @@ package com.iplion.mesync.cloud.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.entity.Device;
-import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
-import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,8 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -40,8 +37,8 @@ class DeviceServiceTest {
     }
 
     @Test
-    void saveWithRetry_shouldThrowExceptionWithSaveFailedThreeTimes() {
-        Device device = testDevice();
+    void saveWithRetry_shouldThrowExceptionWithSaveFailedThreeTimes() throws Exception {
+        Device device = TestModelFactory.device(TestModelFactory.user());
 
         when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
             .thenReturn(0);
@@ -53,8 +50,8 @@ class DeviceServiceTest {
     }
 
     @Test
-    void saveWithRetry_shouldSaveDeviceWithNewNameWithDeviceType() {
-        Device device = testDevice();
+    void saveWithRetry_shouldSaveDeviceWithNewNameWithDeviceType() throws Exception {
+        Device device = TestModelFactory.device(TestModelFactory.user());
         String deviceName = device.getName();
 
         String generatedDeviceName = device.getName() + "-" + device.getDeviceType().name().toLowerCase();
@@ -79,8 +76,8 @@ class DeviceServiceTest {
     }
 
     @Test
-    void saveWithRetry_shouldSaveDeviceWithNewRandomName() {
-        Device device = testDevice();
+    void saveWithRetry_shouldSaveDeviceWithNewRandomName() throws Exception {
+        Device device = TestModelFactory.device(TestModelFactory.user());
         String deviceName = device.getName();
 
         when(deviceRepository.trySave(any(), any(), any(), any(), any(), any(), any(), any()))
@@ -102,23 +99,6 @@ class DeviceServiceTest {
             .isNotEqualTo(deviceName)
             .startsWith(deviceName)
             .hasSizeGreaterThan(deviceName.length());
-    }
-
-    // helpers
-
-    private Device testDevice() {
-        User user = new User();
-        user.setAuthId(UUID.randomUUID());
-
-        Device device = new Device();
-        device.setPublicId(UUID.randomUUID());
-        device.setUser(user);
-        device.setName("test name");
-        device.setDeviceType(DeviceType.MOBILE);
-        device.setPublicKeyBytes("pk".getBytes());
-        device.setExtras(Map.of());
-
-        return device;
     }
 
 }

@@ -17,6 +17,7 @@ import com.iplion.mesync.cloud.security.auth.MessagePublishAuthRequest;
 import com.iplion.mesync.cloud.security.auth.MessageSyncAuthRequest;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -110,10 +111,7 @@ class MessagingControllerIT extends BaseIT {
 
     @Test
     void sync_shouldReturn200AndMessageDtos() throws Exception {
-        TestContext context = TestDataFactory.createSyncContext(
-            userRepository,
-            deviceRepository
-        );
+        TestContext context = TestDataFactory.createSyncContext(userRepository, deviceRepository);
         var requestDto = context.messageSyncRequestDto;
 
         Device anotherDevice = TestDataFactory.device(
@@ -123,8 +121,8 @@ class MessagingControllerIT extends BaseIT {
         );
         deviceRepository.saveAndFlush(anotherDevice);
 
-        Message first = TestDataFactory.message(context.user, anotherDevice);
-        Message second = TestDataFactory.message(context.user, null);
+        Message first = TestModelFactory.message(context.user, anotherDevice);
+        Message second = TestModelFactory.message(context.user, null);
         messageRepository.saveAll(List.of(first, second));
 
         mockMvc.perform(post(TestUri.SYNC_URI)
@@ -171,8 +169,7 @@ class MessagingControllerIT extends BaseIT {
         ) {
             var context = new TestContext();
 
-            User user = new User();
-            user.setAuthId(UUID.randomUUID());
+            User user = TestModelFactory.user();
             userRepository.saveAndFlush(user);
             context.user = user;
 
@@ -260,21 +257,6 @@ class MessagingControllerIT extends BaseIT {
             );
 
             return context;
-        }
-
-        public static Message message(User user, Device device) {
-            Message message = new Message();
-            message.setPublicId(UUID.randomUUID());
-            message.setUser(user);
-            message.setDevice(device);
-            message.setAddress("+995 123 456 789");
-            message.setMessageType(MessageType.SMS);
-            message.setDirection(MessageDirection.INCOMING);
-            message.setOccurredAt(Instant.now());
-            message.setKeyVersion(2);
-            message.setCiphertext(new byte[44]);
-
-            return message;
         }
 
         public static Device device(User user, String name, byte[] publicKeyBytes) {

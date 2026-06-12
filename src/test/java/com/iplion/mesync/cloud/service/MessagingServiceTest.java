@@ -64,7 +64,8 @@ class MessagingServiceTest extends BaseUnitTest {
 
         TestSecurity.createSecurityContext(authData);
 
-        Message message = message();
+        User user = TestModelFactory.user();
+        Message message = TestModelFactory.message(TestModelFactory.user(), TestModelFactory.device(user));
         MessagePublishRequestDto request = messagePublishRequestDto();
 
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
@@ -234,21 +235,6 @@ class MessagingServiceTest extends BaseUnitTest {
             UUID.randomUUID(),
             "a".repeat(80)
         );
-    }
-
-    private Message message() {
-        Message message = new Message();
-        message.setPublicId(UUID.randomUUID());
-        message.setUser(mock(User.class));
-        message.setDevice(mock(Device.class));
-        message.setAddress("+995 123 456 789");
-        message.setMessageType(MessageType.SMS);
-        message.setDirection(MessageDirection.INCOMING);
-        message.setOccurredAt(Instant.now());
-        message.setKeyVersion(2);
-        message.setCiphertext(new byte[44]);
-
-        return message;
     }
 
     private SyncMessageDto syncMessageDto(Long id) {

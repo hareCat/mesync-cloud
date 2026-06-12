@@ -19,23 +19,31 @@ public final class TestModelFactory {
     private static final int MASTER_KEY_VERSION = 1;
     private static final DeviceType DEVICE_TYPE = DeviceType.MOBILE;
 
+    public static User user() {
+        return user(UUID.randomUUID());
+    }
+
+    public static User user(UUID authId) {
+        User user = new User();
+        user.setAuthId(authId);
+
+        return user;
+    }
+
     public static Device device(User user) throws NoSuchAlgorithmException {
+        return device(user, UUID.randomUUID().toString());
+    }
+
+    public static Device device(User user, String name) throws NoSuchAlgorithmException {
         Device device = new Device();
         device.setPublicId(UUID.randomUUID());
         device.setUser(user);
         device.setDeviceType(DEVICE_TYPE);
-        device.setName(UUID.randomUUID().toString());
+        device.setName(name);
         device.setPublicKeyBytes(TestCrypto.generateKeyPair().getPublic().getEncoded());
         device.setKeyCreatedAt(NOW);
 
         return device;
-    }
-
-    public static User user() {
-        User user = new User();
-        user.setAuthId(UUID.randomUUID());
-
-        return user;
     }
 
     public static AuthData authData() throws NoSuchAlgorithmException {
