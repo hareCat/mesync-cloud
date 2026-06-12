@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.service;
 
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
 import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
@@ -19,12 +20,12 @@ import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
+import com.iplion.mesync.cloud.testUtils.TestSecurity;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.security.PublicKey;
@@ -47,8 +48,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class DeviceRegistrationServiceTest {
+class DeviceRegistrationServiceTest extends BaseUnitTest {
     @Mock
     DeviceRepository deviceRepository;
     @Mock
@@ -66,13 +66,13 @@ class DeviceRegistrationServiceTest {
     DeviceRegistrationService deviceRegistrationService;
 
     @Test
-    void saveInviteToken_shouldSaveToken() {
+    void saveInviteToken_shouldSaveToken() throws Exception {
         Instant expiredAt = Instant.now();
-        AuthData authData = authContext();
+
+        TestSecurity.createSecurityContext(TestModelFactory.authData());
 
         var request = saveInviteRequestDto();
 
-        when(authService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
 
         SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(request);
@@ -101,6 +101,18 @@ class DeviceRegistrationServiceTest {
     @Test
     void saveInviteToken_shouldThrow_whenDeviceMasterKeyVersionOutdated() {
         DeviceType deviceType = DeviceType.MOBILE;
+        AuthData authData = new AuthData(
+            new UserAuthData(
+                1L, UUID.randomUUID(), 99
+            ),
+            new DeviceAuthData(
+                1L,
+                UUID.randomUUID(),
+                DeviceType.MOBILE,
+                mock(PublicKey.class)
+            )
+        );
+        TestSecurity.createSecurityContext(authData);
 
         var request = new SaveInviteRequestDto(
             UUID.randomUUID(),
@@ -111,8 +123,6 @@ class DeviceRegistrationServiceTest {
             UUID.randomUUID(),
             Base64.getEncoder().encodeToString(new byte[64])
         );
-
-        when(authService.verifyDeviceManagerRequest(any())).thenReturn(authContext());
 
         assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
@@ -310,17 +320,4 @@ class DeviceRegistrationServiceTest {
         );
     }
 
-    public AuthData authContext() {
-        return new AuthData(
-            new UserAuthData(
-                1L, UUID.randomUUID(), 2
-            ),
-            new DeviceAuthData(
-                1L,
-                UUID.randomUUID(),
-                DeviceType.MOBILE,
-                mock(PublicKey.class)
-            )
-        );
-    }
 }

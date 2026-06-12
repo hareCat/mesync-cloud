@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.service;
 
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.controller.dto.MessagePublishRequestDto;
 import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
@@ -8,7 +9,6 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
-import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;
 import com.iplion.mesync.cloud.model.SyncMessageDto;
@@ -17,19 +17,16 @@ import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
-import com.iplion.mesync.cloud.security.cache.UserAuthData;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
+import com.iplion.mesync.cloud.testUtils.TestSecurity;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 
-import java.security.PublicKey;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
@@ -39,13 +36,13 @@ import java.util.stream.LongStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class MessagingServiceTest {
+class MessagingServiceTest extends BaseUnitTest {
     @Mock
     DeviceRepository deviceRepository;
     @Mock
@@ -61,12 +58,15 @@ class MessagingServiceTest {
     MessagingService messagingService;
 
     @Test
-    void publish_shouldPublishNewMessage() {
-        AuthData authData = authContext();
+    void publish_shouldPublishNewMessage() throws Exception {
+        AuthData authData = TestModelFactory.authData();
+        TestSecurity.createSecurityContext(authData);
+
+        TestSecurity.createSecurityContext(authData);
+
         Message message = message();
         MessagePublishRequestDto request = messagePublishRequestDto();
 
-        when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenReturn(message);
@@ -98,10 +98,10 @@ class MessagingServiceTest {
     }
 
     @Test
-    void publish_shouldThrow_whenCiphertextInvalid() {
+    void publish_shouldThrow_whenCiphertextInvalid() throws Exception {
         MessagePublishRequestDto request = messagePublishRequestDto("invalid  base64 !");
 
-        when(authService.verifyMessagingRequest(any())).thenReturn(authContext());
+        TestSecurity.createSecurityContext(TestModelFactory.authData());
 
         assertThatThrownBy(() -> messagingService.publish(request))
             .isInstanceOf(MessagingException.class)
@@ -115,8 +115,9 @@ class MessagingServiceTest {
     }
 
     @Test
-    void publish_shouldThrow_whenSavingMessageError() {
-        when(authService.verifyMessagingRequest(any())).thenReturn(authContext());
+    void publish_shouldThrow_whenSavingMessageError() throws Exception {
+        TestSecurity.createSecurityContext(TestModelFactory.authData());
+
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
@@ -128,15 +129,16 @@ class MessagingServiceTest {
     }
 
     @Test
-    void sync_shouldGetMessagesAfterId() {
-        AuthData authData = authContext();
+    void sync_shouldGetMessagesAfterId() throws Exception {
+        AuthData authData = TestModelFactory.authData();
+        TestSecurity.createSecurityContext(authData);
+
         int messagesRequestNum = 3;
         List<SyncMessageDto> messages = LongStream.rangeClosed(8L, 50L)
             .mapToObj(this::syncMessageDto)
             .toList();
         MessageSyncRequestDto request = messageSyncRequestDto(10L, messagesRequestNum);
 
-        when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
         var result = messagingService.sync(request);
@@ -165,8 +167,9 @@ class MessagingServiceTest {
     }
 
     @Test
-    void sync_shouldGetMessagesAfterIdWithMaxPerSyncLimit() {
-        AuthData authData = authContext();
+    void sync_shouldGetMessagesAfterIdWithMaxPerSyncLimit() throws Exception {
+        TestSecurity.createSecurityContext(TestModelFactory.authData());
+
         int messagesRequestNum = 100;
         final int MAX_MESSAGES_PER_SYNC_REQUEST = 20;
         List<SyncMessageDto> messages = LongStream.rangeClosed(8L, 50L)
@@ -174,7 +177,6 @@ class MessagingServiceTest {
             .toList();
         MessageSyncRequestDto request = messageSyncRequestDto(10L, messagesRequestNum);
 
-        when(authService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
         var result = messagingService.sync(request);
@@ -195,8 +197,8 @@ class MessagingServiceTest {
     void sync_shouldThrow_whenAuthVerifyError() {
         MessageSyncRequestDto request = messageSyncRequestDto(0L, 10);
 
-        when(authService.verifyMessagingRequest(any()))
-            .thenThrow(AuthException.wrongRequestData("bad", null));
+        doThrow(AuthException.wrongRequestData("bad", null))
+            .when(authService).verifyMessagingRequest(any());
 
         assertThatThrownBy(() -> messagingService.sync(request))
             .isInstanceOf(AuthException.class)
@@ -231,20 +233,6 @@ class MessagingServiceTest {
             base64Ciphertext,
             UUID.randomUUID(),
             "a".repeat(80)
-        );
-    }
-
-    private AuthData authContext() {
-        return new AuthData(
-            new UserAuthData(
-                1L, UUID.randomUUID(), 2
-            ),
-            new DeviceAuthData(
-                1L,
-                UUID.randomUUID(),
-                DeviceType.MOBILE,
-                mock(PublicKey.class)
-            )
         );
     }
 

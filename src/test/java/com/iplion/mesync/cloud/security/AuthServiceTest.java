@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.security;
 
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.api.AuthException;
@@ -16,13 +17,10 @@ import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -46,8 +44,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-public class AuthServiceTest {
+public class AuthServiceTest extends BaseUnitTest {
     @Mock
     RedisSecurityStore redisSecurityStore;
 
@@ -94,11 +91,6 @@ public class AuthServiceTest {
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(testContext.jwt));
     }
 
-    @AfterEach
-    void tearDownSecurityContext() {
-        SecurityContextHolder.clearContext();
-    }
-
     @Test
     public void verifyRegistrationRequest_shouldReturnResult_whenRequestValid() {
         RegistrationAuthRequest request = new RegistrationAuthRequest(
@@ -139,7 +131,7 @@ public class AuthServiceTest {
 
         when(authContextService.getAuthContext(any(), any())).thenReturn(testContext.authData);
 
-        AuthData result = authService.verifyDeviceManagerRequest(request);
+        authService.verifyDeviceManagerRequest(request);
 
         verify(authContextService).getAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
@@ -152,8 +144,7 @@ public class AuthServiceTest {
         );
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
-        assertThat(result).isEqualTo(testContext.authData());
-        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(result);
+        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(testContext.authData());
     }
 
     @Test
@@ -219,7 +210,7 @@ public class AuthServiceTest {
 
         when(authContextService.getAuthContext(any(), any())).thenReturn(testContext.authData);
 
-        AuthData result = authService.verifyMessagingRequest(request);
+        authService.verifyMessagingRequest(request);
 
         verify(authContextService).getAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
@@ -232,8 +223,7 @@ public class AuthServiceTest {
         );
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
-        assertThat(result).isEqualTo(testContext.authData());
-        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(result);
+        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(testContext.authData());
     }
 
     @Test

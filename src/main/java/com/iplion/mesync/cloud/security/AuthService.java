@@ -49,27 +49,23 @@ public class AuthService {
         );
     }
 
-    public <T extends DeviceAuthRequest> AuthData verifyDeviceManagerRequest(T request) {
-        var context = runPipeline(request, List.of(
+    public <T extends DeviceAuthRequest> void verifyDeviceManagerRequest(T request) {
+        runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
             this::deviceOwnerCheck,
             this::verifySignature
         ));
-
-        return context.getAuthData();
     }
 
-    public <T extends DeviceAuthRequest> AuthData verifyMessagingRequest(T request) {
-        var context = runPipeline(request, List.of(
+    public <T extends DeviceAuthRequest> void verifyMessagingRequest(T request) {
+        runPipeline(request, List.of(
             this::deviceAuthRedisCheck,
             this::getDeviceAuthData,
             this::deviceOwnerCheck,
             this::deviceTypeCheck,
             this::verifySignature
         ));
-
-        return context.getAuthData();
     }
 
     private <T extends AuthRequest> AuthPipelineContext<T> runPipeline(

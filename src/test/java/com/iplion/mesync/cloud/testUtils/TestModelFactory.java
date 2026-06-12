@@ -38,7 +38,7 @@ public final class TestModelFactory {
         return user;
     }
 
-    public static AuthData authContext() throws NoSuchAlgorithmException {
+    public static AuthData authData() throws NoSuchAlgorithmException {
         return new AuthData(
             new UserAuthData(1L, UUID.randomUUID(), MASTER_KEY_VERSION),
             new DeviceAuthData(

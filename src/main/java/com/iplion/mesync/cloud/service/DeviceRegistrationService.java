@@ -13,6 +13,7 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.SecurityContextUtils;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
 import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
@@ -39,9 +40,8 @@ public class DeviceRegistrationService {
     private final KeySignatureService keySignatureService;
 
     public SaveInviteResponseDto saveInviteToken(SaveInviteRequestDto request) {
-        AuthData authData = authService.verifyDeviceManagerRequest(
-            SaveInviteAuthRequest.from(request)
-        );
+        authService.verifyDeviceManagerRequest(SaveInviteAuthRequest.from(request));
+        AuthData authData = SecurityContextUtils.getAuthData();
 
         if (authData.userAuthData().keyVersion() > request.keyVersion()) {
             throw DeviceRegistrationException.masterKeyVersionMismatch(
