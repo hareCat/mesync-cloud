@@ -1,8 +1,9 @@
 # meSync
 
-"I want to sync my messages across all my devices."
-
-"I can do that for you. Call me **meSync**."
+> "I want to sync my messages across all my devices."
+>
+> "I can do that for you.
+> I can help keep your life in sync."
 
 **SYNC MESsages for ME**
 
@@ -13,6 +14,11 @@
 🤖 Android        🚧
 🖥 Desktop        🚧
 🌐 Web            🚧
+
+
+**One ecosystem.
+Many devices.
+One meSync.**
 
 ---
 
@@ -37,8 +43,6 @@ Desktop client for secure multi-device synchronization.
 Web client for secure access to synchronized messages.
 
 ---
-
-
 
 # meSync Cloud
 
