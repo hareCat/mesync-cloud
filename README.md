@@ -1,6 +1,48 @@
-# Mesync Cloud
+# meSync
 
-Mesync Cloud is a Spring Boot backend for end-to-end encrypted message
+"I want to sync my messages across all my devices."
+
+"I can do that for you. Call me **meSync**."
+
+**SYNC MESsages for ME**
+
+---
+
+☁️ Cloud          ✅
+🏗 Infrastructure ✅
+🤖 Android        🚧
+🖥 Desktop        🚧
+🌐 Web            🚧
+
+---
+
+🟢 **meSync Cloud**
+
+Spring Boot backend for secure end-to-end encrypted message synchronization.
+
+🟢 **meSync Infrastructure**
+
+Local development environment based on Docker Compose, PostgreSQL, Redis and Keycloak.
+
+🚧 **meSync Android** *(planned)*
+
+Android client for secure multi-device synchronization.
+
+🚧 **meSync Desktop** *(planned)*
+
+Desktop client for secure multi-device synchronization.
+
+🚧 **meSync Web** *(planned)*
+
+Web client for secure access to synchronized messages.
+
+---
+
+
+
+# meSync Cloud
+
+meSync Cloud is a Spring Boot backend for end-to-end encrypted message
 synchronization between a user's devices.
 
 The service does not store private keys and does not decrypt user data. It
