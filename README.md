@@ -51,8 +51,8 @@ synchronization between a user's devices.
 
 The service does not store private keys and does not decrypt user data. It
 validates JWT access tokens, verifies device signatures, stores device public
-keys, manages one-time device invites, accepts encrypted message records, and lets
-other trusted devices sync those records.
+keys, manages one-time device invites, revokes trusted devices, accepts encrypted
+message records, and lets other trusted devices sync those records.
 
 ## Features
 
@@ -60,8 +60,10 @@ other trusted devices sync those records.
 - Device type detection from the JWT `azp` client id.
 - First-device registration limited to `MOBILE`.
 - One-time invite tokens for additional `BROWSER` and `DESKTOP` devices.
+- Device revocation with Redis-backed revoked-device checks.
 - Ed25519 public key validation and signed request verification.
 - Redis-backed nonce replay protection, rate limiting, invite TTL, and invite cooldown.
+- Caffeine-backed user/device authentication context caching.
 - PostgreSQL persistence for users, devices, and encrypted message records.
 - Message synchronization API for publishing and syncing encrypted message payloads between devices.
 - ProblemDetail error responses.
@@ -86,15 +88,18 @@ other trusted devices sync those records.
 
 ### Main Components
 
-- `DeviceController` exposes device registration and invite endpoints.
+- `DeviceController` exposes device registration, invite, and revocation endpoints.
 - `MessagingController` exposes encrypted message publish and sync endpoints.
 - `DeviceRegistrationService` implements onboarding rules for first and additional devices.
+- `DeviceRevocationService` revokes trusted devices and can advance the user's master-key version.
 - `MessagingService` stores encrypted message records and reads sync batches.
-- `SecurityService` extracts JWT data, runs Redis security checks, loads device auth data, and verifies signatures.
+- `AuthService` extracts JWT data, runs Redis security checks, verifies device ownership/type, and checks signatures.
+- `AuthContextService` loads user/device auth data from Caffeine or PostgreSQL.
 - `InvitationService` stores and consumes one-time invites in Redis.
-- `DeviceService` loads cached device auth data and persists devices with name-conflict retry.
+- `DeviceService` persists devices with name-conflict retry.
 - `UserService` creates or updates local users from JWT identity data.
 - `MessageEventListener` publishes post-commit sync notifications through `DeviceNotificationService`.
+- `DeviceEventListener` caches revoked-device markers in Redis after transaction commit.
 
 ### Storage
 
@@ -113,6 +118,11 @@ Redis keys:
 - invite token keys
 - invite cooldown keys
 - revoked device keys
+
+Caffeine caches:
+
+- user auth data, keyed by user auth id
+- device auth data, keyed by device public id
 
 ## Security Model
 
@@ -205,6 +215,17 @@ MESSAGE_SYNC
 {nonce}
 ```
 
+### Device Revocation
+
+```text
+v1
+REVOCATION
+{devicePublicId}
+{targetDevicePublicId}
+{deviceMasterKeyVersion}
+{nonce}
+```
+
 ## Device Flow
 
 ### First Device Registration
@@ -227,6 +248,16 @@ MESSAGE_SYNC
 5. The invite is consumed with get-and-delete semantics.
 6. The invite device type must match the JWT client device type.
 7. The response returns the encrypted master key and key version to the new device.
+
+### Device Revocation
+
+1. A trusted device calls `POST /api/v1/devices/revoke`.
+2. The request is authenticated by JWT, device public id, nonce, and signature.
+3. The target device must belong to the same user and must not already be revoked.
+4. The service marks the target device as revoked in PostgreSQL.
+5. The target device auth cache entry is invalidated.
+6. After commit, Redis stores a revoked-device marker used by device-authenticated requests.
+7. If requested, the user's master-key version is advanced by exactly one version.
 
 ## API
 
@@ -295,6 +326,36 @@ Response:
 ```json
 {
   "expiresAt": "2026-04-26T10:15:30Z"
+}
+```
+
+### `POST /api/v1/devices/revoke`
+
+Authority: `devices.revoke`
+
+Revokes one of the user's devices. The request is signed by a currently trusted
+device. When `rotateMasterKey` is true, `deviceMasterKeyVersion` must be exactly
+one greater than the user's stored key version.
+
+Request:
+
+```json
+{
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "targetDevicePublicId": "fddbe426-f388-4dbb-8efb-72b313ac47b0",
+  "rotateMasterKey": true,
+  "deviceMasterKeyVersion": 2,
+  "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
+  "base64Signature": "MEUCIQ..."
+}
+```
+
+Response:
+
+```json
+{
+  "revokedDevicePublicId": "fddbe426-f388-4dbb-8efb-72b313ac47b0",
+  "revokedAt": "2026-04-26T10:15:30Z"
 }
 ```
 
@@ -386,6 +447,12 @@ app:
     rate-limit-ttl: 60s
     attempts: 120
     nonce-ttl: 30s
+  revoke:
+    ttl: 30d
+  cache:
+    ttl: 12h
+    user-cache-size: 40_000
+    device-cache-size: 100_000
 ```
 
 Meaning:
@@ -398,6 +465,10 @@ Meaning:
 - `auth.rate-limit-ttl`: rate-limit window for device-authenticated requests.
 - `auth.attempts`: max device-authenticated requests in the window.
 - `auth.nonce-ttl`: replay-protection TTL for device-authenticated nonce keys.
+- `revoke.ttl`: how long Redis keeps revoked-device markers.
+- `cache.ttl`: Caffeine auth-context cache expiration after access.
+- `cache.user-cache-size`: max cached user auth contexts.
+- `cache.device-cache-size`: max cached device auth contexts.
 
 ## Local Run
 
@@ -470,6 +541,7 @@ The project contains:
 - repository tests for JPA and SQL behavior
 - MockMvc tests for HTTP endpoints
 - Redis integration tests for nonce, rate limit, and get-and-delete behavior
+- Caffeine auth-context cache unit tests
 - PostgreSQL Testcontainers integration
 - Keycloak Testcontainers integration
 
@@ -479,5 +551,4 @@ local identity provider for most tests.
 ## Current Limitations
 
 - Push notifications are not implemented yet; `DeviceNotificationService` is currently a placeholder.
-- Device revoke and master-key rotation are planned but not implemented.
 - Only `SMS` message type is currently implemented; `MMS` is planned.
