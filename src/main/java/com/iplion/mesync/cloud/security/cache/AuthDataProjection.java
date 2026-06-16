@@ -20,7 +20,7 @@ public interface AuthDataProjection {
 
     Integer getUserKeyVersion();
 
-    default AuthData toAuthContext(KeySignatureService keySignatureService) {
+    default AuthData toAuthData(KeySignatureService keySignatureService) {
         return new AuthData(
             new UserAuthData(
                 getUserId(),

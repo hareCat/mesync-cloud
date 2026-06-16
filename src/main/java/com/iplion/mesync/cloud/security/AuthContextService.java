@@ -26,7 +26,7 @@ public class AuthContextService {
 
         if (userAuthData == null || deviceAuthData == null) {
             AuthData authData = deviceRepository.findAuthContextByPublicId(devicePublicId)
-                .map(projection -> projection.toAuthContext(keySignatureService))
+                .map(projection -> projection.toAuthData(keySignatureService))
                 .orElseThrow(() -> new DeviceException("Device not found. devicePublicId: " + devicePublicId));
 
             userAuthCache.put(authData.userAuthData().authId(), authData.userAuthData());

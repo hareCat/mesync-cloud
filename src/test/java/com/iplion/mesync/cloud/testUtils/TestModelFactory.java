@@ -46,15 +46,23 @@ public final class TestModelFactory {
         return device;
     }
 
+    public static UserAuthData userAuthData() {
+        return new UserAuthData(1L, UUID.randomUUID(), MASTER_KEY_VERSION);
+    }
+
+    public static DeviceAuthData deviceAuthData() throws NoSuchAlgorithmException {
+        return new DeviceAuthData(
+            1L,
+            UUID.randomUUID(),
+            DEVICE_TYPE,
+            TestCrypto.generateKeyPair().getPublic()
+        );
+    }
+
     public static AuthData authData() throws NoSuchAlgorithmException {
         return new AuthData(
-            new UserAuthData(1L, UUID.randomUUID(), MASTER_KEY_VERSION),
-            new DeviceAuthData(
-                1L,
-                UUID.randomUUID(),
-                DEVICE_TYPE,
-                TestCrypto.generateKeyPair().getPublic()
-            )
+            userAuthData(),
+            deviceAuthData()
         );
     }
 
