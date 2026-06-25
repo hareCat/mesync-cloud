@@ -88,14 +88,15 @@ message records, and lets other trusted devices sync those records.
 
 ### Main Components
 
-- `DeviceController` exposes device registration, invite, and revocation endpoints.
+- `DeviceRegistrationController` exposes first-device and invited-device registration endpoints.
+- `DeviceController` exposes device revocation endpoints.
 - `MessagingController` exposes encrypted message publish and sync endpoints.
 - `DeviceRegistrationService` implements onboarding rules for first and additional devices.
 - `DeviceRevocationService` revokes trusted devices and can advance the user's master-key version.
 - `MessagingService` stores encrypted message records and reads sync batches.
 - `AuthService` extracts JWT data, runs Redis security checks, verifies device ownership/type, and checks signatures.
 - `AuthContextService` loads user/device auth data from Caffeine or PostgreSQL.
-- `InvitationService` stores and consumes one-time invites in Redis.
+- `InvitationService` stores invite state, invited-device public keys, encrypted master keys, and final registration locks in Redis.
 - `DeviceService` persists devices with name-conflict retry.
 - `UserService` creates or updates local users from JWT identity data.
 - `MessageEventListener` publishes post-commit sync notifications through `DeviceNotificationService`.
@@ -115,8 +116,11 @@ Redis keys:
 - device-auth nonce keys, scoped by device and nonce
 - registration rate-limit keys
 - device-auth rate-limit keys
-- invite token keys
+- invite token keys, scoped by user auth id and invite token
 - invite cooldown keys
+- invited-device public-key cooldown keys
+- invite master-key cooldown keys
+- final invite registration lock keys
 - revoked device keys
 
 Caffeine caches:
@@ -173,6 +177,7 @@ v1
 REGISTRATION
 {inviteToken or empty string}
 {base64PublicKey}
+{deviceName}
 {nonce}
 ```
 
@@ -180,10 +185,33 @@ REGISTRATION
 
 ```text
 v1
-INVITATION
+INVITATION_STORE_INVITE
 {devicePublicId}
 {inviteToken}
-{encryptedMasterKey}
+{deviceType}
+{keyVersion}
+{nonce}
+```
+
+### Invited Device Public Keys
+
+```text
+v1
+INVITATION_STORE_PUBLIC_KEYS
+{inviteToken}
+{base64EncryptionPublicKey}
+{base64SigningPublicKey}
+{nonce}
+```
+
+### Invite Master Key
+
+```text
+v1
+INVITATION_STORE_MASTER_KEY
+{devicePublicId}
+{inviteToken}
+{base64EncryptedMasterKey}
 {keyVersion}
 {nonce}
 ```
@@ -241,13 +269,16 @@ REVOCATION
 
 ### Additional Device Connection
 
-1. A trusted device calls `POST /api/v1/devices/invite`.
+1. A trusted device calls `POST /api/v1/register/invite`.
 2. The request is authenticated by JWT, device public id, nonce, and signature.
-3. The service stores `inviteToken`, `encryptedMasterKey`, `keyVersion`, and target `deviceType` in Redis.
-4. The new device calls `POST /api/v1/devices/register` with the invite token.
-5. The invite is consumed with get-and-delete semantics.
-6. The invite device type must match the JWT client device type.
-7. The response returns the encrypted master key and key version to the new device.
+3. The service stores `inviteToken` and target `deviceType` in Redis.
+4. The invited device calls `POST /api/v1/register/public-key` with its encryption and signing public keys.
+5. The public-key request is signed by the invited signing key as proof of possession.
+6. The trusted device reads the invited encryption public key on the client side, encrypts the master key, and calls `POST /api/v1/register/master-key`.
+7. The service stores `base64EncryptedMasterKey` and `keyVersion` only after public keys are present in the invite.
+8. The invited device calls `POST /api/v1/register` with the invite token.
+9. The invite device type and signing public key must match the JWT client device type and registration public key.
+10. The service locks the final invite step, saves the device, deletes the invite, and returns the encrypted master key and key version to the new device.
 
 ### Device Revocation
 
@@ -266,7 +297,7 @@ OpenAPI is available after startup:
 - `http://localhost:8081/swagger-ui.html`
 - `http://localhost:8081/v3/api-docs`
 
-### `POST /api/v1/devices/register`
+### `POST /api/v1/register`
 
 Authority: `messages.read`
 
@@ -282,7 +313,7 @@ Request:
   "extras": {
     "platform": "android"
   },
-  "inviteToken": "123e4567-e89b-12d3-a456-426614174000",
+  "inviteToken": "A1B2C3",
   "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
   "base64Signature": "MEUCIQ..."
 }
@@ -301,21 +332,82 @@ Response:
 }
 ```
 
-### `POST /api/v1/devices/invite`
+For additional-device registration, the response contains `encryptedMasterKey`
+and `keyVersion` from the invite.
+
+### `POST /api/v1/register/invite`
 
 Authority: `devices.invite`
 
-Creates an invite for a new device.
+Creates an invite for a new device. This step stores only the invite token and
+the target device type. The encrypted master key is stored later through
+`POST /api/v1/register/master-key`.
 
 Request:
 
 ```json
 {
   "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
-  "inviteToken": "123e4567-e89b-12d3-a456-426614174000",
-  "encryptedMasterKey": "YmFzZTY0LWVuY3J5cHRlZC1tYXN0ZXIta2V5",
+  "inviteToken": "A1B2C3",
   "keyVersion": 1,
   "deviceType": "DESKTOP",
+  "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
+  "base64Signature": "MEUCIQ..."
+}
+```
+
+Response:
+
+```json
+{
+  "expiresAt": "2026-04-26T10:15:30Z"
+}
+```
+
+### `POST /api/v1/register/public-key`
+
+Authority: `messages.read`
+
+Stores the invited device encryption public key and signing public key in the
+Redis invite. The request signature is verified with `base64SigningPublicKey`,
+which proves the invited device controls the private signing key before the
+device is registered.
+
+Request:
+
+```json
+{
+  "inviteToken": "A1B2C3",
+  "base64EncryptionPublicKey": "MCowBQYDK2VwAyEA...",
+  "base64SigningPublicKey": "MCowBQYDK2VwAyEA...",
+  "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
+  "base64Signature": "MEUCIQ..."
+}
+```
+
+Response:
+
+```json
+{
+  "expiresAt": "2026-04-26T10:15:30Z"
+}
+```
+
+### `POST /api/v1/register/master-key`
+
+Authority: `devices.invite`
+
+Stores the master key encrypted for the invited device. The invite must already
+contain public keys from `POST /api/v1/register/public-key`.
+
+Request:
+
+```json
+{
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "inviteToken": "A1B2C3",
+  "base64EncryptedMasterKey": "YmFzZTY0LWVuY3J5cHRlZC1tYXN0ZXIta2V5",
+  "keyVersion": 1,
   "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
   "base64Signature": "MEUCIQ..."
 }
@@ -458,7 +550,7 @@ app:
 Meaning:
 
 - `registration.invite-ttl`: how long an invite token lives.
-- `registration.invite-cooldown`: minimum time between invite creation attempts.
+- `registration.invite-cooldown`: minimum time between invite flow state-changing steps.
 - `registration.rate-limit-ttl`: rate-limit window for registration requests.
 - `registration.attempts`: max registration attempts in the window.
 - `registration.nonce-ttl`: replay-protection TTL for registration nonce keys.
@@ -540,7 +632,7 @@ The project contains:
 - unit tests for crypto, JWT extraction, security flow, and service logic
 - repository tests for JPA and SQL behavior
 - MockMvc tests for HTTP endpoints
-- Redis integration tests for nonce, rate limit, and get-and-delete behavior
+- Redis/invite-flow tests for nonce, rate limit, invite TTL, and final invite locking behavior
 - Caffeine auth-context cache unit tests
 - PostgreSQL Testcontainers integration
 - Keycloak Testcontainers integration

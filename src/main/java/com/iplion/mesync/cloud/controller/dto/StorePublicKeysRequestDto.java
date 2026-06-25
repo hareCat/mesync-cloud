@@ -5,28 +5,30 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.util.Map;
 import java.util.UUID;
 
-public record DeviceRegisterRequestDto(
+public record StorePublicKeysRequestDto(
     @NotBlank
-    @Size(max = 100)
-    String deviceName,
+    @Pattern(regexp = "^[A-Z0-9]{6}$")
+    String inviteToken,
 
+    // public key for the master key encryption
     @NotBlank
     @Size(min = 44, max = 80)
     @Pattern(
         regexp = "^[A-Za-z0-9+/=]+$",
         message = "must be valid base64"
     )
-    String base64PublicKey,
+    String base64EncryptionPublicKey,
 
-    @Size(max = 10)
-    Map<@Size(max = 50) String, @Size(max = 200) String>
-    extras,
-
-    @Pattern(regexp = "^[A-Z0-9]{6}$")
-    String inviteToken,
+    // public key for signing requests
+    @NotBlank
+    @Size(min = 44, max = 80)
+    @Pattern(
+        regexp = "^[A-Za-z0-9+/=]+$",
+        message = "must be valid base64"
+    )
+    String base64SigningPublicKey,
 
     @NotNull
     UUID nonce,
@@ -39,5 +41,5 @@ public record DeviceRegisterRequestDto(
     )
     String base64Signature
 
-) implements SignedRequest {
+) {
 }

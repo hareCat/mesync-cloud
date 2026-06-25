@@ -5,10 +5,9 @@ import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
-import com.iplion.mesync.cloud.security.auth.DeviceAuthRequest;
+import com.iplion.mesync.cloud.security.auth.RegisteredDeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
-import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.auth.StoreInviteAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
@@ -17,6 +16,7 @@ import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,6 +31,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -92,17 +93,20 @@ public class AuthServiceTest extends BaseUnitTest {
     }
 
     @Test
-    public void verifyRegistrationRequest_shouldReturnResult_whenRequestValid() {
+    public void verifyUnregisteredDeviceRequest_shouldReturnJwtUserData_whenRequestValid() {
         RegistrationAuthRequest request = new RegistrationAuthRequest(
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.base64PublicKey,
-            UUID.randomUUID()
+            "test device",
+            Map.of("platform", "android"),
+            TestModelFactory.inviteToken()
         );
 
+        when(authContextService.getUserAuthContext(any())).thenReturn(testContext.authData.userAuthData());
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
 
-        RegistrationAuthResult result = authService.verifyRegistrationRequest(request);
+        var result = authService.verifyUnregisteredDeviceRequest(request);
 
         verify(redisSecurityStore).registrationSecurityCheck(
             eq(RedisKeys.registrationNonceKey(testContext.userAuthId(), testContext.nonce())),
@@ -113,27 +117,27 @@ public class AuthServiceTest extends BaseUnitTest {
         );
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
-        assertThat(result.jwtUserData()).isNotNull();
-        assertThat(result.publicKey()).isEqualTo(testContext.publicKey());
+        assertThat(result).isNotNull();
+        assertThat(SecurityContextUtils.getAuthData().deviceAuthData().publicKey()).isEqualTo(testContext.publicKey());
 
     }
 
     @Test
     public void verifyDeviceManagerRequest_shouldReturnResult_whenRequestValid() {
-        var request = new SaveInviteAuthRequest(
+        var request = new StoreInviteAuthRequest(
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.devicePublicId(),
-            UUID.randomUUID(),
-            "encryptedMasterKey",
+            TestModelFactory.inviteToken(),
+            DeviceType.MOBILE,
             1
         );
 
-        when(authContextService.getAuthContext(any(), any())).thenReturn(testContext.authData);
+        when(authContextService.getFullAuthContext(any(), any())).thenReturn(testContext.authData);
 
         authService.verifyDeviceManagerRequest(request);
 
-        verify(authContextService).getAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
+        verify(authContextService).getFullAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
             eq(RedisKeys.authDeviceRevokedKey(request.devicePublicId())),
             eq(RedisKeys.authNonceKey(request.devicePublicId(), testContext.nonce())),
@@ -148,17 +152,19 @@ public class AuthServiceTest extends BaseUnitTest {
     }
 
     @Test
-    public void verifyRegistrationRequest_shouldThrow_whenJwtInvalid() {
+    public void verifyUnregisteredDeviceRequest_shouldThrow_whenJwtInvalid() {
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(mock(Jwt.class)));
 
         var request = new RegistrationAuthRequest(
             testContext.base64Signature(),
             testContext.nonce(),
             testContext.base64PublicKey(),
-            UUID.randomUUID()
+            "test device",
+            Map.of("platform", "android"),
+            TestModelFactory.inviteToken()
         );
 
-        assertThatThrownBy(() -> authService.verifyRegistrationRequest(request))
+        assertThatThrownBy(() -> authService.verifyUnregisteredDeviceRequest(request))
             .isInstanceOf(AuthException.class)
             .hasCauseInstanceOf(InvalidTokenException.class);
 
@@ -167,12 +173,12 @@ public class AuthServiceTest extends BaseUnitTest {
 
     @Test
     void verifyDeviceManagerRequest_shouldThrow_whenOwnershipMismatch() {
-        var request = new SaveInviteAuthRequest(
+        var request = new StoreInviteAuthRequest(
             testContext.base64Signature(),
             UUID.randomUUID(),
             testContext.devicePublicId(),
-            UUID.randomUUID(),
-            "encryptedMasterKey",
+            TestModelFactory.inviteToken(),
+            DeviceType.MOBILE,
             1
         );
 
@@ -191,7 +197,7 @@ public class AuthServiceTest extends BaseUnitTest {
             )
         );
 
-        when(authContextService.getAuthContext(any(), any())).thenReturn(wrongOwnerDevice);
+        when(authContextService.getFullAuthContext(any(), any())).thenReturn(wrongOwnerDevice);
 
         assertThatThrownBy(() -> authService.verifyDeviceManagerRequest(request))
             .isInstanceOf(AuthException.class)
@@ -208,11 +214,11 @@ public class AuthServiceTest extends BaseUnitTest {
             testContext.devicePublicId()
         );
 
-        when(authContextService.getAuthContext(any(), any())).thenReturn(testContext.authData);
+        when(authContextService.getFullAuthContext(any(), any())).thenReturn(testContext.authData);
 
         authService.verifyMessagingRequest(request);
 
-        verify(authContextService).getAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
+        verify(authContextService).getFullAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
             eq(RedisKeys.authDeviceRevokedKey(request.devicePublicId())),
             eq(RedisKeys.authNonceKey(request.devicePublicId(), testContext.nonce())),
@@ -249,7 +255,7 @@ public class AuthServiceTest extends BaseUnitTest {
             )
         );
 
-        when(authContextService.getAuthContext(any(), any())).thenReturn(wrongtypeDevice);
+        when(authContextService.getFullAuthContext(any(), any())).thenReturn(wrongtypeDevice);
 
         assertThatThrownBy(() -> authService.verifyMessagingRequest(request))
             .isInstanceOf(AuthException.class)
@@ -259,26 +265,31 @@ public class AuthServiceTest extends BaseUnitTest {
     }
 
     @Test
-    void verifyRegistrationRequest_shouldUseRequestNonceInRedisNonceKey() {
+    void verifyUnregisteredDeviceRequest_shouldUseRequestNonceInRedisNonceKey() {
         UUID firstNonce = UUID.randomUUID();
         UUID secondNonce = UUID.randomUUID();
         var firstRequest = new RegistrationAuthRequest(
             testContext.base64Signature(),
             firstNonce,
             testContext.base64PublicKey,
-            UUID.randomUUID()
+            "test device",
+            Map.of("platform", "android"),
+            TestModelFactory.inviteToken()
         );
         var secondRequest = new RegistrationAuthRequest(
             testContext.base64Signature(),
             secondNonce,
             testContext.base64PublicKey,
-            UUID.randomUUID()
+            "test device",
+            Map.of("platform", "android"),
+            TestModelFactory.inviteToken()
         );
 
+        when(authContextService.getUserAuthContext(any())).thenReturn(testContext.authData.userAuthData());
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
 
-        authService.verifyRegistrationRequest(firstRequest);
-        authService.verifyRegistrationRequest(secondRequest);
+        authService.verifyUnregisteredDeviceRequest(firstRequest);
+        authService.verifyUnregisteredDeviceRequest(secondRequest);
 
         ArgumentCaptor<String> nonceKeyCaptor = ArgumentCaptor.forClass(String.class);
         verify(redisSecurityStore, times(2)).registrationSecurityCheck(
@@ -310,7 +321,7 @@ public class AuthServiceTest extends BaseUnitTest {
             testContext.devicePublicId()
         );
 
-        when(authContextService.getAuthContext(any(), any())).thenReturn(testContext.authData);
+        when(authContextService.getFullAuthContext(any(), any())).thenReturn(testContext.authData);
 
         authService.verifyMessagingRequest(firstRequest);
         authService.verifyMessagingRequest(secondRequest);
@@ -387,7 +398,7 @@ public class AuthServiceTest extends BaseUnitTest {
         String base64Signature,
         UUID nonce,
         UUID devicePublicId
-    ) implements DeviceAuthRequest {
+    ) implements RegisteredDeviceAuthRequest {
 
         @Override
         public byte[] payload() {

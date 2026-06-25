@@ -9,25 +9,19 @@ import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
 
-public record SaveInviteRequestDto(
+public record StoreInviteRequestDto(
     @NotNull
     UUID devicePublicId,
 
-    @NotNull
-    UUID inviteToken,
-
     @NotBlank
-    @Size(min = 32, max = 512)
-    @Pattern(
-        regexp = "^[A-Za-z0-9+/=]+$",
-        message = "must be valid base64"
-    )
-    String encryptedMasterKey,
+    @Pattern(regexp = "^[A-Z0-9]{6}$")
+    String inviteToken,
 
     @NotNull
     @Min(1)
     Integer keyVersion,
 
+    // type of the invited device
     @NotNull
     DeviceType deviceType,
 

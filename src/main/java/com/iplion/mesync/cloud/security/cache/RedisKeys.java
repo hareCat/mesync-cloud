@@ -6,6 +6,9 @@ public final class RedisKeys {
     private static final String REG_RATE_LIMIT = "mesync:reg:rate";
     private static final String REG_INVITE = "mesync:reg:invite";
     private static final String REG_INVITE_COOLDOWN = "mesync:reg:invite:cooldown";
+    private static final String REG_PUBLIC_KEY_COOLDOWN = "mesync:reg:public:cooldown";
+    private static final String REG_MASTER_KEY_COOLDOWN = "mesync:reg:master:cooldown";
+    private static final String REG_LAST_STEP_COOLDOWN = "mesync:reg:finish:cooldown";
     private static final String REG_NONCE = "mesync:reg:nonce";
     private static final String AUTH_DEVICE_REVOKED = "mesync:auth:revoked";
     private static final String AUTH_RATE_LIMIT = "mesync:auth:rate";
@@ -19,7 +22,19 @@ public final class RedisKeys {
         return REG_INVITE_COOLDOWN + ":" + id;
     }
 
-    public static String registrationInviteKey(UUID id, UUID invite) {
+    public static String registrationPublicKeyCooldownKey(UUID id) {
+        return REG_PUBLIC_KEY_COOLDOWN + ":" + id;
+    }
+
+    public static String registrationMasterKeyCooldownKey(UUID id) {
+        return REG_MASTER_KEY_COOLDOWN + ":" + id;
+    }
+
+    public static String registrationLastStepCooldownKey(UUID id, String invite) {
+        return REG_LAST_STEP_COOLDOWN + ":" + id + ":" + invite;
+    }
+
+    public static String registrationInviteKey(UUID id, String invite) {
         return REG_INVITE + ":" + id + ":" + invite;
     }
 

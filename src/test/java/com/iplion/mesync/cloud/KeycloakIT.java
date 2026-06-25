@@ -2,11 +2,13 @@ package com.iplion.mesync.cloud;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.SecurityConfig;
-import com.iplion.mesync.cloud.controller.DeviceController;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
+import com.iplion.mesync.cloud.controller.DeviceRegistrationController;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
 import com.iplion.mesync.cloud.service.DeviceRevocationService;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import org.junit.jupiter.api.Assertions;
@@ -33,10 +35,11 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(DeviceController.class)
+@WebMvcTest(DeviceRegistrationController.class)
 @Import(SecurityConfig.class)
 @Testcontainers
 @ActiveProfiles("test")
@@ -106,6 +109,9 @@ public class KeycloakIT {
 
     @Test
     void registerDevice_shouldReturn201_whenTokenAndRolesValid() throws Exception {
+        when(deviceRegistrationService.registerDevice(any(DeviceRegisterRequestDto.class)))
+            .thenReturn(new DeviceRegisterResponseDto(UUID.randomUUID(), "test device", null, 1));
+
         registerDevice(getAccessToken(DeviceType.MOBILE), deviceRegisterRequestDto())
             .andExpect(status().isCreated());
 
@@ -183,7 +189,7 @@ public class KeycloakIT {
             "test device",
             "a".repeat(44),
             Map.of(),
-            UUID.randomUUID(),
+            TestModelFactory.inviteToken(),
             UUID.randomUUID(),
             "a".repeat(80)
         );

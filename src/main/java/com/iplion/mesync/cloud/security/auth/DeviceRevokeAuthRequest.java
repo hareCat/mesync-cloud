@@ -12,7 +12,7 @@ public record DeviceRevokeAuthRequest(
 
     UUID targetDevicePublicId,
     Integer currentMasterKeyVersion
-) implements DeviceAuthRequest {
+) implements RegisteredDeviceAuthRequest {
 
     @Override
     public byte[] payload() {

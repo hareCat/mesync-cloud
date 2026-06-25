@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.listener;
 
 import com.iplion.mesync.cloud.config.AppProperties;
-import com.iplion.mesync.cloud.error.RedisOperationException;
+import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
@@ -18,6 +18,7 @@ public class DeviceEventListener {
     private final RedisSecurityStore redisSecurityStore;
     private final AppProperties appProperties;
 
+    // TODO add authId and publicId from security context
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void deviceRevoked(DeviceRevokedEvent event) {
         try {

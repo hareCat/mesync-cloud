@@ -1,39 +1,39 @@
 package com.iplion.mesync.cloud.security.auth;
 
-import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.StoreMasterKeyRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
 
 import java.util.UUID;
 
-public record SaveInviteAuthRequest(
+public record StoreMasterKeyAuthRequest(
     String base64Signature,
     UUID nonce,
     UUID devicePublicId,
 
-    UUID inviteToken,
+    String inviteToken,
     String encryptedMasterKey,
     Integer keyVersion
-) implements DeviceAuthRequest {
+) implements RegisteredDeviceAuthRequest {
 
     @Override
     public byte[] payload() {
         return PayloadBuilder.build(
-            "INVITATION",
+            "INVITATION_STORE_MASTER_KEY",
             devicePublicId().toString(),
-            inviteToken().toString(),
+            inviteToken(),
             encryptedMasterKey,
             keyVersion.toString(),
             nonce().toString()
         );
     }
 
-    public static SaveInviteAuthRequest from(SaveInviteRequestDto request) {
-        return new SaveInviteAuthRequest(
+    public static StoreMasterKeyAuthRequest from(StoreMasterKeyRequestDto request) {
+        return new StoreMasterKeyAuthRequest(
             request.base64Signature(),
             request.nonce(),
             request.devicePublicId(),
             request.inviteToken(),
-            request.encryptedMasterKey(),
+            request.base64EncryptedMasterKey(),
             request.keyVersion()
         );
     }

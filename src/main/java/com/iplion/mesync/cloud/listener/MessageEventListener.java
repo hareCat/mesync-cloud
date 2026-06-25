@@ -14,6 +14,7 @@ public class MessageEventListener {
 
     private final DeviceNotificationService deviceNotificationService;
 
+    // TODO get userId and publicId from security context
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void messagePublished(MessagePublishedEvent event) {
         deviceNotificationService.notifyUserDevices(

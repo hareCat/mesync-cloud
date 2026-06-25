@@ -3,19 +3,19 @@ package com.iplion.mesync.cloud.service;
 import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
-import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
-import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
+import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.StoreInviteResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
+import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
-import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.auth.StoreInviteAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
@@ -38,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -66,26 +65,24 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     DeviceRegistrationService deviceRegistrationService;
 
     @Test
-    void saveInviteToken_shouldSaveToken() throws Exception {
+    void storeInviteToken_shouldSaveToken() throws Exception {
         Instant expiredAt = Instant.now();
 
         TestSecurity.createSecurityContext(TestModelFactory.authData());
 
-        var request = saveInviteRequestDto();
+        var request = storeInviteRequestDto();
 
-        when(invitationService.createInvite(any(), any(), any(), anyInt(), any())).thenReturn(expiredAt);
+        when(invitationService.createInvite(any(), any(), any())).thenReturn(expiredAt);
 
-        SaveInviteResponseDto response = deviceRegistrationService.saveInviteToken(request);
+        StoreInviteResponseDto response = deviceRegistrationService.storeInviteToken(request);
 
-        ArgumentCaptor<SaveInviteAuthRequest> captor = ArgumentCaptor.forClass(SaveInviteAuthRequest.class);
+        ArgumentCaptor<StoreInviteAuthRequest> captor = ArgumentCaptor.forClass(StoreInviteAuthRequest.class);
         verify(authService).verifyDeviceManagerRequest(captor.capture());
-        SaveInviteAuthRequest authRequestData = captor.getValue();
+        StoreInviteAuthRequest authRequestData = captor.getValue();
 
         verify(invitationService).createInvite(
             any(UUID.class),
             eq(request.inviteToken()),
-            eq(request.encryptedMasterKey()),
-            eq(request.keyVersion()),
             eq(request.deviceType())
         );
 
@@ -93,13 +90,14 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThat(authRequestData.inviteToken()).isEqualTo(request.inviteToken());
         assertThat(authRequestData.nonce()).isEqualTo(request.nonce());
         assertThat(authRequestData.base64Signature()).isEqualTo(request.base64Signature());
-        assertThat(authRequestData.encryptedMasterKey()).isEqualTo(request.encryptedMasterKey());
+        assertThat(authRequestData.deviceType()).isEqualTo(request.deviceType());
+        assertThat(authRequestData.keyVersion()).isEqualTo(request.keyVersion());
         assertThat(response).isNotNull();
         assertThat(response.expiresAt()).isEqualTo(expiredAt);
     }
 
     @Test
-    void saveInviteToken_shouldThrow_whenDeviceMasterKeyVersionOutdated() {
+    void storeInviteToken_shouldThrow_whenDeviceMasterKeyVersionOutdated() {
         DeviceType deviceType = DeviceType.MOBILE;
         AuthData authData = new AuthData(
             new UserAuthData(
@@ -114,22 +112,21 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         );
         TestSecurity.createSecurityContext(authData);
 
-        var request = new SaveInviteRequestDto(
+        var request = new StoreInviteRequestDto(
             UUID.randomUUID(),
-            UUID.randomUUID(),
-            "encryptedMasterKey",
+            TestModelFactory.inviteToken(),
             1,
             deviceType,
             UUID.randomUUID(),
             Base64.getEncoder().encodeToString(new byte[64])
         );
 
-        assertThatThrownBy(() -> deviceRegistrationService.saveInviteToken(request))
+        assertThatThrownBy(() -> deviceRegistrationService.storeInviteToken(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
                 assertThat(e.getMessage()).contains("key")
             );
 
-        verify(invitationService, never()).createInvite(any(), any(), any(), anyInt(), any());
+        verify(invitationService, never()).createInvite(any(), any(), any());
     }
 
     @Test
@@ -138,34 +135,175 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
 
         var ctx = createContext(deviceType);
         var request = deviceRegistrationRequest();
-        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
-        DeviceInviteData deviceInviteData = new DeviceInviteData(
-            ctx.encryptedMasterKey(),
-            1,
-            deviceType
-        );
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setBase64EncryptedMasterKey(ctx.encryptedMasterKey());
+        deviceInviteData.setBase64SigningPublicKey(request.base64PublicKey());
+        deviceInviteData.setKeyVersion(1);
+        deviceInviteData.setDeviceType(deviceType);
 
-        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
-        when(invitationService.consumeInviteAndGetEncryptedMasterKey(any(), any(), any()))
-            .thenReturn(deviceInviteData);
+        when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
+        doNothing().when(invitationService).lockDeviceInviteData(any(), any());
+        when(invitationService.deleteDeviceInviteData(any(), any())).thenReturn(true);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(keySignatureService.extractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         doNothing().when(deviceService).saveWithRetry(any());
 
         DeviceRegisterResponseDto response = deviceRegistrationService.registerDevice(request);
 
         ArgumentCaptor<RegistrationAuthRequest> captor = ArgumentCaptor.forClass(RegistrationAuthRequest.class);
-        verify(authService).verifyRegistrationRequest(captor.capture());
+        verify(authService).verifyUnregisteredDeviceRequest(captor.capture());
         RegistrationAuthRequest authRequestData = captor.getValue();
 
         assertThat(authRequestData.base64Signature()).isEqualTo(request.base64Signature());
         assertThat(authRequestData.nonce()).isEqualTo(request.nonce());
         assertThat(authRequestData.inviteToken()).isEqualTo(request.inviteToken());
-        assertThat(authRequestData.base64PublicKey()).isEqualTo(request.base64PublicKey());
+        assertThat(authRequestData.base64SigningPublicKey()).isEqualTo(request.base64PublicKey());
+        assertThat(authRequestData.deviceName()).isEqualTo(request.deviceName());
+        assertThat(authRequestData.extras()).isEqualTo(request.extras());
+        verify(invitationService).lockDeviceInviteData(ctx.jwtUserData().authId(), request.inviteToken());
+        verify(invitationService).deleteDeviceInviteData(ctx.jwtUserData().authId(), request.inviteToken());
         assertThat(response.devicePublicId()).isNotNull();
         assertThat(response.deviceName()).isEqualTo(request.deviceName());
         assertThat(response.encryptedMasterKey()).isEqualTo(ctx.encryptedMasterKey());
-        assertThat(response.keyVersion()).isEqualTo(ctx.user().getKeyVersion());
+        assertThat(response.keyVersion()).isEqualTo(deviceInviteData.getKeyVersion());
+    }
+
+    @Test
+    void registerDevice_whenInviteLockFails_shouldThrow() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+
+        var ctx = createContext(deviceType);
+        var request = deviceRegistrationRequest();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setBase64EncryptedMasterKey(ctx.encryptedMasterKey());
+        deviceInviteData.setBase64SigningPublicKey(request.base64PublicKey());
+        deviceInviteData.setKeyVersion(1);
+        deviceInviteData.setDeviceType(deviceType);
+
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
+        when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
+        doThrow(DeviceRegistrationException.invalidInvite("Invite is already being consumed"))
+            .when(invitationService).lockDeviceInviteData(any(), any());
+
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
+            .isInstanceOf(DeviceRegistrationException.class);
+
+        verifyNoInteractions(userService, keySignatureService, deviceService);
+        verify(invitationService, never()).deleteDeviceInviteData(any(), any());
+    }
+
+    @Test
+    void registerDevice_whenInviteDeleteFails_shouldThrow() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+
+        var ctx = createContext(deviceType);
+        var request = deviceRegistrationRequest();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setBase64EncryptedMasterKey(ctx.encryptedMasterKey());
+        deviceInviteData.setBase64SigningPublicKey(request.base64PublicKey());
+        deviceInviteData.setKeyVersion(1);
+        deviceInviteData.setDeviceType(deviceType);
+
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
+        when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
+        doNothing().when(invitationService).lockDeviceInviteData(any(), any());
+        when(invitationService.deleteDeviceInviteData(any(), any())).thenReturn(false);
+        when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(keySignatureService.extractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
+        doNothing().when(deviceService).saveWithRetry(any());
+
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+                assertThat(e.getMessage()).contains("delete invite");
+            });
+
+        verify(deviceService).saveWithRetry(any());
+        verify(invitationService).deleteDeviceInviteData(ctx.jwtUserData().authId(), request.inviteToken());
+    }
+
+    @Test
+    void registerDevice_whenInviteDeviceTypeMismatch_shouldThrowBeforeLockAndSave() {
+        var ctx = createContext(DeviceType.DESKTOP);
+        var request = deviceRegistrationRequest();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setBase64EncryptedMasterKey(ctx.encryptedMasterKey());
+        deviceInviteData.setBase64SigningPublicKey(request.base64PublicKey());
+        deviceInviteData.setKeyVersion(1);
+        deviceInviteData.setDeviceType(DeviceType.BROWSER);
+
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
+        when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
+
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
+            .isInstanceOf(InvalidDeviceTypeException.class);
+
+        verify(invitationService, never()).lockDeviceInviteData(any(), any());
+        verify(invitationService, never()).deleteDeviceInviteData(any(), any());
+        verifyNoInteractions(userService, keySignatureService, deviceService);
+    }
+
+    @Test
+    void registerDevice_whenInviteSigningPublicKeyMismatch_shouldThrowBeforeLockAndSave() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+
+        var ctx = createContext(deviceType);
+        var request = deviceRegistrationRequest();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setBase64EncryptedMasterKey(ctx.encryptedMasterKey());
+        deviceInviteData.setBase64SigningPublicKey("b".repeat(44));
+        deviceInviteData.setKeyVersion(1);
+        deviceInviteData.setDeviceType(deviceType);
+
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
+        when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
+
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e.getMessage()).contains("public key");
+            });
+
+        verify(invitationService, never()).lockDeviceInviteData(any(), any());
+        verify(invitationService, never()).deleteDeviceInviteData(any(), any());
+        verifyNoInteractions(userService, keySignatureService, deviceService);
+    }
+
+    @Test
+    void registerDevice_whenMasterKeyNotReady_shouldThrowBeforeLockAndSave() {
+        DeviceType deviceType = DeviceType.DESKTOP;
+
+        var ctx = createContext(deviceType);
+        var request = deviceRegistrationRequest();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setBase64SigningPublicKey(request.base64PublicKey());
+        deviceInviteData.setDeviceType(deviceType);
+
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
+        when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
+
+        assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e.getMessage()).contains("Master key");
+            });
+
+        verify(invitationService, never()).lockDeviceInviteData(any(), any());
+        verify(invitationService, never()).deleteDeviceInviteData(any(), any());
+        verifyNoInteractions(userService, keySignatureService, deviceService);
     }
 
     @Test
@@ -174,11 +312,12 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
 
         var ctx = createContext(deviceType);
         var request = deviceRegistrationRequest();
-        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(keySignatureService.extractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         doNothing().when(deviceService).saveWithRetry(any());
 
         DeviceRegisterResponseDto response = deviceRegistrationService.registerDevice(request);
@@ -194,9 +333,9 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     void registerDevice_whenFirstDeviceTypeNotMobile_shouldThrow() {
         var ctx = createContext(DeviceType.BROWSER);
         var request = deviceRegistrationRequest();
-        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(false);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
@@ -219,9 +358,9 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
             UUID.randomUUID(),
             "a".repeat(80)
         );
-        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
@@ -237,9 +376,10 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     void registerDevice_whenUserSavingError_shouldThrow() {
         var ctx = createContext(DeviceType.MOBILE);
         var request = deviceRegistrationRequest();
-        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenThrow(IllegalStateException.class);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
@@ -257,10 +397,12 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     void registerDevice_whenDeviceSavingError_shouldThrow() {
         var ctx = createContext(DeviceType.MOBILE);
         var request = deviceRegistrationRequest();
-        var result = new RegistrationAuthResult(ctx.jwtUserData(), mock(PublicKey.class));
 
-        when(authService.verifyRegistrationRequest(any())).thenReturn(result);
+        TestSecurity.createSecurityContext(ctx.authData());
+        when(authService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
+        when(keySignatureService.extractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
         doThrow(DeviceException.class).when(deviceService).saveWithRetry(any());
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
@@ -279,13 +421,15 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     private record TestContext(
         User user,
         String encryptedMasterKey,
-        JwtUserData jwtUserData
+        JwtUserData jwtUserData,
+        AuthData authData,
+        byte[] publicKeyBytes
     ) {
     }
 
     private TestContext createContext(DeviceType deviceType) {
         UUID authId = UUID.randomUUID();
-        String encryptedMasterKey = "encryptedMasterKey";
+        String encryptedMasterKey = "base64EncryptedMasterKey";
         String email = "test@mail.com";
         String clientId = deviceType.getClientId();
         JwtUserData jwtUserData = new JwtUserData(authId, clientId, email, true);
@@ -293,8 +437,15 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         User user = new User();
         user.setId(1L);
         user.setEmail(email);
+        user.setAuthId(authId);
 
-        return new TestContext(user, encryptedMasterKey, jwtUserData);
+        PublicKey publicKey = mock(PublicKey.class);
+        AuthData authData = new AuthData(
+            new UserAuthData(1L, authId, 1),
+            new DeviceAuthData(null, null, deviceType, publicKey)
+        );
+
+        return new TestContext(user, encryptedMasterKey, jwtUserData, authData, new byte[] {1, 2, 3});
     }
 
     DeviceRegisterRequestDto deviceRegistrationRequest() {
@@ -302,17 +453,16 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
             "test device",
             "a".repeat(44),
             Map.of("platform", "android"),
-            UUID.randomUUID(),
+            TestModelFactory.inviteToken(),
             UUID.randomUUID(),
             "a".repeat(80)
         );
     }
 
-    SaveInviteRequestDto saveInviteRequestDto() {
-        return new SaveInviteRequestDto(
+    StoreInviteRequestDto storeInviteRequestDto() {
+        return new StoreInviteRequestDto(
             UUID.randomUUID(),
-            UUID.randomUUID(),
-            "encryptedMasterKey",
+            TestModelFactory.inviteToken(),
             2,
             DeviceType.MOBILE,
             UUID.randomUUID(),

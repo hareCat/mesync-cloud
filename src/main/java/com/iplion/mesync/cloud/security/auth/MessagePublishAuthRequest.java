@@ -20,7 +20,7 @@ public record MessagePublishAuthRequest(
     Instant occurredAt,
     Integer keyVersion,
     String base64Ciphertext
-) implements DeviceAuthRequest {
+) implements RegisteredDeviceAuthRequest {
 
     @Override
     public byte[] payload() {

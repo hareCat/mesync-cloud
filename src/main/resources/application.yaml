@@ -14,14 +14,14 @@ spring:
 app:
   registration:
     invite-ttl: 10m
-    invite-cooldown: 1m
+    invite-cooldown: 10s
+    nonce-ttl: 30s
     rate-limit-ttl: 10m
     attempts: 10
-    nonce-ttl: 30s
   auth:
+    nonce-ttl: 30s
     rate-limit-ttl: 60s
     attempts: 120
-    nonce-ttl: 30s
   revoke:
     ttl: 30d
   cache:

@@ -4,14 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
-import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.auth.MessageSyncAuthRequest;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.auth.StoreInviteAuthRequest;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestUri;
@@ -92,14 +92,14 @@ class TtlIT extends BaseIT {
     void inviteCooldown_shouldRejectSecondInviteUntilTtlExpires() throws Exception {
         DeviceContext context = saveUserWithDevice();
 
-        saveInvite(context, UUID.randomUUID(), UUID.randomUUID())
+        storeInvite(context, "012345", UUID.randomUUID())
             .andExpect(status().isCreated());
 
-        saveInvite(context, UUID.randomUUID(), UUID.randomUUID())
+        storeInvite(context, "123456", UUID.randomUUID())
             .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.detail", containsString("one invitation every")));
+            .andExpect(jsonPath("$.detail", containsString("such request every")));
 
-        await().atMost(TTL_WAIT).untilAsserted(() -> saveInvite(context, UUID.randomUUID(), UUID.randomUUID())
+        await().atMost(TTL_WAIT).untilAsserted(() -> storeInvite(context, "234567", UUID.randomUUID())
             .andExpect(status().isCreated()));
     }
 
@@ -177,12 +177,12 @@ class TtlIT extends BaseIT {
 
     // helpers --------------------------
 
-    private ResultActions saveInvite(
+    private ResultActions storeInvite(
         DeviceContext context,
-        UUID inviteToken,
+        String inviteToken,
         UUID nonce
     ) throws Exception {
-        SaveInviteRequestDto request = saveInviteRequestDto(context, inviteToken, nonce);
+        StoreInviteRequestDto request = storeInviteRequestDto(context, inviteToken, nonce);
 
         return mockMvc.perform(post(TestUri.INVITE_URI)
             .with(TestJwtBuilder.forDevice(context.user.getAuthId(), context.device.getDeviceType())
@@ -204,28 +204,26 @@ class TtlIT extends BaseIT {
             .content(objectMapper.writeValueAsString(request)));
     }
 
-    private SaveInviteRequestDto saveInviteRequestDto(
+    private StoreInviteRequestDto storeInviteRequestDto(
         DeviceContext context,
-        UUID inviteToken,
+        String inviteToken,
         UUID nonce
     ) throws GeneralSecurityException {
-        String encryptedMasterKey = "a".repeat(32);
         int keyVersion = 2;
         DeviceType inviteDeviceType = DeviceType.BROWSER;
 
-        byte[] payload = new SaveInviteAuthRequest(
+        byte[] payload = new StoreInviteAuthRequest(
             null,
             nonce,
             context.device.getPublicId(),
             inviteToken,
-            encryptedMasterKey,
+            inviteDeviceType,
             keyVersion
         ).payload();
 
-        return new SaveInviteRequestDto(
+        return new StoreInviteRequestDto(
             context.device.getPublicId(),
             inviteToken,
-            encryptedMasterKey,
             keyVersion,
             inviteDeviceType,
             nonce,

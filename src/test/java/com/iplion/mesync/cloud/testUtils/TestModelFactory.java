@@ -81,4 +81,8 @@ public final class TestModelFactory {
         return message;
     }
 
+    public static String inviteToken() {
+        return "ABD123";
+    }
+
 }

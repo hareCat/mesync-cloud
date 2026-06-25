@@ -16,22 +16,13 @@ public class DeviceRegistrationException extends ApiException {
         super(status, internalMessage, clientMessage, cause);
     }
 
-    public static DeviceRegistrationException cooldownDelay(Duration cooldown) {
+    public static DeviceRegistrationException cooldownDelay(String redisKey, Duration cooldown) {
         long cooldownSeconds = cooldown.toSeconds();
 
         return new DeviceRegistrationException(
             HttpStatus.FORBIDDEN,
-            String.format("Invite cooldown %d seconds", cooldownSeconds),
-            String.format("You can send one invitation every %d seconds", cooldownSeconds)
-        );
-    }
-
-    public static DeviceRegistrationException redisSetValueError(UUID authId, Throwable cause) {
-        return new DeviceRegistrationException(
-            HttpStatus.INTERNAL_SERVER_ERROR,
-            String.format("Couldn't set redis value, authId=%s", authId.toString()),
-            DEFAULT_CLIENT_MESSAGE,
-            cause
+            String.format("RedisKey: %s. Cooldown %d seconds", redisKey, cooldownSeconds),
+            String.format("You can send such request every %d seconds", cooldownSeconds)
         );
     }
 
@@ -40,6 +31,14 @@ public class DeviceRegistrationException extends ApiException {
             HttpStatus.BAD_REQUEST,
             internalMessage,
             "Invalid invite"
+        );
+    }
+
+    public static DeviceRegistrationException inviteDeleteFailed(UUID authId, String inviteToken) {
+        return new DeviceRegistrationException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            String.format("Failed to delete invite token. authId: %s, inviteToken: %s", authId, inviteToken),
+            DEFAULT_CLIENT_MESSAGE
         );
     }
 
@@ -80,23 +79,6 @@ public class DeviceRegistrationException extends ApiException {
         return new DeviceRegistrationException(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to save user. authId: " + authId,
-            DEFAULT_CLIENT_MESSAGE,
-            cause
-        );
-    }
-
-    public static DeviceRegistrationException deviceTypeMismatch(String internalMessage, String clientMessage) {
-        return new DeviceRegistrationException(
-            HttpStatus.FORBIDDEN,
-            internalMessage,
-            clientMessage
-        );
-    }
-
-    public static DeviceRegistrationException wrongRegisterData(String internalMessage, Throwable cause) {
-        return new DeviceRegistrationException(
-            HttpStatus.BAD_REQUEST,
-            internalMessage,
             DEFAULT_CLIENT_MESSAGE,
             cause
         );

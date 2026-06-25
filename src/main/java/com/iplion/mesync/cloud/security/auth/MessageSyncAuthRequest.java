@@ -12,7 +12,7 @@ public record MessageSyncAuthRequest(
 
     Long lastMessageId,
     Integer limit
-) implements DeviceAuthRequest {
+) implements RegisteredDeviceAuthRequest {
 
     @Override
     public byte[] payload() {

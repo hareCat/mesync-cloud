@@ -2,11 +2,12 @@ package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
-import com.iplion.mesync.cloud.error.RedisOperationException;
+import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +36,9 @@ public class InvitationServiceTest {
     AppProperties appProperties = new AppProperties(
         new AppProperties.Registration(
             Duration.ofMinutes(10),
-            Duration.ofSeconds(60),
-            Duration.ofMinutes(10),
+            Duration.ofSeconds(10),
             Duration.ofSeconds(30),
+            Duration.ofMinutes(10),
             10
         ),
         null,
@@ -55,71 +56,59 @@ public class InvitationServiceTest {
 
     @Test
     public void createInvite_whenSetIfAbsentFail_shouldThrowDeviceRegistrationExceptionWithCooldownDelay() {
+        UUID authId = UUID.randomUUID();
         when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(false);
 
         assertThatThrownBy(() -> invitationService.createInvite(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "encryptedMasterKey",
-            1,
+            authId,
+            TestModelFactory.inviteToken(),
             DeviceType.MOBILE)
         )
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
                 assertThat(e.getMessage()).contains("cooldown");
+                assertThat(e.getMessage()).contains(RedisKeys.registrationInviteCooldownKey(authId));
             });
     }
 
     @Test
-    public void createInvite_whenSetRedisValueFail_shouldThrowDeviceRegistrationExceptionWithRedisSetValueError() {
-        UUID authId = UUID.randomUUID();
-
+    public void createInvite_whenSetIfAbsentRedisOperationFails_shouldThrowRedisOperationException() {
         when(redisSecurityStore.setIfAbsent(any(), any(), any()))
-            .thenThrow(new RedisOperationException("error"))
-            .thenReturn(true);
+            .thenThrow(new RedisOperationException("error"));
 
         assertThatThrownBy(() -> invitationService.createInvite(
-            authId,
             UUID.randomUUID(),
-            "encryptedMasterKey",
-            1,
+            TestModelFactory.inviteToken(),
             DeviceType.MOBILE)
         )
-            .hasMessageContaining(authId.toString())
-            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(e.getCause()).isInstanceOf(RedisOperationException.class);
-            });
+            .isInstanceOf(RedisOperationException.class)
+            .hasMessageContaining("error");
+    }
+
+    @Test
+    public void createInvite_whenSetRedisValueFail_shouldThrowRedisOperationException() {
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
 
         doThrow(new RedisOperationException("error")).when(redisSecurityStore).set(any(), any(), any());
 
         assertThatThrownBy(() -> invitationService.createInvite(
-            authId,
             UUID.randomUUID(),
-            "encryptedMasterKey",
-            1,
+            TestModelFactory.inviteToken(),
             DeviceType.MOBILE)
         )
-            .hasMessageContaining(authId.toString())
-            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(e.getCause()).isInstanceOf(RedisOperationException.class);
-            });
+            .isInstanceOf(RedisOperationException.class)
+            .hasMessageContaining("error");
     }
 
     @Test
     public void createInvite_shouldCreateInviteAndReturnExpiredAt() {
         UUID authId = UUID.randomUUID();
-        UUID inviteToken = UUID.randomUUID();
+        String inviteToken = TestModelFactory.inviteToken();
         Instant expiresAt = Instant.now().plus(regProps.inviteTtl());
         DeviceType deviceType = DeviceType.MOBILE;
-        String encryptedMasterKey = "encryptedMasterKey";
-        Integer keyVersion = 1;
-        var deviceInviteData = new DeviceInviteData(
-            encryptedMasterKey,
-            keyVersion,
-            deviceType
-        );
+
+        var deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setDeviceType(deviceType);
 
         when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
         doNothing().when(redisSecurityStore).set(any(), any(), any());
@@ -128,8 +117,6 @@ public class InvitationServiceTest {
             invitationService.createInvite(
                 authId,
                 inviteToken,
-                encryptedMasterKey,
-                keyVersion,
                 deviceType)
         ).isAfterOrEqualTo(expiresAt);
 
@@ -146,35 +133,68 @@ public class InvitationServiceTest {
     }
 
     @Test
-    public void consumeInviteAndGetEncryptedMasterKey_whenSetRedisValueFail_shouldThrowDeviceRegistrationExceptionWithRedisSetValueError() {
+    public void storePublicKeys_whenSetIfAbsentFails_shouldThrowDeviceRegistrationExceptionWithCooldownDelay() {
         UUID authId = UUID.randomUUID();
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(false);
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
-            .thenThrow(new RedisOperationException("error"));
-
-        assertThatThrownBy(() -> invitationService.consumeInviteAndGetEncryptedMasterKey(
+        assertThatThrownBy(() -> invitationService.storePublicKeys(
             authId,
-            DeviceType.MOBILE,
-            UUID.randomUUID()
+            TestModelFactory.inviteToken(),
+            "encryptionPublicKey",
+            "signingPublicKey"
         ))
-            .hasMessageContaining(authId.toString())
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(e.getCause()).isInstanceOf(RedisOperationException.class);
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                assertThat(e.getMessage()).contains(RedisKeys.registrationPublicKeyCooldownKey(authId));
             });
     }
 
     @Test
-    public void consumeInviteAndGetEncryptedMasterKey_whenRedisReturnsNull_shouldThrowDeviceRegistrationExceptionWithInvalidInvite() {
+    public void storePublicKeys_whenGetRedisValueFails_shouldThrowRedisOperationException() {
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        when(redisSecurityStore.get(any(), any())).thenThrow(new RedisOperationException("error"));
+
+        assertThatThrownBy(() -> invitationService.storePublicKeys(
+            UUID.randomUUID(),
+            TestModelFactory.inviteToken(),
+            "encryptionPublicKey",
+            "signingPublicKey"
+        ))
+            .isInstanceOf(RedisOperationException.class)
+            .hasMessageContaining("error");
+    }
+
+    @Test
+    public void storePublicKeys_whenSetRedisValueFails_shouldThrowRedisOperationException() {
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setDeviceType(DeviceType.MOBILE);
+
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        when(redisSecurityStore.get(any(), any())).thenReturn(deviceInviteData);
+        doThrow(new RedisOperationException("error")).when(redisSecurityStore).set(any(), any(), any());
+
+        assertThatThrownBy(() -> invitationService.storePublicKeys(
+            UUID.randomUUID(),
+            TestModelFactory.inviteToken(),
+            "encryptionPublicKey",
+            "signingPublicKey"
+        ))
+            .isInstanceOf(RedisOperationException.class)
+            .hasMessageContaining("error");
+    }
+
+    @Test
+    public void storePublicKeys_whenRedisReturnsNull_shouldThrowDeviceRegistrationExceptionWithInvalidInvite() {
         UUID authId = UUID.randomUUID();
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
-            .thenReturn(null);
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        when(redisSecurityStore.get(any(), any())).thenReturn(null);
 
-        assertThatThrownBy(() -> invitationService.consumeInviteAndGetEncryptedMasterKey(
+        assertThatThrownBy(() -> invitationService.storePublicKeys(
             authId,
-            DeviceType.MOBILE,
-            UUID.randomUUID()
+            TestModelFactory.inviteToken(),
+            "encryptionPublicKey",
+            "signingPublicKey"
         ))
             .hasMessageContaining(authId.toString())
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
@@ -184,52 +204,179 @@ public class InvitationServiceTest {
     }
 
     @Test
-    public void consumeInviteAndGetEncryptedMasterKey_whenDeviceTypeMismatch_shouldThrowDeviceRegistrationExceptionWithDeviceTypeMismatch() {
+    public void storePublicKeys_shouldUpdateInviteAndReturnExpiredAt() {
         UUID authId = UUID.randomUUID();
-        DeviceType inviteDeviceType = DeviceType.MOBILE;
-        DeviceType requestDeviceType = DeviceType.BROWSER;
-        DeviceInviteData deviceInviteData = new DeviceInviteData(
-            "encryptedMasterKey",
-            1,
-            inviteDeviceType
-        );
+        String inviteToken = TestModelFactory.inviteToken();
+        String encryptionPublicKey = "encryptionPublicKey";
+        String signingPublicKey = "signingPublicKey";
+        Instant expiresAt = Instant.now().plus(regProps.inviteTtl());
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setDeviceType(DeviceType.MOBILE);
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
-            .thenReturn(deviceInviteData);
+        DeviceInviteData expectedInviteData = new DeviceInviteData();
+        expectedInviteData.setDeviceType(DeviceType.MOBILE);
+        expectedInviteData.setBase64EncryptionPublicKey(encryptionPublicKey);
+        expectedInviteData.setBase64SigningPublicKey(signingPublicKey);
 
-        assertThatThrownBy(() -> invitationService.consumeInviteAndGetEncryptedMasterKey(
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        when(redisSecurityStore.get(any(), any())).thenReturn(deviceInviteData);
+        doNothing().when(redisSecurityStore).set(any(), any(), any());
+
+        assertThat(invitationService.storePublicKeys(
             authId,
-            requestDeviceType,
-            UUID.randomUUID()
+            inviteToken,
+            encryptionPublicKey,
+            signingPublicKey
+        )).isAfterOrEqualTo(expiresAt);
+
+        verify(redisSecurityStore).setIfAbsent(
+            eq(RedisKeys.registrationPublicKeyCooldownKey(authId)),
+            any(String.class),
+            eq(regProps.inviteCooldown())
+        );
+        verify(redisSecurityStore).get(
+            eq(RedisKeys.registrationInviteKey(authId, inviteToken)),
+            eq(DeviceInviteData.class)
+        );
+        verify(redisSecurityStore).set(
+            eq(RedisKeys.registrationInviteKey(authId, inviteToken)),
+            eq(expectedInviteData),
+            eq(regProps.inviteTtl())
+        );
+    }
+
+    @Test
+    public void storeMasterKey_whenPublicKeysMissing_shouldThrowInvalidInvite() {
+        UUID authId = UUID.randomUUID();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setDeviceType(DeviceType.MOBILE);
+
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        when(redisSecurityStore.get(any(), any())).thenReturn(deviceInviteData);
+
+        assertThatThrownBy(() -> invitationService.storeMasterKey(
+            authId,
+            TestModelFactory.inviteToken(),
+            "encryptedMasterKey",
+            1
         ))
-            .hasMessageContaining(authId.toString(), inviteDeviceType.name(), requestDeviceType.name())
-            .isInstanceOfSatisfying(
-                DeviceRegistrationException.class,
-                e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN)
+            .hasMessageContaining(authId.toString())
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
             );
     }
 
     @Test
-    public void consumeInviteAndGetEncryptedMasterKey_shouldReturnEncryptedMasterKey() {
+    public void storeMasterKey_shouldUpdateInviteAndReturnExpiredAt() {
         UUID authId = UUID.randomUUID();
-        UUID inviteToken = UUID.randomUUID();
-        DeviceType deviceType = DeviceType.MOBILE;
-        DeviceInviteData deviceInviteData = new DeviceInviteData(
-            "encryptedMasterKey",
-            1,
-            deviceType
-        );
+        String inviteToken = TestModelFactory.inviteToken();
+        String encryptedMasterKey = "encryptedMasterKey";
+        int keyVersion = 1;
+        Instant expiresAt = Instant.now().plus(regProps.inviteTtl());
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setDeviceType(DeviceType.MOBILE);
+        deviceInviteData.setBase64EncryptionPublicKey("encryptionPublicKey");
+        deviceInviteData.setBase64SigningPublicKey("signingPublicKey");
 
-        when(redisSecurityStore.getAndDelete(any(), any()))
-            .thenReturn(deviceInviteData);
+        DeviceInviteData expectedInviteData = new DeviceInviteData();
+        expectedInviteData.setDeviceType(DeviceType.MOBILE);
+        expectedInviteData.setBase64EncryptionPublicKey("encryptionPublicKey");
+        expectedInviteData.setBase64SigningPublicKey("signingPublicKey");
+        expectedInviteData.setBase64EncryptedMasterKey(encryptedMasterKey);
+        expectedInviteData.setKeyVersion(keyVersion);
 
-        assertThat(invitationService.consumeInviteAndGetEncryptedMasterKey(
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+        when(redisSecurityStore.get(any(), any())).thenReturn(deviceInviteData);
+        doNothing().when(redisSecurityStore).set(any(), any(), any());
+
+        assertThat(invitationService.storeMasterKey(
             authId,
-            deviceType,
-            inviteToken
-        )).isEqualTo(deviceInviteData);
+            inviteToken,
+            encryptedMasterKey,
+            keyVersion
+        )).isAfterOrEqualTo(expiresAt);
 
-        verify(redisSecurityStore).getAndDelete(eq(RedisKeys.registrationInviteKey(authId, inviteToken)), any());
+        verify(redisSecurityStore).setIfAbsent(
+            eq(RedisKeys.registrationMasterKeyCooldownKey(authId)),
+            any(String.class),
+            eq(regProps.inviteCooldown())
+        );
+        verify(redisSecurityStore).set(
+            eq(RedisKeys.registrationInviteKey(authId, inviteToken)),
+            eq(expectedInviteData),
+            eq(regProps.inviteTtl())
+        );
+    }
+
+    @Test
+    public void getDeviceInviteData_whenRedisReturnsNull_shouldThrowInvalidInvite() {
+        UUID authId = UUID.randomUUID();
+        when(redisSecurityStore.get(any(), any())).thenReturn(null);
+
+        assertThatThrownBy(() -> invitationService.getDeviceInviteData(authId, TestModelFactory.inviteToken()))
+            .hasMessageContaining(authId.toString())
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
+            );
+    }
+
+    @Test
+    public void getDeviceInviteData_shouldReturnInviteData() {
+        UUID authId = UUID.randomUUID();
+        String inviteToken = TestModelFactory.inviteToken();
+        DeviceInviteData deviceInviteData = new DeviceInviteData();
+        deviceInviteData.setDeviceType(DeviceType.MOBILE);
+
+        when(redisSecurityStore.get(any(), any())).thenReturn(deviceInviteData);
+
+        assertThat(invitationService.getDeviceInviteData(authId, inviteToken)).isEqualTo(deviceInviteData);
+
+        verify(redisSecurityStore).get(
+            eq(RedisKeys.registrationInviteKey(authId, inviteToken)),
+            eq(DeviceInviteData.class)
+        );
+    }
+
+    @Test
+    public void lockDeviceInviteData_whenSetIfAbsentFails_shouldThrowCooldownDelay() {
+        UUID authId = UUID.randomUUID();
+        String inviteToken = TestModelFactory.inviteToken();
+
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(false);
+
+        assertThatThrownBy(() -> invitationService.lockDeviceInviteData(authId, inviteToken))
+            .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                assertThat(e.getMessage()).contains(RedisKeys.registrationLastStepCooldownKey(authId, inviteToken));
+            });
+    }
+
+    @Test
+    public void lockDeviceInviteData_shouldCreateLastStepLock() {
+        UUID authId = UUID.randomUUID();
+        String inviteToken = TestModelFactory.inviteToken();
+
+        when(redisSecurityStore.setIfAbsent(any(), any(), any())).thenReturn(true);
+
+        invitationService.lockDeviceInviteData(authId, inviteToken);
+
+        verify(redisSecurityStore).setIfAbsent(
+            eq(RedisKeys.registrationLastStepCooldownKey(authId, inviteToken)),
+            any(String.class),
+            eq(regProps.inviteCooldown())
+        );
+    }
+
+    @Test
+    public void deleteDeviceInviteData_shouldDeleteInviteKey() {
+        UUID authId = UUID.randomUUID();
+        String inviteToken = TestModelFactory.inviteToken();
+
+        when(redisSecurityStore.delete(any())).thenReturn(true);
+
+        assertThat(invitationService.deleteDeviceInviteData(authId, inviteToken)).isTrue();
+
+        verify(redisSecurityStore).delete(eq(RedisKeys.registrationInviteKey(authId, inviteToken)));
     }
 
 }

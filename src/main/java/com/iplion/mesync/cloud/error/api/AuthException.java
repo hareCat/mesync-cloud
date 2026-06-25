@@ -25,15 +25,6 @@ public class AuthException extends ApiException {
         );
     }
 
-    public static AuthException redisOperationError(UUID authId, Throwable cause) {
-        return new AuthException(
-            HttpStatus.INTERNAL_SERVER_ERROR,
-            String.format("Couldn't set redis value, authId=%s", authId.toString()),
-            DEFAULT_CLIENT_MESSAGE,
-            cause
-        );
-    }
-
     public static AuthException rateLimit(String key) {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
@@ -63,15 +54,6 @@ public class AuthException extends ApiException {
             HttpStatus.FORBIDDEN,
             internalMessage,
             "Cryptography data is not valid",
-            cause
-        );
-    }
-
-    public static AuthException deviceNotFound(UUID authId, Throwable cause) {
-        return new AuthException(
-            HttpStatus.NOT_FOUND,
-            "Device not found. authId: " + authId,
-            "Device not found",
             cause
         );
     }

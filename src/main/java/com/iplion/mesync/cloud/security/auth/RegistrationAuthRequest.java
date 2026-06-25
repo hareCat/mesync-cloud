@@ -3,22 +3,26 @@ package com.iplion.mesync.cloud.security.auth;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
 
+import java.util.Map;
 import java.util.UUID;
 
 public record RegistrationAuthRequest(
     String base64Signature,
     UUID nonce,
+    String base64SigningPublicKey,
 
-    String base64PublicKey,
-    UUID inviteToken
-) implements AuthRequest {
+    String deviceName,
+    Map<String, String> extras,
+    String inviteToken
+) implements UnregisteredDeviceAuthRequest {
 
     @Override
     public byte[] payload() {
         return PayloadBuilder.build(
             "REGISTRATION",
-            inviteToken() == null ? "" : inviteToken().toString(),
-            base64PublicKey(),
+            inviteToken() == null ? "" : inviteToken(),
+            base64SigningPublicKey(),
+            deviceName() == null ? "" : deviceName(),
             nonce().toString()
         );
     }
@@ -28,6 +32,8 @@ public record RegistrationAuthRequest(
             request.base64Signature(),
             request.nonce(),
             request.base64PublicKey(),
+            request.deviceName(),
+            request.extras(),
             request.inviteToken()
         );
     }

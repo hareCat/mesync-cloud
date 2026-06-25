@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.security.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.error.api.AuthException;
-import com.iplion.mesync.cloud.error.RedisOperationException;
+import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
@@ -27,6 +27,10 @@ public final class RedisSecurityStore {
         execute(() -> redisTemplate.opsForValue().set(redisKey, value, ttl));
     }
 
+    public boolean delete(String key) {
+        return execute(() -> redisTemplate.delete(key));
+    }
+
     private <T> T convert(Object data, Class<T> clazz) {
         if (data == null) {
             return null;
@@ -39,6 +43,11 @@ public final class RedisSecurityStore {
                 "Failed to convert Redis value to " + clazz.getSimpleName(), e
             );
         }
+    }
+
+    @Nullable
+    public <T> T get(String key, Class<T> clazz) {
+        return convert(execute(() -> redisTemplate.opsForValue().get(key)), clazz);
     }
 
     @Nullable

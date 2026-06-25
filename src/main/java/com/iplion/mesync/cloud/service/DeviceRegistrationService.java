@@ -2,8 +2,12 @@ package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
-import com.iplion.mesync.cloud.controller.dto.SaveInviteRequestDto;
-import com.iplion.mesync.cloud.controller.dto.SaveInviteResponseDto;
+import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.StoreInviteResponseDto;
+import com.iplion.mesync.cloud.controller.dto.StoreMasterKeyRequestDto;
+import com.iplion.mesync.cloud.controller.dto.StoreMasterKeyResponseDto;
+import com.iplion.mesync.cloud.controller.dto.StorePublicKeysRequestDto;
+import com.iplion.mesync.cloud.controller.dto.StorePublicKeysResponseDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
@@ -11,26 +15,31 @@ import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
+import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.security.AuthService;
 import com.iplion.mesync.cloud.security.SecurityContextUtils;
 import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
-import com.iplion.mesync.cloud.security.auth.RegistrationAuthResult;
-import com.iplion.mesync.cloud.security.auth.SaveInviteAuthRequest;
+import com.iplion.mesync.cloud.security.auth.StoreInviteAuthRequest;
+import com.iplion.mesync.cloud.security.auth.StoreMasterKeyAuthRequest;
+import com.iplion.mesync.cloud.security.auth.StorePublicKeysAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 //TODO change security deviceType check to roles check and remove DeviceType.MANAGER
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeviceRegistrationService {
     private final DeviceRepository deviceRepository;
     private final UserService userService;
@@ -39,8 +48,8 @@ public class DeviceRegistrationService {
     private final AuthService authService;
     private final KeySignatureService keySignatureService;
 
-    public SaveInviteResponseDto saveInviteToken(SaveInviteRequestDto request) {
-        authService.verifyDeviceManagerRequest(SaveInviteAuthRequest.from(request));
+    public StoreInviteResponseDto storeInviteToken(StoreInviteRequestDto request) {
+        authService.verifyDeviceManagerRequest(StoreInviteAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         if (authData.userAuthData().keyVersion() > request.keyVersion()) {
@@ -55,35 +64,54 @@ public class DeviceRegistrationService {
         Instant expiresAt = invitationService.createInvite(
             authData.userAuthData().authId(),
             request.inviteToken(),
-            request.encryptedMasterKey(),
-            request.keyVersion(),
             request.deviceType()
         );
 
-        return new SaveInviteResponseDto(
+        return new StoreInviteResponseDto(
+            expiresAt
+        );
+    }
+
+    public StorePublicKeysResponseDto storePublicKeys(StorePublicKeysRequestDto request) {
+        authService.verifyUnregisteredDeviceRequest(StorePublicKeysAuthRequest.from(request));
+        AuthData authData = SecurityContextUtils.getAuthData();
+
+        Instant expiresAt = invitationService.storePublicKeys(
+            authData.userAuthData().authId(),
+            request.inviteToken(),
+            request.base64EncryptionPublicKey(),
+            request.base64SigningPublicKey()
+        );
+
+        return new StorePublicKeysResponseDto(
+            expiresAt
+        );
+    }
+
+    public StoreMasterKeyResponseDto storeMasterKey(StoreMasterKeyRequestDto request) {
+        authService.verifyDeviceManagerRequest(StoreMasterKeyAuthRequest.from(request));
+        AuthData authData = SecurityContextUtils.getAuthData();
+
+        Instant expiresAt = invitationService.storeMasterKey(
+            authData.userAuthData().authId(),
+            request.inviteToken(),
+            request.base64EncryptedMasterKey(),
+            request.keyVersion()
+        );
+
+        return new StoreMasterKeyResponseDto(
             expiresAt
         );
     }
 
     @Transactional
     public DeviceRegisterResponseDto registerDevice(DeviceRegisterRequestDto request) {
-        RegistrationAuthResult authResult = authService.verifyRegistrationRequest(
-            RegistrationAuthRequest.from(request)
-        );
+        JwtUserData jwtUserData = authService.verifyUnregisteredDeviceRequest(RegistrationAuthRequest.from(request));
+        AuthData authData = SecurityContextUtils.getAuthData();
 
-        UUID authId = authResult.jwtUserData().authId();
-        DeviceType deviceType;
-        try {
-            deviceType = DeviceType.fromClientId(authResult.jwtUserData().clientId());
-        } catch (InvalidDeviceTypeException e) {
-            throw DeviceRegistrationException.wrongRegisterData(
-                String.format("Invalid jwt clientId: %s, authId: %s",
-                    authResult.jwtUserData().clientId(),
-                    authResult.jwtUserData().authId()
-                ),
-                e
-            );
-        }
+        UUID authId = authData.userAuthData().authId();
+        DeviceType deviceType = authData.deviceAuthData().deviceType();
+        String inviteToken = request.inviteToken();
 
         boolean hasActiveDevices = deviceRepository.existsActiveByUserAuthId(authId);
 
@@ -93,23 +121,45 @@ public class DeviceRegistrationService {
 
         String encryptedMasterKey = null;
         Integer keyVersion = null;
-        if (hasActiveDevices) {
-            DeviceInviteData deviceInviteData = getInviteData(
-                request.inviteToken(),
-                authId,
-                deviceType
-            );
+        DeviceInviteData deviceInviteData = null;
 
-            encryptedMasterKey = deviceInviteData.encryptedMasterKey();
-            keyVersion = deviceInviteData.keyVersion();
+        if (hasActiveDevices) {
+            if (inviteToken == null || inviteToken.isBlank()) {
+                throw DeviceRegistrationException.invalidInvite(
+                    "Missing invite token for additional device. authId: " + authId
+                );
+            }
+
+            deviceInviteData = invitationService.getDeviceInviteData(authId, inviteToken);
+
+            if (deviceInviteData.getDeviceType() != authData.deviceAuthData().deviceType()) {
+                throw new InvalidDeviceTypeException("JWT device type is different from invite device");
+            }
+
+            if (!Objects.equals(deviceInviteData.getBase64SigningPublicKey(), request.base64PublicKey())) {
+                throw DeviceRegistrationException.invalidInvite(
+                    "Registration public key does not match invite public key. authId: " + authId
+                );
+            }
+
+            if (deviceInviteData.getBase64EncryptedMasterKey() == null || deviceInviteData.getKeyVersion() == null) {
+                throw DeviceRegistrationException.invalidInvite(
+                    "Master key is not ready for invite. authId: " + authId
+                );
+            }
+
+            encryptedMasterKey = deviceInviteData.getBase64EncryptedMasterKey();
+            keyVersion = deviceInviteData.getKeyVersion();
+
+            invitationService.lockDeviceInviteData(authId, inviteToken);
         }
 
         User user;
         try {
             user = userService.syncOrCreateUser(
                 authId,
-                authResult.jwtUserData().email(),
-                authResult.jwtUserData().emailVerified()
+                jwtUserData.email(),
+                jwtUserData.emailVerified()
             );
         } catch (IllegalStateException e) {
             throw DeviceRegistrationException.userSaveFailed(authId, e);
@@ -118,7 +168,7 @@ public class DeviceRegistrationService {
         Device device = buildDevice(
             user,
             deviceType,
-            keySignatureService.extractPublicKeyBytes(authResult.publicKey()),
+            keySignatureService.extractPublicKeyBytes(authData.deviceAuthData().publicKey()),
             request.deviceName(),
             request.extras()
         );
@@ -129,29 +179,20 @@ public class DeviceRegistrationService {
             throw DeviceRegistrationException.saveFailed(authId, e);
         }
 
+        if (deviceInviteData != null && !invitationService.deleteDeviceInviteData(authId, inviteToken)) {
+            log.error(
+                "Failed to remove invite token {} in Redis. authId: {}",
+                inviteToken,
+                authId
+            );
+            throw DeviceRegistrationException.inviteDeleteFailed(authId, inviteToken);
+        }
+
         return new DeviceRegisterResponseDto(
             device.getPublicId(),
             device.getName(),
             encryptedMasterKey,
             keyVersion == null ? user.getKeyVersion() : keyVersion
-        );
-    }
-
-    private DeviceInviteData getInviteData(
-        UUID inviteToken,
-        UUID authId,
-        DeviceType deviceType
-    ) {
-        if (inviteToken == null) {
-            throw DeviceRegistrationException.invalidInvite(
-                "Missing invite token for additional device. authId: " + authId
-            );
-        }
-
-        return invitationService.consumeInviteAndGetEncryptedMasterKey(
-            authId,
-            deviceType,
-            inviteToken
         );
     }
 

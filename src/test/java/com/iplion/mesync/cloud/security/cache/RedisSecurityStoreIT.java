@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.security.cache;
 
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.error.api.AuthException;
-import com.iplion.mesync.cloud.error.RedisOperationException;
+import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

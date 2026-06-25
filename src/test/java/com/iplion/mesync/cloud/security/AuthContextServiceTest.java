@@ -2,8 +2,9 @@ package com.iplion.mesync.cloud.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.BaseUnitTest;
-import com.iplion.mesync.cloud.error.DeviceException;
+import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
+import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
@@ -35,6 +36,8 @@ public class AuthContextServiceTest extends BaseUnitTest {
     @Mock
     DeviceRepository deviceRepository;
     @Mock
+    UserRepository userRepository;
+    @Mock
     KeySignatureService keySignatureService;
 
     private AuthContextService authContextService;
@@ -44,6 +47,7 @@ public class AuthContextServiceTest extends BaseUnitTest {
         authContextService = new AuthContextService(
             deviceAuthCache,
             userAuthCache,
+            userRepository,
             deviceRepository,
             keySignatureService
         );
@@ -58,7 +62,7 @@ public class AuthContextServiceTest extends BaseUnitTest {
         when(userAuthCache.getIfPresent(any())).thenReturn(authData.userAuthData());
         when(deviceAuthCache.getIfPresent(any())).thenReturn(authData.deviceAuthData());
 
-        AuthData result = authContextService.getAuthContext(userAuthId, devicePublicId);
+        AuthData result = authContextService.getFullAuthContext(userAuthId, devicePublicId);
 
         verify(userAuthCache).getIfPresent(eq(userAuthId));
         verify(deviceAuthCache).getIfPresent(eq(devicePublicId));
@@ -82,7 +86,7 @@ public class AuthContextServiceTest extends BaseUnitTest {
         when(deviceRepository.findAuthContextByPublicId(any())).thenReturn(Optional.of(authDataProjection));
         when(authDataProjection.toAuthData(any())).thenReturn(authData);
 
-        AuthData result = authContextService.getAuthContext(userAuthId, devicePublicId);
+        AuthData result = authContextService.getFullAuthContext(userAuthId, devicePublicId);
 
         verify(userAuthCache).getIfPresent(eq(userAuthId));
         verify(deviceAuthCache).getIfPresent(eq(devicePublicId));
@@ -106,7 +110,7 @@ public class AuthContextServiceTest extends BaseUnitTest {
         when(deviceRepository.findAuthContextByPublicId(any())).thenReturn(Optional.of(authDataProjection));
         when(authDataProjection.toAuthData(any())).thenReturn(authData);
 
-        AuthData result = authContextService.getAuthContext(userAuthId, devicePublicId);
+        AuthData result = authContextService.getFullAuthContext(userAuthId, devicePublicId);
 
         verify(userAuthCache).getIfPresent(eq(userAuthId));
         verify(deviceAuthCache).getIfPresent(eq(devicePublicId));
@@ -128,8 +132,8 @@ public class AuthContextServiceTest extends BaseUnitTest {
         when(deviceAuthCache.getIfPresent(any())).thenReturn(null);
         when(deviceRepository.findAuthContextByPublicId(any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authContextService.getAuthContext(userAuthId, devicePublicId))
-            .isInstanceOf(DeviceException.class)
+        assertThatThrownBy(() -> authContextService.getFullAuthContext(userAuthId, devicePublicId))
+            .isInstanceOf(DeviceNotFoundException.class)
             .hasMessageContaining("found");
 
         verify(userAuthCache, never()).put(any(), any());
