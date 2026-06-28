@@ -11,6 +11,7 @@ import com.iplion.mesync.cloud.security.auth.StoreInviteAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityCheckResult;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
@@ -106,6 +107,8 @@ public class AuthServiceTest extends BaseUnitTest {
 
         when(authContextService.findUserAuthContext(any())).thenReturn(Optional.of(testContext.authData.userAuthData()));
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
+        when(redisSecurityStore.registrationSecurityCheck(any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         var result = authService.verifyUnregisteredDeviceRequest(request);
 
@@ -135,6 +138,8 @@ public class AuthServiceTest extends BaseUnitTest {
         );
 
         when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         authService.verifyDeviceManagerRequest(request);
 
@@ -200,12 +205,60 @@ public class AuthServiceTest extends BaseUnitTest {
         );
 
         when(authContextService.getFullAuthContext(any())).thenReturn(wrongOwnerDevice);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         assertThatThrownBy(() -> authService.verifyDeviceManagerRequest(request))
             .isInstanceOf(AuthException.class)
             .hasMessageContaining("owner");
 
         verify(keySignatureService, never()).verify(any(), any(), any());
+    }
+
+    @Test
+    void verifyDeviceManagerRequest_shouldThrowAuthRateLimit_whenRedisRateLimitExceeded() {
+        var request = new StoreInviteAuthRequest(
+            testContext.base64Signature(),
+            UUID.randomUUID(),
+            testContext.devicePublicId(),
+            TestModelFactory.inviteToken(),
+            DeviceType.MOBILE,
+            1
+        );
+
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.RATE_LIMIT);
+
+        assertThatThrownBy(() -> authService.verifyDeviceManagerRequest(request))
+            .isInstanceOfSatisfying(AuthException.class, e -> {
+                assertThat(e.getMessage()).contains("Auth rate limit exceeded");
+                assertThat(e.getClientMessage()).isEqualTo("Too many requests");
+            });
+
+        verify(authContextService, never()).getFullAuthContext(any());
+    }
+
+    @Test
+    void verifyDeviceManagerRequest_shouldThrowSafeClientMessage_whenDeviceRevoked() {
+        var request = new StoreInviteAuthRequest(
+            testContext.base64Signature(),
+            UUID.randomUUID(),
+            testContext.devicePublicId(),
+            TestModelFactory.inviteToken(),
+            DeviceType.MOBILE,
+            1
+        );
+
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.REVOKED);
+
+        assertThatThrownBy(() -> authService.verifyDeviceManagerRequest(request))
+            .isInstanceOfSatisfying(AuthException.class, e -> {
+                assertThat(e.getMessage()).contains("Device revoked");
+                assertThat(e.getClientMessage()).isEqualTo("Unable to verify your device.");
+            });
+
+        verify(authContextService, never()).getFullAuthContext(any());
     }
 
     @Test
@@ -217,6 +270,8 @@ public class AuthServiceTest extends BaseUnitTest {
         );
 
         when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         authService.verifyMessagingRequest(request);
 
@@ -259,6 +314,8 @@ public class AuthServiceTest extends BaseUnitTest {
         );
 
         when(authContextService.getFullAuthContext(any())).thenReturn(wrongTypeDevice);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         assertThatThrownBy(() -> authService.verifyMessagingRequest(request))
             .isInstanceOf(AuthException.class)
@@ -290,6 +347,8 @@ public class AuthServiceTest extends BaseUnitTest {
 
         when(authContextService.findUserAuthContext(any())).thenReturn(Optional.of(testContext.authData.userAuthData()));
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
+        when(redisSecurityStore.registrationSecurityCheck(any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         authService.verifyUnregisteredDeviceRequest(firstRequest);
         authService.verifyUnregisteredDeviceRequest(secondRequest);
@@ -325,6 +384,8 @@ public class AuthServiceTest extends BaseUnitTest {
         );
 
         when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
 
         authService.verifyMessagingRequest(firstRequest);
         authService.verifyMessagingRequest(secondRequest);

@@ -1,7 +1,6 @@
 package com.iplion.mesync.cloud.security.cache;
 
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -14,7 +13,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 public class RedisSecurityStoreIT extends BaseIT {
@@ -33,27 +31,29 @@ public class RedisSecurityStoreIT extends BaseIT {
 
     @Test
     public void deviceAuthSecurityCheck_shouldPass() {
-        assertThatCode(() -> redisSecurityStore.deviceAuthSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.deviceAuthSecurityCheck(
             "revokedKey",
             "nonceKey",
             "rateLimitKey",
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .doesNotThrowAnyException();
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.OK);
     }
 
     @Test
     public void registrationSecurityCheck_shouldPass() {
-        assertThatCode(() -> redisSecurityStore.registrationSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.registrationSecurityCheck(
             "nonceKey",
             "rateLimitKey",
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .doesNotThrowAnyException();
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.OK);
     }
 
     @Test
@@ -69,16 +69,16 @@ public class RedisSecurityStoreIT extends BaseIT {
             3
         );
 
-        assertThatThrownBy(() -> redisSecurityStore.deviceAuthSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.deviceAuthSecurityCheck(
             "revokedKey",
             nonceKey,
             "rateLimitKey",
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining(nonceKey);
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.REPLAY);
     }
 
     @Test
@@ -93,15 +93,15 @@ public class RedisSecurityStoreIT extends BaseIT {
             3
         );
 
-        assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.registrationSecurityCheck(
             nonceKey,
             "rateLimitKey",
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining(nonceKey);
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.REPLAY);
     }
 
     @Test
@@ -114,16 +114,16 @@ public class RedisSecurityStoreIT extends BaseIT {
             Duration.ofMinutes(10)
         );
 
-        assertThatThrownBy(() -> redisSecurityStore.deviceAuthSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.deviceAuthSecurityCheck(
             revokedKey,
             "nonceKey",
             "rateLimitKey",
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining(revokedKey);
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.REVOKED);
     }
 
     @Test
@@ -141,16 +141,16 @@ public class RedisSecurityStoreIT extends BaseIT {
             );
         }
 
-        assertThatThrownBy(() -> redisSecurityStore.deviceAuthSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.deviceAuthSecurityCheck(
             "revokedKey",
             "nonceKey",
             rateLimitKey,
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining(rateLimitKey);
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.RATE_LIMIT);
     }
 
     @Test
@@ -167,15 +167,15 @@ public class RedisSecurityStoreIT extends BaseIT {
             );
         }
 
-        assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
+        RedisSecurityCheckResult result = redisSecurityStore.registrationSecurityCheck(
             "nonceKey",
             rateLimitKey,
             Duration.ofMinutes(1),
             Duration.ofMinutes(1),
             3
-        ))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining(rateLimitKey);
+        );
+
+        assertThat(result).isEqualTo(RedisSecurityCheckResult.RATE_LIMIT);
     }
 
     @Test

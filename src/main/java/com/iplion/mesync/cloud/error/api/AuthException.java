@@ -25,27 +25,27 @@ public class AuthException extends ApiException {
         );
     }
 
-    public static AuthException rateLimit(String key) {
+    public static AuthException rateLimit(UUID subjectId) {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
-            "Registration rate limit exceeded. redisKey: " + key,
+            "Auth rate limit exceeded. subjectId: " + subjectId.toString(),
             "Too many requests"
         );
     }
 
-    public static AuthException replay(String key) {
+    public static AuthException replay(UUID subjectId) {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
-            "Nonce already used. redisKey: " + key,
+            "Nonce already used. subjectId: " + subjectId.toString(),
             "Replay request detected"
         );
     }
 
-    public static AuthException revoked(String key) {
+    public static AuthException revoked(UUID subjectId) {
         return new AuthException(
             HttpStatus.FORBIDDEN,
-            "Device revoked. redisKey: " + key,
-            "Replay request detected"
+            "Device revoked. subjectId: " + subjectId.toString(),
+            "Unable to verify your device."
         );
     }
 

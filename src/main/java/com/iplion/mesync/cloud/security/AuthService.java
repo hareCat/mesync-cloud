@@ -15,6 +15,7 @@ import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
+import com.iplion.mesync.cloud.security.cache.RedisSecurityCheckResult;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
@@ -150,28 +151,50 @@ public class AuthService {
         var registrationProperties = appProperties.registration();
 
         UUID subjectId = context.getJwtUserData().authId();
+        String nonceKey = RedisKeys.registrationNonceKey(subjectId, context.getRequest().nonce());
+        String rateLimitKey = RedisKeys.registrationRateLimitKey(subjectId);
 
-        redisSecurityStore.registrationSecurityCheck(
-            RedisKeys.registrationNonceKey(subjectId, context.getRequest().nonce()),
-            RedisKeys.registrationRateLimitKey(subjectId),
+        RedisSecurityCheckResult result = redisSecurityStore.registrationSecurityCheck(
+            nonceKey,
+            rateLimitKey,
             registrationProperties.nonceTtl(),
             registrationProperties.rateLimitTtl(),
             registrationProperties.attempts()
         );
+
+        handleRedisSecurityCheckResult(result, subjectId);
     }
 
     private void registeredDeviceAuthRedisCheck(AuthPipelineContext<? extends RegisteredDeviceAuthRequest> context) {
         var authProperties = appProperties.auth();
 
         UUID subjectId = context.getRequest().devicePublicId();
-        redisSecurityStore.deviceAuthSecurityCheck(
-            RedisKeys.authDeviceRevokedKey(subjectId),
-            RedisKeys.authNonceKey(subjectId, context.getRequest().nonce()),
-            RedisKeys.authRateLimitKey(subjectId),
+        String deviceRevokedKey = RedisKeys.authDeviceRevokedKey(subjectId);
+        String nonceKey = RedisKeys.authNonceKey(subjectId, context.getRequest().nonce());
+        String rateLimitKey = RedisKeys.authRateLimitKey(subjectId);
+
+        RedisSecurityCheckResult result = redisSecurityStore.deviceAuthSecurityCheck(
+            deviceRevokedKey,
+            nonceKey,
+            rateLimitKey,
             authProperties.nonceTtl(),
             authProperties.rateLimitTtl(),
             authProperties.attempts()
         );
+
+        handleRedisSecurityCheckResult(result, subjectId);
+    }
+
+    private void handleRedisSecurityCheckResult(
+        RedisSecurityCheckResult result,
+        UUID subjectId
+    ) {
+        switch (result) {
+            case OK -> {}
+            case REPLAY -> throw AuthException.replay(subjectId);
+            case RATE_LIMIT -> throw AuthException.rateLimit(subjectId);
+            case REVOKED -> throw AuthException.revoked(subjectId);
+        }
     }
 
     private void verifySignature(AuthPipelineContext<? extends SignedAuthRequest> context) {

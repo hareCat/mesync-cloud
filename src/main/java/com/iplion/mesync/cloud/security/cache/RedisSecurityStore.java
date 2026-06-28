@@ -1,7 +1,6 @@
 package com.iplion.mesync.cloud.security.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
@@ -75,7 +74,7 @@ public final class RedisSecurityStore {
         }
     }
 
-    public void deviceAuthSecurityCheck(
+    public RedisSecurityCheckResult deviceAuthSecurityCheck(
         String deviceRevokedKey,
         String nonceKey,
         String rateLimitKey,
@@ -97,16 +96,16 @@ public final class RedisSecurityStore {
             throw new RedisOperationException("Invalid Redis response");
         }
 
-        switch (value.intValue()) {
-            case 0 -> {}
-            case -1 -> throw AuthException.replay(nonceKey);
-            case -2 -> throw AuthException.rateLimit(rateLimitKey);
-            case -3 -> throw AuthException.revoked(deviceRevokedKey);
+        return switch (value.intValue()) {
+            case 0 -> RedisSecurityCheckResult.OK;
+            case -1 -> RedisSecurityCheckResult.REPLAY;
+            case -2 -> RedisSecurityCheckResult.RATE_LIMIT;
+            case -3 -> RedisSecurityCheckResult.REVOKED;
             default -> throw new RedisOperationException("Unknown Redis response: " + value);
-        }
+        };
     }
 
-    public void registrationSecurityCheck(
+    public RedisSecurityCheckResult registrationSecurityCheck(
         String nonceKey,
         String rateLimitKey,
         Duration nonceTtl,
@@ -127,12 +126,12 @@ public final class RedisSecurityStore {
             throw new RedisOperationException("Invalid Redis response");
         }
 
-        switch (value.intValue()) {
-            case 0 -> {}
-            case -1 -> throw AuthException.replay(nonceKey);
-            case -2 -> throw AuthException.rateLimit(rateLimitKey);
+        return switch (value.intValue()) {
+            case 0 -> RedisSecurityCheckResult.OK;
+            case -1 -> RedisSecurityCheckResult.REPLAY;
+            case -2 -> RedisSecurityCheckResult.RATE_LIMIT;
             default -> throw new RedisOperationException("Unknown Redis response: " + value);
-        }
+        };
     }
 
     private void validateSecurityLimits(
