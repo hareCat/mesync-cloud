@@ -8,6 +8,7 @@ import java.util.UUID;
 public record DeviceAuthData(
     Long id,
     UUID publicId,
+    UUID ownerAuthId,
     DeviceType deviceType,
     PublicKey publicKey
 ) {

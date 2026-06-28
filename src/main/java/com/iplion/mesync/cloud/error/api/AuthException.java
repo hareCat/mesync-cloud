@@ -74,6 +74,14 @@ public class AuthException extends ApiException {
         );
     }
 
+    public static AuthException userNotFound(UUID userAuthId) {
+        return new AuthException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "There is no user with userAuthId: " + userAuthId + " in the database",
+            "User not found."
+        );
+    }
+
     public static AuthException deviceTypeMismatch(
         UUID authId,
         UUID devicePublicId,

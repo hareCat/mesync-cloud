@@ -5,7 +5,6 @@ import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.api.AuthException;
-import com.iplion.mesync.cloud.error.api.UserNotFoundException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.security.auth.AuthPipelineContext;
@@ -88,10 +87,7 @@ public class AuthService {
     }
 
     private <T extends RegisteredDeviceAuthRequest> void getRegisteredDeviceAuthData(AuthPipelineContext<T> context) {
-        AuthData authData = authContextService.getFullAuthContext(
-            context.getJwtUserData().authId(),
-            context.getRequest().devicePublicId()
-        );
+        AuthData authData = authContextService.getFullAuthContext(context.getRequest().devicePublicId());
 
         SecurityContextUtils.setAuthData(authData);
 
@@ -100,20 +96,17 @@ public class AuthService {
     }
 
     private <T extends UnregisteredDeviceAuthRequest> void getUnregisteredDeviceAuthData(AuthPipelineContext<T> context) {
-        UserAuthData userAuthData;
-        try {
-            userAuthData = authContextService.getUserAuthContext(context.getJwtUserData().authId());
-        } catch (UserNotFoundException e) {
-            userAuthData = new UserAuthData(
+        UserAuthData userAuthData = authContextService.findUserAuthContext(context.getJwtUserData().authId())
+            .orElseGet(() -> new UserAuthData(
                 null,
                 context.getJwtUserData().authId(),
                 null
-            );
-        }
+            ));
 
         DeviceAuthData deviceAuthData = new DeviceAuthData(
             null,
             null,
+            context.getJwtUserData().authId(),
             DeviceType.fromClientId(context.getJwtUserData().clientId()),
             createPublicKey(context.getRequest().base64SigningPublicKey())
         );
@@ -143,11 +136,12 @@ public class AuthService {
 
     private void deviceOwnerCheck(AuthPipelineContext<? extends RegisteredDeviceAuthRequest> context) {
         UUID jwtAuthId = context.getJwtUserData().authId();
-        UUID dbAuthId = context.getAuthData().userAuthData().authId();
-        if (!dbAuthId.equals(jwtAuthId)) {
+        UUID deviceOwnerAuthId = context.getAuthData().deviceAuthData().ownerAuthId();
+
+        if (!deviceOwnerAuthId.equals(jwtAuthId)) {
             throw AuthException.deviceOwnershipMismatch(
                 jwtAuthId,
-                dbAuthId
+                deviceOwnerAuthId
             );
         }
     }

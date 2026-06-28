@@ -100,11 +100,10 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     void storeInviteToken_shouldThrow_whenDeviceMasterKeyVersionOutdated() {
         DeviceType deviceType = DeviceType.MOBILE;
         AuthData authData = new AuthData(
-            new UserAuthData(
-                1L, UUID.randomUUID(), 99
-            ),
+            new UserAuthData(1L, UUID.randomUUID(), 99),
             new DeviceAuthData(
                 1L,
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 DeviceType.MOBILE,
                 mock(PublicKey.class)
@@ -442,10 +441,10 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         PublicKey publicKey = mock(PublicKey.class);
         AuthData authData = new AuthData(
             new UserAuthData(1L, authId, 1),
-            new DeviceAuthData(null, null, deviceType, publicKey)
+            new DeviceAuthData(null, null, authId, deviceType, publicKey)
         );
 
-        return new TestContext(user, encryptedMasterKey, jwtUserData, authData, new byte[] {1, 2, 3});
+        return new TestContext(user, encryptedMasterKey, jwtUserData, authData, new byte[]{1, 2, 3});
     }
 
     DeviceRegisterRequestDto deviceRegistrationRequest() {

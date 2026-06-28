@@ -50,19 +50,22 @@ public final class TestModelFactory {
         return new UserAuthData(1L, UUID.randomUUID(), MASTER_KEY_VERSION);
     }
 
-    public static DeviceAuthData deviceAuthData() throws NoSuchAlgorithmException {
+    public static DeviceAuthData deviceAuthData(UUID ownerAuthId) throws NoSuchAlgorithmException {
         return new DeviceAuthData(
             1L,
             UUID.randomUUID(),
+            ownerAuthId,
             DEVICE_TYPE,
             TestCrypto.generateKeyPair().getPublic()
         );
     }
 
     public static AuthData authData() throws NoSuchAlgorithmException {
+        UserAuthData userAuthData = userAuthData();
+
         return new AuthData(
-            userAuthData(),
-            deviceAuthData()
+            userAuthData,
+            deviceAuthData(userAuthData.authId())
         );
     }
 

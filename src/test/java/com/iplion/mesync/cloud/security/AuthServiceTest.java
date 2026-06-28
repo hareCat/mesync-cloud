@@ -32,6 +32,7 @@ import java.security.PublicKey;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -103,7 +104,7 @@ public class AuthServiceTest extends BaseUnitTest {
             TestModelFactory.inviteToken()
         );
 
-        when(authContextService.getUserAuthContext(any())).thenReturn(testContext.authData.userAuthData());
+        when(authContextService.findUserAuthContext(any())).thenReturn(Optional.of(testContext.authData.userAuthData()));
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
 
         var result = authService.verifyUnregisteredDeviceRequest(request);
@@ -133,11 +134,11 @@ public class AuthServiceTest extends BaseUnitTest {
             1
         );
 
-        when(authContextService.getFullAuthContext(any(), any())).thenReturn(testContext.authData);
+        when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
 
         authService.verifyDeviceManagerRequest(request);
 
-        verify(authContextService).getFullAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
+        verify(authContextService).getFullAuthContext(eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
             eq(RedisKeys.authDeviceRevokedKey(request.devicePublicId())),
             eq(RedisKeys.authNonceKey(request.devicePublicId(), testContext.nonce())),
@@ -192,12 +193,13 @@ public class AuthServiceTest extends BaseUnitTest {
             new DeviceAuthData(
                 fromContext.deviceAuthData().id(),
                 fromContext.deviceAuthData().publicId(),
+                UUID.randomUUID(),
                 fromContext.deviceAuthData().deviceType(),
                 fromContext.deviceAuthData().publicKey()
             )
         );
 
-        when(authContextService.getFullAuthContext(any(), any())).thenReturn(wrongOwnerDevice);
+        when(authContextService.getFullAuthContext(any())).thenReturn(wrongOwnerDevice);
 
         assertThatThrownBy(() -> authService.verifyDeviceManagerRequest(request))
             .isInstanceOf(AuthException.class)
@@ -214,11 +216,11 @@ public class AuthServiceTest extends BaseUnitTest {
             testContext.devicePublicId()
         );
 
-        when(authContextService.getFullAuthContext(any(), any())).thenReturn(testContext.authData);
+        when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
 
         authService.verifyMessagingRequest(request);
 
-        verify(authContextService).getFullAuthContext(eq(testContext.userAuthId), eq(testContext.devicePublicId));
+        verify(authContextService).getFullAuthContext(eq(testContext.devicePublicId));
         verify(redisSecurityStore).deviceAuthSecurityCheck(
             eq(RedisKeys.authDeviceRevokedKey(request.devicePublicId())),
             eq(RedisKeys.authNonceKey(request.devicePublicId(), testContext.nonce())),
@@ -240,8 +242,8 @@ public class AuthServiceTest extends BaseUnitTest {
             testContext.devicePublicId()
         );
 
-        AuthData fromContext = testContext.authData;
-        AuthData wrongtypeDevice = new AuthData(
+        AuthData fromContext = testContext.authData();
+        AuthData wrongTypeDevice = new AuthData(
             new UserAuthData(
                 fromContext.userAuthData().id(),
                 fromContext.userAuthData().authId(),
@@ -250,12 +252,13 @@ public class AuthServiceTest extends BaseUnitTest {
             new DeviceAuthData(
                 fromContext.deviceAuthData().id(),
                 fromContext.deviceAuthData().publicId(),
+                fromContext.deviceAuthData().ownerAuthId(),
                 DeviceType.BROWSER,
                 fromContext.deviceAuthData().publicKey()
             )
         );
 
-        when(authContextService.getFullAuthContext(any(), any())).thenReturn(wrongtypeDevice);
+        when(authContextService.getFullAuthContext(any())).thenReturn(wrongTypeDevice);
 
         assertThatThrownBy(() -> authService.verifyMessagingRequest(request))
             .isInstanceOf(AuthException.class)
@@ -285,7 +288,7 @@ public class AuthServiceTest extends BaseUnitTest {
             TestModelFactory.inviteToken()
         );
 
-        when(authContextService.getUserAuthContext(any())).thenReturn(testContext.authData.userAuthData());
+        when(authContextService.findUserAuthContext(any())).thenReturn(Optional.of(testContext.authData.userAuthData()));
         when(keySignatureService.createPublicKey(any())).thenReturn(testContext.publicKey);
 
         authService.verifyUnregisteredDeviceRequest(firstRequest);
@@ -321,7 +324,7 @@ public class AuthServiceTest extends BaseUnitTest {
             testContext.devicePublicId()
         );
 
-        when(authContextService.getFullAuthContext(any(), any())).thenReturn(testContext.authData);
+        when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
 
         authService.verifyMessagingRequest(firstRequest);
         authService.verifyMessagingRequest(secondRequest);
@@ -377,6 +380,7 @@ public class AuthServiceTest extends BaseUnitTest {
             new DeviceAuthData(
                 1L,
                 devicePublicId,
+                authId,
                 deviceType,
                 keyPair.getPublic()
             )

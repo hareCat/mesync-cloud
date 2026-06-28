@@ -110,6 +110,70 @@ class MessagingControllerIT extends BaseIT {
     }
 
     @Test
+    void publish_shouldReturn403_whenJwtUserDoesNotOwnRequestDevice() throws Exception {
+        KeyPair deviceAKeyPair = TestCrypto.generateKeyPair();
+        KeyPair deviceBKeyPair = TestCrypto.generateKeyPair();
+
+        User userA = TestModelFactory.user();
+        User userB = TestModelFactory.user();
+        userRepository.saveAllAndFlush(List.of(userA, userB));
+
+        Device deviceA = TestDataFactory.device(userA, "user A device", deviceAKeyPair.getPublic().getEncoded());
+        Device deviceB = TestDataFactory.device(userB, "user B device", deviceBKeyPair.getPublic().getEncoded());
+        deviceRepository.saveAllAndFlush(List.of(deviceA, deviceB));
+
+        UUID messagePublicId = UUID.randomUUID();
+        String address = "address";
+        MessageType messageType = MessageType.SMS;
+        MessageDirection direction = MessageDirection.INCOMING;
+        Instant occurredAt = Instant.now();
+        Integer keyVersion = 2;
+        byte[] ciphertext = new byte[32];
+        String base64Ciphertext = Base64.getEncoder().encodeToString(ciphertext);
+        UUID nonce = UUID.randomUUID();
+
+        byte[] payload = new MessagePublishAuthRequest(
+            null,
+            nonce,
+            deviceB.getPublicId(),
+            messagePublicId,
+            address,
+            messageType,
+            direction,
+            occurredAt,
+            keyVersion,
+            base64Ciphertext
+        ).payload();
+
+        String base64Signature = Base64.getEncoder().encodeToString(
+            TestCrypto.sign(deviceBKeyPair.getPrivate(), payload)
+        );
+
+        var requestDto = new MessagePublishRequestDto(
+            deviceB.getPublicId(),
+            messagePublicId,
+            address,
+            messageType,
+            direction,
+            occurredAt,
+            keyVersion,
+            base64Ciphertext,
+            nonce,
+            base64Signature
+        );
+
+        mockMvc.perform(post(TestUri.PUBLISH_URI)
+                .with(TestJwtBuilder.forDevice(userA.getAuthId(), deviceA.getDeviceType())
+                    .buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("messages.publish")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isForbidden());
+
+        assertThat(messageRepository.findAll()).isEmpty();
+    }
+
+    @Test
     void sync_shouldReturn200AndMessageDtos() throws Exception {
         TestContext context = TestDataFactory.createSyncContext(userRepository, deviceRepository);
         var requestDto = context.messageSyncRequestDto;

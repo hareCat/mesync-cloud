@@ -1,9 +1,8 @@
 package com.iplion.mesync.cloud.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
-import com.iplion.mesync.cloud.error.api.UserNotFoundException;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.cache.AuthData;
@@ -13,6 +12,7 @@ import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -24,11 +24,10 @@ public class AuthContextService {
     private final DeviceRepository deviceRepository;
     private final KeySignatureService keySignatureService;
 
-    public AuthData getFullAuthContext(UUID userAuthId, UUID devicePublicId) {
-        UserAuthData userAuthData = userAuthCache.getIfPresent(userAuthId);
+    public AuthData getFullAuthContext(UUID devicePublicId) {
         DeviceAuthData deviceAuthData = deviceAuthCache.getIfPresent(devicePublicId);
 
-        if (userAuthData == null || deviceAuthData == null) {
+        if (deviceAuthData == null) {
             AuthData authData = deviceRepository.findAuthContextByPublicId(devicePublicId)
                 .map(projection -> projection.toAuthData(keySignatureService))
                 .orElseThrow(() -> new DeviceNotFoundException("Device not found. devicePublicId: " + devicePublicId));
@@ -39,21 +38,27 @@ public class AuthContextService {
             return authData;
         }
 
+        UUID userAuthId = deviceAuthData.ownerAuthId();
+
+        UserAuthData userAuthData = findUserAuthContext(userAuthId)
+            .orElseThrow(() -> AuthException.userNotFound(userAuthId));
+
         return new AuthData(userAuthData, deviceAuthData);
     }
 
-    public UserAuthData getUserAuthContext(UUID userAuthId) {
+    public Optional<UserAuthData> findUserAuthContext(UUID userAuthId) {
         UserAuthData userAuthData = userAuthCache.getIfPresent(userAuthId);
 
-        if (userAuthData == null) {
-            User user = userRepository.findByAuthId(userAuthId)
-                .orElseThrow(() -> new UserNotFoundException(userAuthId));
-
-            userAuthData = UserAuthData.from(user);
-            userAuthCache.put(user.getAuthId(), userAuthData);
+        if (userAuthData != null) {
+            return Optional.of(userAuthData);
         }
 
-        return userAuthData;
+        return userRepository.findByAuthId(userAuthId)
+            .map(user -> {
+                UserAuthData foundUserAuthData = UserAuthData.from(user);
+                userAuthCache.put(user.getAuthId(), foundUserAuthData);
+                return foundUserAuthData;
+            });
     }
 
 }

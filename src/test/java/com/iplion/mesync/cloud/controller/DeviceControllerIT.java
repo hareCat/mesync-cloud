@@ -106,6 +106,7 @@ class DeviceControllerIT extends BaseIT {
         deviceAuthCache.put(targetDevicePublicId, new DeviceAuthData(
             targetDevice.getId(),
             targetDevice.getPublicId(),
+            user.getAuthId(),
             targetDevice.getDeviceType(),
             targetDevicePublicKey
         ));

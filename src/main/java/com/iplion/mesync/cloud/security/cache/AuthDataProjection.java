@@ -30,6 +30,7 @@ public interface AuthDataProjection {
             new DeviceAuthData(
                 getId(),
                 getDevicePublicId(),
+                getUserAuthId(),
                 getDeviceType(),
                 keySignatureService.createPublicKey(getPublicKeyBytes())
             )
