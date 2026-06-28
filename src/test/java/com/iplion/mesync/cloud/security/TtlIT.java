@@ -142,10 +142,10 @@ class TtlIT extends BaseIT {
         UUID authId = UUID.randomUUID();
 
         registerWithInvalidPublicKey(authId, UUID.randomUUID())
-            .andExpect(status().isForbidden())
+            .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid"));
         registerWithInvalidPublicKey(authId, UUID.randomUUID())
-            .andExpect(status().isForbidden())
+            .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid"));
 
         registerWithInvalidPublicKey(authId, UUID.randomUUID())
@@ -153,7 +153,7 @@ class TtlIT extends BaseIT {
             .andExpect(jsonPath("$.detail").value("Too many requests"));
 
         await().atMost(TTL_WAIT).untilAsserted(() -> registerWithInvalidPublicKey(authId, UUID.randomUUID())
-            .andExpect(status().isForbidden())
+            .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid")));
     }
 
@@ -163,7 +163,7 @@ class TtlIT extends BaseIT {
         UUID nonce = UUID.randomUUID();
 
         registerWithInvalidPublicKey(authId, nonce)
-            .andExpect(status().isForbidden())
+            .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid"));
 
         registerWithInvalidPublicKey(authId, nonce)
@@ -171,7 +171,7 @@ class TtlIT extends BaseIT {
             .andExpect(jsonPath("$.detail").value("Replay request detected"));
 
         await().atMost(TTL_WAIT).untilAsserted(() -> registerWithInvalidPublicKey(authId, nonce)
-            .andExpect(status().isForbidden())
+            .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid")));
     }
 

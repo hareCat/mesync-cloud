@@ -65,7 +65,7 @@ public class InvitationService {
 
         if (inviteData.getBase64EncryptionPublicKey() == null || inviteData.getBase64SigningPublicKey() == null) {
             throw DeviceRegistrationException.invalidInvite(
-                "Public keys are not ready for invite. authId=" + authId
+                "Public keys are not ready for invite."
             );
         }
 
@@ -82,7 +82,7 @@ public class InvitationService {
         );
 
         if (inviteData == null) {
-            throw DeviceRegistrationException.invalidInvite("Invite token expired. authId=" + authId);
+            throw DeviceRegistrationException.invalidInvite("Invite token expired.");
         }
 
         return inviteData;
@@ -116,7 +116,7 @@ public class InvitationService {
             LOCK_VALUE,
             cooldown)
         ) {
-            throw DeviceRegistrationException.cooldownDelay(redisCooldownKey, cooldown);
+            throw DeviceRegistrationException.cooldownDelay(cooldown);
         }
     }
 

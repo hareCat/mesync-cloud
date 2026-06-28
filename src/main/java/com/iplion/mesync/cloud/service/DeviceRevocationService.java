@@ -42,16 +42,12 @@ public class DeviceRevocationService {
                 request.targetDevicePublicId()
             )
             .orElseThrow(() -> new DeviceNotFoundException(String.format(
-                "Revoking device not found. userId: %d, deviceId: %d, targetDevicePublicId: %s",
-                authData.userAuthData().id(),
-                authData.deviceAuthData().id(),
+                "Revoking device not found. targetDevicePublicId: %s",
                 request.targetDevicePublicId()
             )));
 
         if (targetDevice.getRevokedAt() != null) {
             throw new DeviceAlreadyRevokedException(
-                authData.userAuthData().id(),
-                authData.deviceAuthData().id(),
                 request.targetDevicePublicId()
             );
         }

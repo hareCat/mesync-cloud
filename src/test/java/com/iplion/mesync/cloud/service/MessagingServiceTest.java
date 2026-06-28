@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
 import java.util.Base64;
@@ -105,9 +106,11 @@ class MessagingServiceTest extends BaseUnitTest {
         TestSecurity.createSecurityContext(TestModelFactory.authData());
 
         assertThatThrownBy(() -> messagingService.publish(request))
-            .isInstanceOf(MessagingException.class)
-            .hasCauseInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("ciphertext");
+            .isInstanceOfSatisfying(MessagingException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e).hasCauseInstanceOf(IllegalArgumentException.class);
+                assertThat(e.getMessage()).contains("ciphertext");
+            });
 
         verifyNoInteractions(userRepository);
         verifyNoInteractions(deviceRepository);
@@ -124,9 +127,11 @@ class MessagingServiceTest extends BaseUnitTest {
         when(messageRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
 
         assertThatThrownBy(() -> messagingService.publish(messagePublishRequestDto()))
-            .isInstanceOf(MessagingException.class)
-            .hasCauseInstanceOf(DataIntegrityViolationException.class)
-            .hasMessageContaining("saving");
+            .isInstanceOfSatisfying(MessagingException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                assertThat(e).hasCauseInstanceOf(DataIntegrityViolationException.class);
+                assertThat(e.getMessage()).contains("saving");
+            });
     }
 
     @Test

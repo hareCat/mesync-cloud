@@ -67,7 +67,6 @@ public class InvitationServiceTest {
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
                 assertThat(e.getMessage()).contains("cooldown");
-                assertThat(e.getMessage()).contains(RedisKeys.registrationInviteCooldownKey(authId));
             });
     }
 
@@ -145,7 +144,7 @@ public class InvitationServiceTest {
         ))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains(RedisKeys.registrationPublicKeyCooldownKey(authId));
+                assertThat(e.getMessage()).contains("cooldown");
             });
     }
 
@@ -196,7 +195,6 @@ public class InvitationServiceTest {
             "encryptionPublicKey",
             "signingPublicKey"
         ))
-            .hasMessageContaining(authId.toString())
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                 assertThat(e.getMessage()).contains("expired");
@@ -260,9 +258,9 @@ public class InvitationServiceTest {
             "encryptedMasterKey",
             1
         ))
-            .hasMessageContaining(authId.toString())
-            .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
+            .isInstanceOfSatisfying(
+                DeviceRegistrationException.class,
+                e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
             );
     }
 
@@ -314,9 +312,9 @@ public class InvitationServiceTest {
         when(redisSecurityStore.get(any(), any())).thenReturn(null);
 
         assertThatThrownBy(() -> invitationService.getDeviceInviteData(authId, TestModelFactory.inviteToken()))
-            .hasMessageContaining(authId.toString())
-            .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
-                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
+            .isInstanceOfSatisfying(
+                DeviceRegistrationException.class,
+                e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST)
             );
     }
 
@@ -347,7 +345,7 @@ public class InvitationServiceTest {
         assertThatThrownBy(() -> invitationService.lockDeviceInviteData(authId, inviteToken))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains(RedisKeys.registrationLastStepCooldownKey(authId, inviteToken));
+                assertThat(e.getMessage()).contains("cooldown");
             });
     }
 

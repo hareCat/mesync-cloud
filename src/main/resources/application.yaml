@@ -28,6 +28,13 @@ app:
     ttl: 12h
     user-cache-size: 40_000
     device-cache-size: 100_000
-
-
-
+logging:
+  pattern:
+    level: >-
+      %5p
+      requestId=%X{requestId:-}
+      method=%X{method:-}
+      path=%X{path:-}
+      jwtAuthId=%X{jwtAuthId:-}
+      userAuthId=%X{userAuthId:-}
+      devicePublicId=%X{devicePublicId:-}

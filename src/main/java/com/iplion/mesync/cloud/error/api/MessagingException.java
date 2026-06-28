@@ -10,16 +10,16 @@ public class MessagingException extends ApiException {
 
     public static MessagingException messageSaving(String internalMessage, Throwable cause) {
         return new MessagingException(
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.CONFLICT,
             internalMessage,
             "Unable to save the message.",
             cause
         );
     }
 
-    public static MessagingException cryptographyFailed(String internalMessage, Throwable cause) {
+    public static MessagingException invalidCryptographyData(String internalMessage, Throwable cause) {
         return new MessagingException(
-            HttpStatus.FORBIDDEN,
+            HttpStatus.BAD_REQUEST,
             internalMessage,
             "Cryptography data is not valid",
             cause

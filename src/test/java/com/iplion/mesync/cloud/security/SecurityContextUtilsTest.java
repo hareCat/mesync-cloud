@@ -1,11 +1,14 @@
 package com.iplion.mesync.cloud.security;
 
 import com.iplion.mesync.cloud.error.api.AuthException;
+import com.iplion.mesync.cloud.logging.MdcKeys;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,6 +26,7 @@ public class SecurityContextUtilsTest {
     @AfterEach
     void clear() {
         SecurityContextHolder.clearContext();
+        MDC.clear();
     }
 
     @Test
@@ -81,6 +85,20 @@ public class SecurityContextUtilsTest {
         var contextAuthData = SecurityContextHolder.getContext().getAuthentication().getDetails();
 
         assertThat(contextAuthData).isEqualTo(authData);
+    }
+
+    @Test
+    void setAuthData_shouldPutAuthDataToMdc() throws Exception {
+        AuthData authData = TestModelFactory.authData();
+        setJwtToken();
+
+        SecurityContextUtils.setAuthData(authData);
+
+        assertThat(MDC.get(MdcKeys.USER_ID)).isEqualTo(authData.userAuthData().id().toString());
+        assertThat(MDC.get(MdcKeys.USER_AUTH_ID)).isEqualTo(authData.userAuthData().authId().toString());
+        assertThat(MDC.get(MdcKeys.DEVICE_ID)).isEqualTo(authData.deviceAuthData().id().toString());
+        assertThat(MDC.get(MdcKeys.DEVICE_PUBLIC_ID)).isEqualTo(authData.deviceAuthData().publicId().toString());
+        assertThat(MDC.get(MdcKeys.DEVICE_TYPE)).isEqualTo(authData.deviceAuthData().deviceType().toString());
     }
 
     @Test

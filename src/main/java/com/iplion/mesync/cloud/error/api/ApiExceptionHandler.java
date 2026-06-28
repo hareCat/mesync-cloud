@@ -1,7 +1,9 @@
 package com.iplion.mesync.cloud.error.api;
 
+import com.iplion.mesync.cloud.logging.MdcKeys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -27,6 +29,10 @@ public class ApiExceptionHandler {
         detail.setTitle(status.getReasonPhrase());
         detail.setInstance(URI.create(request.getRequestURI()));
         detail.setProperty("timestamp", Instant.now());
+        String requestId = MDC.get(MdcKeys.REQUEST_ID);
+        if (requestId != null) {
+            detail.setProperty("requestId", requestId);
+        }
 
         return detail;
     }

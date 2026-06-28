@@ -43,8 +43,7 @@ public class UserService {
     public void updateMasterKeyVersion(User user, int newMasterKeyVersion) {
         if (newMasterKeyVersion != user.getKeyVersion() + 1) {
             throw new UpdateMasterKeyVersionException(String.format(
-                "Master key version does not match expected. userId: %d, userKeyVer: %d, newKeyver: %d",
-                user.getId(),
+                "Master key version does not match expected. userKeyVersion: %d, newKeyVersion: %d",
                 user.getKeyVersion(),
                 newMasterKeyVersion
             ));

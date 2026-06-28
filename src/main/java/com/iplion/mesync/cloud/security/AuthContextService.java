@@ -2,7 +2,6 @@ package com.iplion.mesync.cloud.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.error.api.AuthException;
-import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.cache.AuthData;
@@ -30,7 +29,7 @@ public class AuthContextService {
         if (deviceAuthData == null) {
             AuthData authData = deviceRepository.findAuthContextByPublicId(devicePublicId)
                 .map(projection -> projection.toAuthData(keySignatureService))
-                .orElseThrow(() -> new DeviceNotFoundException("Device not found. devicePublicId: " + devicePublicId));
+                .orElseThrow(AuthException::deviceNotTrusted);
 
             userAuthCache.put(authData.userAuthData().authId(), authData.userAuthData());
             deviceAuthCache.put(devicePublicId, authData.deviceAuthData());

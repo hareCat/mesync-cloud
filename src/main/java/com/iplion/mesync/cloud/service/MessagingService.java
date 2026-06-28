@@ -47,19 +47,15 @@ public class MessagingService {
         try {
             message = messageRepository.save(buildMessage(request, authData));
         } catch (IllegalArgumentException e) {
-            throw MessagingException.cryptographyFailed(
-                String.format("Invalid base64 ciphertext. messagePublicId: %s, userId: %d, deviceId: %d",
-                    request.messagePublicId(),
-                    authData.userAuthData().id(),
-                    authData.deviceAuthData().id()
+            throw MessagingException.invalidCryptographyData(
+                String.format("Invalid base64 ciphertext. messagePublicId: %s",
+                    request.messagePublicId()
                 ), e
             );
         } catch (DataIntegrityViolationException e) {
             throw MessagingException.messageSaving(
-                String.format("Message saving error. messagePublicId: %s, userId: %d, deviceId: %d",
-                    request.messagePublicId(),
-                    authData.userAuthData().id(),
-                    authData.deviceAuthData().id()
+                String.format("Message saving error. messagePublicId: %s",
+                    request.messagePublicId()
                 ), e
             );
         }

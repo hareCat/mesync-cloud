@@ -5,6 +5,7 @@ import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.api.AuthException;
+import com.iplion.mesync.cloud.logging.MdcUtils;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.security.auth.AuthPipelineContext;
@@ -76,6 +77,7 @@ public class AuthService {
             JwtUserData jwtUserData = JwtUtils.extractUserData(SecurityContextUtils.getJwt());
             context.setJwtUserData(jwtUserData);
             context.setSecuritySubjectId(jwtUserData.authId());
+            MdcUtils.putJwtUserData(jwtUserData);
         } catch (InvalidTokenException e) {
             throw AuthException.wrongRequestData("Wrong JWT token.", e);
         }
@@ -127,8 +129,6 @@ public class AuthService {
         AuthData authData = context.getAuthData();
         if (!jwtDeviceType.equals(authData.deviceAuthData().deviceType())) {
             throw AuthException.deviceTypeMismatch(
-                authData.userAuthData().authId(),
-                authData.deviceAuthData().publicId(),
                 jwtDeviceType,
                 authData.deviceAuthData().deviceType()
             );
@@ -140,10 +140,7 @@ public class AuthService {
         UUID deviceOwnerAuthId = context.getAuthData().deviceAuthData().ownerAuthId();
 
         if (!deviceOwnerAuthId.equals(jwtAuthId)) {
-            throw AuthException.deviceOwnershipMismatch(
-                jwtAuthId,
-                deviceOwnerAuthId
-            );
+            throw AuthException.deviceOwnershipMismatch();
         }
     }
 
@@ -162,7 +159,7 @@ public class AuthService {
             registrationProperties.attempts()
         );
 
-        handleRedisSecurityCheckResult(result, subjectId);
+        handleRedisSecurityCheckResult(result);
     }
 
     private void registeredDeviceAuthRedisCheck(AuthPipelineContext<? extends RegisteredDeviceAuthRequest> context) {
@@ -182,18 +179,15 @@ public class AuthService {
             authProperties.attempts()
         );
 
-        handleRedisSecurityCheckResult(result, subjectId);
+        handleRedisSecurityCheckResult(result);
     }
 
-    private void handleRedisSecurityCheckResult(
-        RedisSecurityCheckResult result,
-        UUID subjectId
-    ) {
+    private void handleRedisSecurityCheckResult(RedisSecurityCheckResult result) {
         switch (result) {
             case OK -> {}
-            case REPLAY -> throw AuthException.replay(subjectId);
-            case RATE_LIMIT -> throw AuthException.rateLimit(subjectId);
-            case REVOKED -> throw AuthException.revoked(subjectId);
+            case REPLAY -> throw AuthException.replay();
+            case RATE_LIMIT -> throw AuthException.rateLimit();
+            case REVOKED -> throw AuthException.revoked();
         }
     }
 
@@ -205,12 +199,12 @@ public class AuthService {
                 Base64.getDecoder().decode(context.getRequest().base64Signature())
             );
         } catch (IllegalArgumentException e) {
-            throw AuthException.cryptographyFailed(
-                "Invalid base64 signature. subjectId: " + context.getSecuritySubjectId(), e
+            throw AuthException.invalidCryptographyData(
+                "Invalid base64 signature.", e
             );
         } catch (CryptoException e) {
-            throw AuthException.cryptographyFailed(
-                "Signature verification failed. subjectId: " + context.getSecuritySubjectId(), e
+            throw AuthException.signatureVerificationFailed(
+                "Signature verification failed.", e
             );
         }
     }
@@ -220,11 +214,11 @@ public class AuthService {
             byte[] publicKeyBytes = Base64.getDecoder().decode(base64SigningPublicKey);
             return keySignatureService.createPublicKey(publicKeyBytes);
         } catch (IllegalArgumentException e) {
-            throw AuthException.cryptographyFailed(
+            throw AuthException.invalidCryptographyData(
                 "Invalid base64 publicKey.", e
             );
         } catch (InvalidPublicKeyException e) {
-            throw AuthException.cryptographyFailed(
+            throw AuthException.invalidCryptographyData(
                 "Invalid public key.", e
             );
         }

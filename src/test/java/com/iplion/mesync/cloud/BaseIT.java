@@ -3,6 +3,7 @@ package com.iplion.mesync.cloud;
 import com.iplion.mesync.cloud.config.PostgresContainerConfig;
 import com.iplion.mesync.cloud.config.RedisContainerConfig;
 import org.junit.jupiter.api.AfterEach;
+import org.slf4j.MDC;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,5 +25,6 @@ public abstract class BaseIT {
     @AfterEach
     void tearDownSecurityContext() {
         SecurityContextHolder.clearContext();
+        MDC.clear();
     }
 }

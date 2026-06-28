@@ -8,14 +8,12 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @ConfigurationPropertiesScan
 public class MesyncCloudApplication {
 
-    // TODO add MDC
     // TODO add update master key after revoke
     // TODO implement FCM (push notifications)
     // TODO add last device message id to caffeine deviceAuthData
     //      and check request lastMessageId with saved device lastMessageId from caffeine
     // TODO add handlers for postgres exceptions
-    // TODO refactor registration process
-    // TODO review and standardize exception handling + create global userAuthData
+    // TODO review and standardize exception handling
     public static void main(String[] args) {
         SpringApplication.run(MesyncCloudApplication.class, args);
     }

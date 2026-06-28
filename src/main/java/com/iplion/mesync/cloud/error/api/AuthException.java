@@ -25,43 +25,60 @@ public class AuthException extends ApiException {
         );
     }
 
-    public static AuthException rateLimit(UUID subjectId) {
+    public static AuthException rateLimit() {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
-            "Auth rate limit exceeded. subjectId: " + subjectId.toString(),
+            "Auth rate limit exceeded.",
             "Too many requests"
         );
     }
 
-    public static AuthException replay(UUID subjectId) {
+    public static AuthException replay() {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
-            "Nonce already used. subjectId: " + subjectId.toString(),
+            "Nonce already used.",
             "Replay request detected"
         );
     }
 
-    public static AuthException revoked(UUID subjectId) {
+    public static AuthException revoked() {
         return new AuthException(
             HttpStatus.FORBIDDEN,
-            "Device revoked. subjectId: " + subjectId.toString(),
+            "Device revoked.",
             "Unable to verify your device."
         );
     }
 
-    public static AuthException cryptographyFailed(String internalMessage, Throwable cause) {
+    public static AuthException deviceNotTrusted() {
         return new AuthException(
             HttpStatus.FORBIDDEN,
+            "Device is not trusted or not found.",
+            DEFAULT_CLIENT_MESSAGE
+        );
+    }
+
+    public static AuthException invalidCryptographyData(String internalMessage, Throwable cause) {
+        return new AuthException(
+            HttpStatus.BAD_REQUEST,
             internalMessage,
             "Cryptography data is not valid",
             cause
         );
     }
 
-    public static AuthException deviceOwnershipMismatch(UUID jwtId, UUID deviceOwnerAuthId) {
+    public static AuthException signatureVerificationFailed(String internalMessage, Throwable cause) {
         return new AuthException(
             HttpStatus.FORBIDDEN,
-            String.format("Device owner mismatch. jwtId: %s, deviceOwnerAuthId: %s", jwtId, deviceOwnerAuthId),
+            internalMessage,
+            DEFAULT_CLIENT_MESSAGE,
+            cause
+        );
+    }
+
+    public static AuthException deviceOwnershipMismatch() {
+        return new AuthException(
+            HttpStatus.FORBIDDEN,
+            "Device owner mismatch.",
             "Device owner mismatch"
         );
     }
@@ -83,17 +100,13 @@ public class AuthException extends ApiException {
     }
 
     public static AuthException deviceTypeMismatch(
-        UUID authId,
-        UUID devicePublicId,
         DeviceType jwtDeviceType,
         DeviceType dbDeviceType
     ) {
         return new AuthException(
             HttpStatus.FORBIDDEN,
             String.format(
-                "Device type mismatch. authId: %s, devicePublicId: %s, jwtDT: %s, dbDT: %s",
-                authId.toString(),
-                devicePublicId.toString(),
+                "Device type mismatch. jwtDT: %s, dbDT: %s",
                 jwtDeviceType.name(),
                 dbDeviceType.name()
             ),

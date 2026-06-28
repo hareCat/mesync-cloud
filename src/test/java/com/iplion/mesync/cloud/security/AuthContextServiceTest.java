@@ -3,7 +3,7 @@ package com.iplion.mesync.cloud.security;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
+import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.cache.AuthData;
@@ -106,8 +106,8 @@ public class AuthContextServiceTest extends BaseUnitTest {
         when(deviceRepository.findAuthContextByPublicId(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authContextService.getFullAuthContext(devicePublicId))
-            .isInstanceOf(DeviceNotFoundException.class)
-            .hasMessageContaining("found");
+            .isInstanceOf(AuthException.class)
+            .hasMessageContaining("not trusted");
 
         verify(userAuthCache, never()).put(any(), any());
         verify(deviceAuthCache, never()).put(any(), any());

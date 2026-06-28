@@ -8,12 +8,12 @@ public class DeviceAlreadyRevokedException extends ApiException {
     private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
     private static final String MESSAGE = "Device is already revoked.";
 
-    public DeviceAlreadyRevokedException(long userId, long deviceId, UUID targetDevicePublicId) {
+    public DeviceAlreadyRevokedException(UUID targetDevicePublicId) {
         super(
             STATUS,
             String.format(
-                MESSAGE + " userId: %d, deviceId: %d, targetDevicePublicId: %s",
-                userId, deviceId, targetDevicePublicId
+                MESSAGE + " targetDevicePublicId: %s",
+                targetDevicePublicId
             ),
             MESSAGE
         );

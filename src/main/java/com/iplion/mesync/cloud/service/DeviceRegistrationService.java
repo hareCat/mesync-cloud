@@ -54,8 +54,6 @@ public class DeviceRegistrationService {
 
         if (authData.userAuthData().keyVersion() > request.keyVersion()) {
             throw DeviceRegistrationException.masterKeyVersionMismatch(
-                authData.userAuthData().id(),
-                authData.deviceAuthData().id(),
                 authData.userAuthData().keyVersion(),
                 request.keyVersion()
             );
@@ -116,7 +114,7 @@ public class DeviceRegistrationService {
         boolean hasActiveDevices = deviceRepository.existsActiveByUserAuthId(authId);
 
         if (!hasActiveDevices && deviceType != DeviceType.MOBILE) {
-            throw DeviceRegistrationException.firstDeviceType(authId);
+            throw DeviceRegistrationException.firstDeviceType();
         }
 
         String encryptedMasterKey = null;
@@ -126,7 +124,7 @@ public class DeviceRegistrationService {
         if (hasActiveDevices) {
             if (inviteToken == null || inviteToken.isBlank()) {
                 throw DeviceRegistrationException.invalidInvite(
-                    "Missing invite token for additional device. authId: " + authId
+                    "Missing invite token for additional device."
                 );
             }
 
@@ -138,13 +136,13 @@ public class DeviceRegistrationService {
 
             if (!Objects.equals(deviceInviteData.getBase64SigningPublicKey(), request.base64PublicKey())) {
                 throw DeviceRegistrationException.invalidInvite(
-                    "Registration public key does not match invite public key. authId: " + authId
+                    "Registration public key does not match invite public key."
                 );
             }
 
             if (deviceInviteData.getBase64EncryptedMasterKey() == null || deviceInviteData.getKeyVersion() == null) {
                 throw DeviceRegistrationException.invalidInvite(
-                    "Master key is not ready for invite. authId: " + authId
+                    "Master key is not ready for invite."
                 );
             }
 
@@ -162,7 +160,7 @@ public class DeviceRegistrationService {
                 jwtUserData.emailVerified()
             );
         } catch (IllegalStateException e) {
-            throw DeviceRegistrationException.userSaveFailed(authId, e);
+            throw DeviceRegistrationException.userSaveFailed(e);
         }
 
         Device device = buildDevice(
@@ -176,16 +174,11 @@ public class DeviceRegistrationService {
         try {
             deviceService.saveWithRetry(device);
         } catch (DeviceException e) {
-            throw DeviceRegistrationException.saveFailed(authId, e);
+            throw DeviceRegistrationException.saveFailed(e);
         }
 
         if (deviceInviteData != null && !invitationService.deleteDeviceInviteData(authId, inviteToken)) {
-            log.error(
-                "Failed to remove invite token {} in Redis. authId: {}",
-                inviteToken,
-                authId
-            );
-            throw DeviceRegistrationException.inviteDeleteFailed(authId, inviteToken);
+            throw DeviceRegistrationException.inviteDeleteFailed();
         }
 
         return new DeviceRegisterResponseDto(

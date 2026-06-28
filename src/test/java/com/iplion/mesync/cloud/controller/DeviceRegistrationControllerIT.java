@@ -517,7 +517,7 @@ class DeviceRegistrationControllerIT extends BaseIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.detail", containsString("valid")));
+            .andExpect(jsonPath("$.detail", containsString("verify")));
 
         List<User> users = userRepository.findAll();
         assertThat(users).hasSize(0);

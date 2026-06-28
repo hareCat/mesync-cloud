@@ -2,8 +2,11 @@ package com.iplion.mesync.cloud.security;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.config.AppProperties;
+import com.iplion.mesync.cloud.error.CryptoException;
+import com.iplion.mesync.cloud.error.InvalidPublicKeyException;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
 import com.iplion.mesync.cloud.error.api.AuthException;
+import com.iplion.mesync.cloud.logging.MdcKeys;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.auth.RegisteredDeviceAuthRequest;
 import com.iplion.mesync.cloud.security.auth.UnregisteredDeviceAuthRequest;
@@ -20,6 +23,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -40,6 +45,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -113,6 +119,8 @@ public class AuthServiceTest extends BaseUnitTest {
 
         assertThat(result).isNotNull();
         assertThat(SecurityContextUtils.getAuthData().deviceAuthData().publicKey()).isEqualTo(testContext.publicKey());
+        assertThat(MDC.get(MdcKeys.JWT_AUTH_ID)).isEqualTo(testContext.userAuthId().toString());
+        assertThat(MDC.get(MdcKeys.CLIENT_ID)).isEqualTo(DeviceType.MOBILE.getClientId());
 
     }
 
@@ -138,6 +146,8 @@ public class AuthServiceTest extends BaseUnitTest {
         verify(keySignatureService).verify(eq(testContext.publicKey), eq(request.payload()), any(byte[].class));
 
         assertThat(SecurityContextUtils.getAuthData()).isEqualTo(testContext.authData());
+        assertThat(MDC.get(MdcKeys.JWT_AUTH_ID)).isEqualTo(testContext.userAuthId().toString());
+        assertThat(MDC.get(MdcKeys.CLIENT_ID)).isEqualTo(DeviceType.MOBILE.getClientId());
     }
 
     @Test
@@ -269,6 +279,58 @@ public class AuthServiceTest extends BaseUnitTest {
             .hasMessageContaining("type");
 
         verify(keySignatureService, never()).verify(any(), any(), any());
+    }
+
+    @Test
+    void verifyMessagingRequest_shouldThrowBadRequest_whenSignatureBase64Invalid() {
+        var request = new TestRegisteredDeviceAuthRequest(
+            "invalid base64 !",
+            testContext.nonce(),
+            testContext.devicePublicId()
+        );
+
+        when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
+
+        assertThatThrownBy(() -> authService.verifyMessagingRequest(request))
+            .isInstanceOfSatisfying(AuthException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e.getMessage()).contains("Invalid base64 signature");
+            });
+    }
+
+    @Test
+    void verifyMessagingRequest_shouldThrowForbidden_whenSignatureVerificationFails() {
+        var request = registeredDeviceAuthRequest(testContext.nonce());
+
+        when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData);
+        when(redisSecurityStore.deviceAuthSecurityCheck(any(), any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
+        doThrow(new CryptoException("bad signature")).when(keySignatureService).verify(any(), any(), any());
+
+        assertThatThrownBy(() -> authService.verifyMessagingRequest(request))
+            .isInstanceOfSatisfying(AuthException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                assertThat(e.getMessage()).contains("Signature verification failed");
+                assertThat(e.getClientMessage()).isEqualTo("Unable to verify your device.");
+            });
+    }
+
+    @Test
+    void verifyUnregisteredDeviceRequest_shouldThrowBadRequest_whenPublicKeyInvalid() {
+        var request = unregisteredDeviceAuthRequest(testContext.nonce());
+
+        when(authContextService.findUserAuthContext(any())).thenReturn(Optional.of(testContext.authData.userAuthData()));
+        when(redisSecurityStore.registrationSecurityCheck(any(), any(), any(), any(), anyInt()))
+            .thenReturn(RedisSecurityCheckResult.OK);
+        when(keySignatureService.createPublicKey(any())).thenThrow(new InvalidPublicKeyException("bad key"));
+
+        assertThatThrownBy(() -> authService.verifyUnregisteredDeviceRequest(request))
+            .isInstanceOfSatisfying(AuthException.class, e -> {
+                assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(e.getMessage()).contains("Invalid public key");
+            });
     }
 
     @Test
