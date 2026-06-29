@@ -11,7 +11,7 @@ import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
@@ -42,7 +42,7 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
     @Mock
     UserRepository userRepository;
     @Mock
-    AuthService authService;
+    AuthPipelineService authPipelineService;
     @Mock
     UserService userService;
     @Mock
@@ -62,7 +62,7 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
         int deviceMasterKeyVersion = 2;
         var request = deviceRevokeRequestDto(targetDevice.getPublicId(), true, deviceMasterKeyVersion);
 
-        doNothing().when(authService).verifyDeviceManagerRequest(any());
+        doNothing().when(authPipelineService).verifyDeviceManagerRequest(any());
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
         when(userRepository.getReferenceById(authData.userAuthData().id())).thenReturn(user);
 

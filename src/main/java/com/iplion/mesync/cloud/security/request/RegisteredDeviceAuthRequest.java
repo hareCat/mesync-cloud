@@ -1,4 +1,4 @@
-package com.iplion.mesync.cloud.security.auth;
+package com.iplion.mesync.cloud.security.request;
 
 import java.util.UUID;
 

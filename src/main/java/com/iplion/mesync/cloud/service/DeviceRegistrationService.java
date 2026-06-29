@@ -17,12 +17,12 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
-import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.SecurityContextUtils;
-import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
-import com.iplion.mesync.cloud.security.auth.StoreInviteAuthRequest;
-import com.iplion.mesync.cloud.security.auth.StoreMasterKeyAuthRequest;
-import com.iplion.mesync.cloud.security.auth.StorePublicKeysAuthRequest;
+import com.iplion.mesync.cloud.security.request.RegistrationAuthRequest;
+import com.iplion.mesync.cloud.security.request.StoreInviteAuthRequest;
+import com.iplion.mesync.cloud.security.request.StoreMasterKeyAuthRequest;
+import com.iplion.mesync.cloud.security.request.StorePublicKeysAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import lombok.RequiredArgsConstructor;
@@ -45,11 +45,11 @@ public class DeviceRegistrationService {
     private final UserService userService;
     private final InvitationService invitationService;
     private final DeviceService deviceService;
-    private final AuthService authService;
+    private final AuthPipelineService authPipelineService;
     private final KeySignatureService keySignatureService;
 
     public StoreInviteResponseDto storeInviteToken(StoreInviteRequestDto request) {
-        authService.verifyDeviceManagerRequest(StoreInviteAuthRequest.from(request));
+        authPipelineService.verifyDeviceManagerRequest(StoreInviteAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         if (authData.userAuthData().keyVersion() > request.keyVersion()) {
@@ -71,7 +71,7 @@ public class DeviceRegistrationService {
     }
 
     public StorePublicKeysResponseDto storePublicKeys(StorePublicKeysRequestDto request) {
-        authService.verifyUnregisteredDeviceRequest(StorePublicKeysAuthRequest.from(request));
+        authPipelineService.verifyUnregisteredDeviceRequest(StorePublicKeysAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         Instant expiresAt = invitationService.storePublicKeys(
@@ -87,7 +87,7 @@ public class DeviceRegistrationService {
     }
 
     public StoreMasterKeyResponseDto storeMasterKey(StoreMasterKeyRequestDto request) {
-        authService.verifyDeviceManagerRequest(StoreMasterKeyAuthRequest.from(request));
+        authPipelineService.verifyDeviceManagerRequest(StoreMasterKeyAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         Instant expiresAt = invitationService.storeMasterKey(
@@ -104,7 +104,7 @@ public class DeviceRegistrationService {
 
     @Transactional
     public DeviceRegisterResponseDto registerDevice(DeviceRegisterRequestDto request) {
-        JwtUserData jwtUserData = authService.verifyUnregisteredDeviceRequest(RegistrationAuthRequest.from(request));
+        JwtUserData jwtUserData = authPipelineService.verifyUnregisteredDeviceRequest(RegistrationAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         UUID authId = authData.userAuthData().authId();

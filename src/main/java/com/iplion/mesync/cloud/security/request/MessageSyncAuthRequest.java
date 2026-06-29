@@ -1,4 +1,4 @@
-package com.iplion.mesync.cloud.security.auth;
+package com.iplion.mesync.cloud.security.request;
 
 import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;

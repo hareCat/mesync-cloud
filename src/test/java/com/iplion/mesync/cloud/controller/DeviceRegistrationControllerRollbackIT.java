@@ -9,7 +9,7 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.auth.RegistrationAuthRequest;
+import com.iplion.mesync.cloud.security.request.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
 import com.iplion.mesync.cloud.service.InvitationService;

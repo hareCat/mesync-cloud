@@ -9,9 +9,9 @@ import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.SecurityContextUtils;
-import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
+import com.iplion.mesync.cloud.security.request.DeviceRevokeAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import lombok.RequiredArgsConstructor;
@@ -27,14 +27,14 @@ import java.util.UUID;
 public class DeviceRevocationService {
     private final DeviceRepository deviceRepository;
     private final UserRepository userRepository;
-    private final AuthService authService;
+    private final AuthPipelineService authPipelineService;
     private final Cache<UUID, DeviceAuthData> deviceAuthDataCache;
     private final ApplicationEventPublisher eventPublisher;
     private final UserService userService;
 
     @Transactional
     public DeviceRevokeResponseDto revokeDevice(DeviceRevokeRequestDto request) {
-        authService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(request));
+        authPipelineService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         Device targetDevice = deviceRepository.findByUserIdAndPublicId(

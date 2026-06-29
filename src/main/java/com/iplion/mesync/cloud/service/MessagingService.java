@@ -11,10 +11,10 @@ import com.iplion.mesync.cloud.model.SyncMessageDto;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.SecurityContextUtils;
-import com.iplion.mesync.cloud.security.auth.MessagePublishAuthRequest;
-import com.iplion.mesync.cloud.security.auth.MessageSyncAuthRequest;
+import com.iplion.mesync.cloud.security.request.MessagePublishAuthRequest;
+import com.iplion.mesync.cloud.security.request.MessageSyncAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,7 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MessagingService {
 
-    private final AuthService authService;
+    private final AuthPipelineService authPipelineService;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final DeviceRepository deviceRepository;
@@ -40,7 +40,7 @@ public class MessagingService {
 
     @Transactional
     public MessagePublishResponseDto publish(MessagePublishRequestDto request) {
-        authService.verifyMessagingRequest(MessagePublishAuthRequest.from(request));
+        authPipelineService.verifyMessagingRequest(MessagePublishAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         Message message;
@@ -71,7 +71,7 @@ public class MessagingService {
     }
 
     public MessageSyncResponseDto sync(MessageSyncRequestDto request) {
-        authService.verifyMessagingRequest(MessageSyncAuthRequest.from(request));
+        authPipelineService.verifyMessagingRequest(MessageSyncAuthRequest.from(request));
         AuthData authData = SecurityContextUtils.getAuthData();
 
         List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(

@@ -15,7 +15,7 @@ import com.iplion.mesync.cloud.model.SyncMessageDto;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.AuthService;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestSecurity;
@@ -51,7 +51,7 @@ class MessagingServiceTest extends BaseUnitTest {
     @Mock
     MessageRepository messageRepository;
     @Mock
-    AuthService authService;
+    AuthPipelineService authPipelineService;
     @Mock
     ApplicationEventPublisher applicationEventPublisher;
 
@@ -204,7 +204,7 @@ class MessagingServiceTest extends BaseUnitTest {
         MessageSyncRequestDto request = messageSyncRequestDto(0L, 10);
 
         doThrow(AuthException.wrongRequestData("bad", null))
-            .when(authService).verifyMessagingRequest(any());
+            .when(authPipelineService).verifyMessagingRequest(any());
 
         assertThatThrownBy(() -> messagingService.sync(request))
             .isInstanceOf(AuthException.class)

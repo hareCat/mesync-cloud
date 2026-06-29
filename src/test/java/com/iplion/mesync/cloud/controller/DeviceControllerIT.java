@@ -9,7 +9,7 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.auth.DeviceRevokeAuthRequest;
+import com.iplion.mesync.cloud.security.request.DeviceRevokeAuthRequest;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
