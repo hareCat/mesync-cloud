@@ -42,7 +42,7 @@ public class AuthDataLoader {
     <T extends RegisteredDeviceAuthRequest> void loadRegisteredDeviceAuthData(AuthPipelineContext<T> context) {
         AuthData authData = authContextService.getFullAuthContext(context.getRequest().devicePublicId());
 
-        SecurityContextUtils.setAuthData(authData);
+        MdcUtils.putAuthData(authData);
 
         context.setAuthData(authData);
     }
@@ -70,7 +70,7 @@ public class AuthDataLoader {
             deviceAuthData
         );
 
-        SecurityContextUtils.setAuthData(authData);
+        MdcUtils.putAuthData(authData);
 
         context.setAuthData(authData);
     }

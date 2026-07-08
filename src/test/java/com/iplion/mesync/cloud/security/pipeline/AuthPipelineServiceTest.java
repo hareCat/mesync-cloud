@@ -1,8 +1,8 @@
 package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
-import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -48,8 +48,13 @@ public class AuthPipelineServiceTest extends BaseUnitTest {
             authPipelineContext.setJwtUserData(testContext.jwtUserData());
             return null;
         }).when(authDataLoader).loadJwtData(any());
+        doAnswer(invocation -> {
+            AuthPipelineContext<UnregisteredDeviceAuthRequest> authPipelineContext = invocation.getArgument(0);
+            authPipelineContext.setAuthData(testContext.authData());
+            return null;
+        }).when(authDataLoader).loadUnregisteredDeviceAuthData(any());
 
-        JwtUserData result = authPipelineService.verifyUnregisteredDeviceRequest(request);
+        AuthPipelineResult result = authPipelineService.verifyUnregisteredDeviceRequest(request);
 
         InOrder inOrder = inOrder(authDataLoader, redisAuthChecker, signatureVerifier);
         inOrder.verify(authDataLoader).loadJwtData(any());
@@ -57,7 +62,8 @@ public class AuthPipelineServiceTest extends BaseUnitTest {
         inOrder.verify(authDataLoader).loadUnregisteredDeviceAuthData(any());
         inOrder.verify(signatureVerifier).verifySignature(any());
 
-        assertThat(result).isEqualTo(testContext.jwtUserData());
+        assertThat(result.jwtUserData()).isEqualTo(testContext.jwtUserData());
+        assertThat(result.authData()).isEqualTo(testContext.authData());
     }
 
     @Test
@@ -65,7 +71,9 @@ public class AuthPipelineServiceTest extends BaseUnitTest {
         var testContext = TestPipelineFactory.testContext();
         var request = TestPipelineFactory.registeredDeviceAuthRequest(testContext);
 
-        authPipelineService.verifyDeviceManagerRequest(request);
+        mockRegisteredAuthDataLoad(testContext);
+
+        var result = authPipelineService.verifyDeviceManagerRequest(request);
 
         InOrder inOrder = inOrder(authDataLoader, redisAuthChecker, deviceAuthChecker, signatureVerifier);
         inOrder.verify(authDataLoader).loadJwtData(any());
@@ -73,6 +81,8 @@ public class AuthPipelineServiceTest extends BaseUnitTest {
         inOrder.verify(authDataLoader).loadRegisteredDeviceAuthData(any());
         inOrder.verify(deviceAuthChecker).deviceOwnerCheck(any());
         inOrder.verify(signatureVerifier).verifySignature(any());
+
+        assertThat(result).isEqualTo(testContext.authData());
     }
 
     @Test
@@ -80,7 +90,9 @@ public class AuthPipelineServiceTest extends BaseUnitTest {
         var testContext = TestPipelineFactory.testContext();
         var request = TestPipelineFactory.registeredDeviceAuthRequest(testContext);
 
-        authPipelineService.verifyMessagingRequest(request);
+        mockRegisteredAuthDataLoad(testContext);
+
+        var result = authPipelineService.verifyMessagingRequest(request);
 
         InOrder inOrder = inOrder(authDataLoader, redisAuthChecker, deviceAuthChecker, signatureVerifier);
         inOrder.verify(authDataLoader).loadJwtData(any());
@@ -89,6 +101,16 @@ public class AuthPipelineServiceTest extends BaseUnitTest {
         inOrder.verify(deviceAuthChecker).deviceOwnerCheck(any());
         inOrder.verify(deviceAuthChecker).deviceTypeCheck(any());
         inOrder.verify(signatureVerifier).verifySignature(any());
+
+        assertThat(result).isEqualTo(testContext.authData());
+    }
+
+    private void mockRegisteredAuthDataLoad(TestPipelineFactory.TestContext testContext) {
+        doAnswer(invocation -> {
+            AuthPipelineContext<RegisteredDeviceAuthRequest> authPipelineContext = invocation.getArgument(0);
+            authPipelineContext.setAuthData(testContext.authData());
+            return null;
+        }).when(authDataLoader).loadRegisteredDeviceAuthData(any());
     }
 
 }

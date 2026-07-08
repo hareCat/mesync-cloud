@@ -12,7 +12,6 @@ import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
-import com.iplion.mesync.cloud.security.SecurityContextUtils;
 import com.iplion.mesync.cloud.security.request.MessagePublishAuthRequest;
 import com.iplion.mesync.cloud.security.request.MessageSyncAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
@@ -40,8 +39,7 @@ public class MessagingService {
 
     @Transactional
     public MessagePublishResponseDto publish(MessagePublishRequestDto request) {
-        authPipelineService.verifyMessagingRequest(MessagePublishAuthRequest.from(request));
-        AuthData authData = SecurityContextUtils.getAuthData();
+        AuthData authData = authPipelineService.verifyMessagingRequest(MessagePublishAuthRequest.from(request));
 
         Message message;
         try {
@@ -71,8 +69,7 @@ public class MessagingService {
     }
 
     public MessageSyncResponseDto sync(MessageSyncRequestDto request) {
-        authPipelineService.verifyMessagingRequest(MessageSyncAuthRequest.from(request));
-        AuthData authData = SecurityContextUtils.getAuthData();
+        AuthData authData = authPipelineService.verifyMessagingRequest(MessageSyncAuthRequest.from(request));
 
         List<SyncMessageDto> syncMessageDtos = messageRepository.findNextAfterIdByUserExcludingDevice(
             authData.userAuthData().id(),

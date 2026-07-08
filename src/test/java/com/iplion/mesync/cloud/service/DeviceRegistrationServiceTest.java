@@ -13,6 +13,7 @@ import com.iplion.mesync.cloud.model.DeviceInviteData;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineResult;
 import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.request.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.request.StoreInviteAuthRequest;
@@ -21,7 +22,6 @@ import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
-import com.iplion.mesync.cloud.testUtils.TestSecurity;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -67,11 +67,9 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
     @Test
     void storeInviteToken_shouldSaveToken() throws Exception {
         Instant expiredAt = Instant.now();
-
-        TestSecurity.createSecurityContext(TestModelFactory.authData());
-
         var request = storeInviteRequestDto();
 
+        when(authPipelineService.verifyDeviceManagerRequest(any())).thenReturn(TestModelFactory.authData());
         when(invitationService.createInvite(any(), any(), any())).thenReturn(expiredAt);
 
         StoreInviteResponseDto response = deviceRegistrationService.storeInviteToken(request);
@@ -109,7 +107,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
                 mock(PublicKey.class)
             )
         );
-        TestSecurity.createSecurityContext(authData);
+        when(authPipelineService.verifyDeviceManagerRequest(any())).thenReturn(authData);
 
         var request = new StoreInviteRequestDto(
             UUID.randomUUID(),
@@ -140,8 +138,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         deviceInviteData.setKeyVersion(1);
         deviceInviteData.setDeviceType(deviceType);
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
         doNothing().when(invitationService).lockDeviceInviteData(any(), any());
@@ -182,8 +179,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         deviceInviteData.setKeyVersion(1);
         deviceInviteData.setDeviceType(deviceType);
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
         doThrow(DeviceRegistrationException.invalidInvite("Invite is already being consumed"))
@@ -208,8 +204,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         deviceInviteData.setKeyVersion(1);
         deviceInviteData.setDeviceType(deviceType);
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
         doNothing().when(invitationService).lockDeviceInviteData(any(), any());
@@ -238,8 +233,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         deviceInviteData.setKeyVersion(1);
         deviceInviteData.setDeviceType(DeviceType.BROWSER);
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
 
@@ -263,8 +257,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         deviceInviteData.setKeyVersion(1);
         deviceInviteData.setDeviceType(deviceType);
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
 
@@ -289,8 +282,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         deviceInviteData.setBase64SigningPublicKey(request.base64PublicKey());
         deviceInviteData.setDeviceType(deviceType);
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(true);
         when(invitationService.getDeviceInviteData(any(), any())).thenReturn(deviceInviteData);
 
@@ -312,8 +304,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         var ctx = createContext(deviceType);
         var request = deviceRegistrationRequest();
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
         when(keySignatureService.extractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
@@ -333,8 +324,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         var ctx = createContext(DeviceType.BROWSER);
         var request = deviceRegistrationRequest();
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(eq(ctx.jwtUserData().authId()))).thenReturn(false);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
@@ -358,8 +348,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
             "a".repeat(80)
         );
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(true);
 
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
@@ -376,8 +365,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         var ctx = createContext(DeviceType.MOBILE);
         var request = deviceRegistrationRequest();
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenThrow(IllegalStateException.class);
 
@@ -397,8 +385,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         var ctx = createContext(DeviceType.MOBILE);
         var request = deviceRegistrationRequest();
 
-        TestSecurity.createSecurityContext(ctx.authData());
-        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(ctx.jwtUserData());
+        when(authPipelineService.verifyUnregisteredDeviceRequest(any())).thenReturn(authPipelineResult(ctx));
         when(deviceRepository.existsActiveByUserAuthId(any())).thenReturn(false);
         when(userService.syncOrCreateUser(any(), any(), anyBoolean())).thenReturn(ctx.user());
         when(keySignatureService.extractPublicKeyBytes(any())).thenReturn(ctx.publicKeyBytes());
@@ -445,6 +432,13 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         );
 
         return new TestContext(user, encryptedMasterKey, jwtUserData, authData, new byte[]{1, 2, 3});
+    }
+
+    private AuthPipelineResult authPipelineResult(TestContext context) {
+        return new AuthPipelineResult(
+            context.authData(),
+            context.jwtUserData()
+        );
     }
 
     DeviceRegisterRequestDto deviceRegistrationRequest() {

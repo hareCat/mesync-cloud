@@ -11,11 +11,10 @@ import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
-import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
+import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
-import com.iplion.mesync.cloud.testUtils.TestSecurity;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -30,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -56,13 +54,12 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
     @Test
     void revokeDevice_shouldRevokeDeviceAndRotateMasterKeyVersion() throws Exception {
         AuthData authData = TestModelFactory.authData();
-        TestSecurity.createSecurityContext(authData);
         User user = TestModelFactory.user();
         Device targetDevice = TestModelFactory.device(user);
         int deviceMasterKeyVersion = 2;
         var request = deviceRevokeRequestDto(targetDevice.getPublicId(), true, deviceMasterKeyVersion);
 
-        doNothing().when(authPipelineService).verifyDeviceManagerRequest(any());
+        when(authPipelineService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
         when(userRepository.getReferenceById(authData.userAuthData().id())).thenReturn(user);
 
@@ -90,12 +87,12 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
     @Test
     void revokeDevice_shouldRevokeDeviceWithoutRotateMasterKeyVersion() throws Exception {
         AuthData authData = TestModelFactory.authData();
-        TestSecurity.createSecurityContext(authData);
 
         Device targetDevice = TestModelFactory.device(TestModelFactory.user());
         int deviceMasterKeyVersion = 2;
         var request = deviceRevokeRequestDto(targetDevice.getPublicId(), false, deviceMasterKeyVersion);
 
+        when(authPipelineService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
 
         DeviceRevokeResponseDto responseDto = deviceRevocationService.revokeDevice(request);
@@ -118,11 +115,11 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
 
     @Test
     void revokeDevice_shouldThrow_whenRevokingDeviceNotFound() throws Exception {
+        AuthData authData = TestModelFactory.authData();
         Device targetDevice = TestModelFactory.device(TestModelFactory.user());
         var request = deviceRevokeRequestDto(targetDevice.getPublicId());
 
-        TestSecurity.createSecurityContext(TestModelFactory.authData());
-
+        when(authPipelineService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> deviceRevocationService.revokeDevice(request))
@@ -134,13 +131,13 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
 
     @Test
     void revokeDevice_shouldThrow_whenDeviceAlreadyRevoked() throws Exception {
+        AuthData authData = TestModelFactory.authData();
         Device targetDevice = TestModelFactory.device(TestModelFactory.user());
         targetDevice.setRevokedAt(Instant.now());
 
-        TestSecurity.createSecurityContext(TestModelFactory.authData());
-
         var request = deviceRevokeRequestDto(targetDevice.getPublicId());
 
+        when(authPipelineService.verifyDeviceManagerRequest(any())).thenReturn(authData);
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
 
         assertThatThrownBy(() -> deviceRevocationService.revokeDevice(request))

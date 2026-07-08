@@ -6,8 +6,8 @@ import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.logging.MdcKeys;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.AuthContextService;
-import com.iplion.mesync.cloud.security.SecurityContextUtils;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,7 +70,7 @@ class AuthDataLoaderTest extends BaseUnitTest {
     }
 
     @Test
-    void loadRegisteredDeviceAuthData_shouldLoadAuthDataAndStoreInSecurityContext() {
+    void loadRegisteredDeviceAuthData_shouldLoadAuthDataAndPutItToMdc() {
         var authPipelineContext = TestPipelineFactory.registeredAuthPipelineContext(testContext);
 
         when(authContextService.getFullAuthContext(any())).thenReturn(testContext.authData());
@@ -80,11 +80,11 @@ class AuthDataLoaderTest extends BaseUnitTest {
         verify(authContextService).getFullAuthContext(eq(testContext.devicePublicId()));
 
         assertThat(authPipelineContext.getAuthData()).isEqualTo(testContext.authData());
-        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(testContext.authData());
+        assertAuthDataMdc(testContext.authData());
     }
 
     @Test
-    void loadUnregisteredDeviceAuthData_shouldCreateAuthDataAndStoreInSecurityContext_whenUserFound() {
+    void loadUnregisteredDeviceAuthData_shouldCreateAuthDataAndPutItToMdc_whenUserFound() {
         var authPipelineContext = TestPipelineFactory.unregisteredAuthPipelineContext(testContext);
         authPipelineContext.setJwtUserData(testContext.jwtUserData());
 
@@ -101,7 +101,7 @@ class AuthDataLoaderTest extends BaseUnitTest {
         assertThat(authPipelineContext.getAuthData().deviceAuthData().ownerAuthId()).isEqualTo(testContext.userAuthId());
         assertThat(authPipelineContext.getAuthData().deviceAuthData().deviceType()).isEqualTo(DeviceType.MOBILE);
         assertThat(authPipelineContext.getAuthData().deviceAuthData().publicKey()).isEqualTo(testContext.publicKey());
-        assertThat(SecurityContextUtils.getAuthData()).isEqualTo(authPipelineContext.getAuthData());
+        assertAuthDataMdc(authPipelineContext.getAuthData());
     }
 
     @Test
@@ -142,6 +142,18 @@ class AuthDataLoaderTest extends BaseUnitTest {
             testContext.nonce(),
             "invalid base64 !"
         ));
+    }
+
+    private void assertAuthDataMdc(AuthData authData) {
+        assertThat(MDC.get(MdcKeys.USER_ID)).isEqualTo(mdcValue(authData.userAuthData().id()));
+        assertThat(MDC.get(MdcKeys.USER_AUTH_ID)).isEqualTo(mdcValue(authData.userAuthData().authId()));
+        assertThat(MDC.get(MdcKeys.DEVICE_ID)).isEqualTo(mdcValue(authData.deviceAuthData().id()));
+        assertThat(MDC.get(MdcKeys.DEVICE_PUBLIC_ID)).isEqualTo(mdcValue(authData.deviceAuthData().publicId()));
+        assertThat(MDC.get(MdcKeys.DEVICE_TYPE)).isEqualTo(mdcValue(authData.deviceAuthData().deviceType()));
+    }
+
+    private String mdcValue(Object value) {
+        return value == null ? null : value.toString();
     }
 
 }

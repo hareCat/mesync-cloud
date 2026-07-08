@@ -1,6 +1,6 @@
 package com.iplion.mesync.cloud.security.pipeline;
 
-import com.iplion.mesync.cloud.model.JwtUserData;
+import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
 import com.iplion.mesync.cloud.security.request.SignedAuthRequest;
 import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
@@ -19,33 +19,36 @@ public class AuthPipelineService {
     private final AuthDataLoader authDataLoader;
     private final SignatureVerifier signatureVerifier;
 
-    public <T extends UnregisteredDeviceAuthRequest> JwtUserData verifyUnregisteredDeviceRequest(T request) {
+    public <T extends UnregisteredDeviceAuthRequest> AuthPipelineResult verifyUnregisteredDeviceRequest(T request) {
         var context = runPipeline(request, List.of(
             redisAuthChecker::unregisteredDeviceSecurityCheck,
             authDataLoader::loadUnregisteredDeviceAuthData,
             signatureVerifier::verifySignature
         ));
 
-        return context.getJwtUserData();
+        return new AuthPipelineResult(
+            context.getAuthData(),
+            context.getJwtUserData()
+        );
     }
 
-    public <T extends RegisteredDeviceAuthRequest> void verifyDeviceManagerRequest(T request) {
-        runPipeline(request, List.of(
+    public <T extends RegisteredDeviceAuthRequest> AuthData verifyDeviceManagerRequest(T request) {
+        return runPipeline(request, List.of(
             redisAuthChecker::registeredDeviceSecurityCheck,
             authDataLoader::loadRegisteredDeviceAuthData,
             deviceAuthChecker::deviceOwnerCheck,
             signatureVerifier::verifySignature
-        ));
+        )).getAuthData();
     }
 
-    public <T extends RegisteredDeviceAuthRequest> void verifyMessagingRequest(T request) {
-        runPipeline(request, List.of(
+    public <T extends RegisteredDeviceAuthRequest> AuthData verifyMessagingRequest(T request) {
+        return runPipeline(request, List.of(
             redisAuthChecker::registeredDeviceSecurityCheck,
             authDataLoader::loadRegisteredDeviceAuthData,
             deviceAuthChecker::deviceOwnerCheck,
             deviceAuthChecker::deviceTypeCheck,
             signatureVerifier::verifySignature
-        ));
+        )).getAuthData();
     }
 
     private <T extends SignedAuthRequest> AuthPipelineContext<T> runPipeline(

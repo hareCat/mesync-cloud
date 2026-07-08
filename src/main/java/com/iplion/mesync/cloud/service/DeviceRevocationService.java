@@ -10,7 +10,6 @@ import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
-import com.iplion.mesync.cloud.security.SecurityContextUtils;
 import com.iplion.mesync.cloud.security.request.DeviceRevokeAuthRequest;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
@@ -34,8 +33,7 @@ public class DeviceRevocationService {
 
     @Transactional
     public DeviceRevokeResponseDto revokeDevice(DeviceRevokeRequestDto request) {
-        authPipelineService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(request));
-        AuthData authData = SecurityContextUtils.getAuthData();
+        AuthData authData = authPipelineService.verifyDeviceManagerRequest(DeviceRevokeAuthRequest.from(request));
 
         Device targetDevice = deviceRepository.findByUserIdAndPublicId(
                 authData.userAuthData().id(),

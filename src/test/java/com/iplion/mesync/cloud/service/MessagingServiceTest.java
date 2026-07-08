@@ -18,7 +18,6 @@ import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
-import com.iplion.mesync.cloud.testUtils.TestSecurity;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -61,14 +60,12 @@ class MessagingServiceTest extends BaseUnitTest {
     @Test
     void publish_shouldPublishNewMessage() throws Exception {
         AuthData authData = TestModelFactory.authData();
-        TestSecurity.createSecurityContext(authData);
-
-        TestSecurity.createSecurityContext(authData);
 
         User user = TestModelFactory.user();
         Message message = TestModelFactory.message(TestModelFactory.user(), TestModelFactory.device(user));
         MessagePublishRequestDto request = messagePublishRequestDto();
 
+        when(authPipelineService.verifyMessagingRequest(any())).thenReturn(authData);
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenReturn(message);
@@ -102,8 +99,9 @@ class MessagingServiceTest extends BaseUnitTest {
     @Test
     void publish_shouldThrow_whenCiphertextInvalid() throws Exception {
         MessagePublishRequestDto request = messagePublishRequestDto("invalid  base64 !");
+        AuthData authData = TestModelFactory.authData();
 
-        TestSecurity.createSecurityContext(TestModelFactory.authData());
+        when(authPipelineService.verifyMessagingRequest(any())).thenReturn(authData);
 
         assertThatThrownBy(() -> messagingService.publish(request))
             .isInstanceOfSatisfying(MessagingException.class, e -> {
@@ -120,8 +118,9 @@ class MessagingServiceTest extends BaseUnitTest {
 
     @Test
     void publish_shouldThrow_whenSavingMessageError() throws Exception {
-        TestSecurity.createSecurityContext(TestModelFactory.authData());
+        AuthData authData = TestModelFactory.authData();
 
+        when(authPipelineService.verifyMessagingRequest(any())).thenReturn(authData);
         when(userRepository.getReferenceById(any())).thenReturn(mock(User.class));
         when(deviceRepository.getReferenceById(any())).thenReturn(mock(Device.class));
         when(messageRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
@@ -137,7 +136,6 @@ class MessagingServiceTest extends BaseUnitTest {
     @Test
     void sync_shouldGetMessagesAfterId() throws Exception {
         AuthData authData = TestModelFactory.authData();
-        TestSecurity.createSecurityContext(authData);
 
         int messagesRequestNum = 3;
         List<SyncMessageDto> messages = LongStream.rangeClosed(8L, 50L)
@@ -145,6 +143,7 @@ class MessagingServiceTest extends BaseUnitTest {
             .toList();
         MessageSyncRequestDto request = messageSyncRequestDto(10L, messagesRequestNum);
 
+        when(authPipelineService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
         var result = messagingService.sync(request);
@@ -174,7 +173,7 @@ class MessagingServiceTest extends BaseUnitTest {
 
     @Test
     void sync_shouldGetMessagesAfterIdWithMaxPerSyncLimit() throws Exception {
-        TestSecurity.createSecurityContext(TestModelFactory.authData());
+        AuthData authData = TestModelFactory.authData();
 
         int messagesRequestNum = 100;
         final int MAX_MESSAGES_PER_SYNC_REQUEST = 20;
@@ -183,6 +182,7 @@ class MessagingServiceTest extends BaseUnitTest {
             .toList();
         MessageSyncRequestDto request = messageSyncRequestDto(10L, messagesRequestNum);
 
+        when(authPipelineService.verifyMessagingRequest(any())).thenReturn(authData);
         when(messageRepository.findNextAfterIdByUserExcludingDevice(any(), any(), any(), any())).thenReturn(messages);
 
         var result = messagingService.sync(request);
