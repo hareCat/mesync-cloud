@@ -144,7 +144,7 @@ public class KeycloakIT {
         verifyNoInteractions(deviceRegistrationService);
     }
 
-    // helpers
+    // ------------------------- helpers ------------------------
 
     private ResultActions registerDevice(
         String accessToken,

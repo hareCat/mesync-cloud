@@ -204,7 +204,7 @@ class MessagingControllerIT extends BaseIT {
             .andExpect(jsonPath("$.messages[1].devicePublicId").value(Matchers.nullValue()));
     }
 
-    // helpers ------------------------
+    // --------------------------- helpers ------------------------
 
     private static class TestContext {
         User user;

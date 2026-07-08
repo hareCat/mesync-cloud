@@ -132,7 +132,7 @@ class DeviceControllerIT extends BaseIT {
         assertThat(revokedDevice.getRevokedAt()).isNotNull();
     }
 
-    // helpers ------------------------
+    // --------------------------- helpers ------------------------
 
     private static class TestDataFactory {
         public static class TestContext {

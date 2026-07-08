@@ -175,7 +175,7 @@ class TtlIT extends BaseIT {
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid")));
     }
 
-    // helpers --------------------------
+    // --------------------------- helpers --------------------------
 
     private ResultActions storeInvite(
         DeviceContext context,

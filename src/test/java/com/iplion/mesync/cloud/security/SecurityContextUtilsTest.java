@@ -49,7 +49,7 @@ public class SecurityContextUtilsTest {
             .hasMessageContaining("JWT");
     }
 
-    // helpers -----------------------------------------
+    // --------------------------- helpers -----------------------------------------
 
     private Jwt jwt() {
         return TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE).buildJwt();

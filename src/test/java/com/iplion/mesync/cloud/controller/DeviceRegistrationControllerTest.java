@@ -433,7 +433,7 @@ public class DeviceRegistrationControllerTest {
         verify(deviceRegistrationService).storeMasterKey(eq(requestDto));
     }
 
-    // helpers
+    // --------------------------- helpers ---------------------------
 
     MockHttpServletRequestBuilder registerMockRequest(DeviceRegisterRequestDto requestDto) throws Exception {
         return post(TestUri.REGISTER_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)

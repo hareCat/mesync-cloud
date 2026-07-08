@@ -533,7 +533,7 @@ class DeviceRegistrationControllerIT extends BaseIT {
         assertThat(inviteData).isNotNull();
     }
 
-    // helpers ------------------------
+    // --------------------------- helpers ------------------------
 
     private static class TestDataFactory {
         public static class TestContext {

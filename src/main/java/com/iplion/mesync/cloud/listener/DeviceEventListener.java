@@ -18,7 +18,6 @@ public class DeviceEventListener {
     private final RedisSecurityStore redisSecurityStore;
     private final AppProperties appProperties;
 
-    // TODO add authId and publicId from security context
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void deviceRevoked(DeviceRevokedEvent event) {
         try {
