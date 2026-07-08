@@ -1,8 +1,9 @@
 package com.iplion.mesync.cloud.security.request;
 
-import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
 
 import java.util.UUID;
 

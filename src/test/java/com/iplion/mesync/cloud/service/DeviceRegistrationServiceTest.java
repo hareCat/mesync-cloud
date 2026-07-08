@@ -1,10 +1,10 @@
 package com.iplion.mesync.cloud.service;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
-import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
-import com.iplion.mesync.cloud.controller.dto.StoreInviteResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
@@ -21,6 +21,9 @@ import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
+import com.iplion.mesync.cloud.service.support.DeviceService;
+import com.iplion.mesync.cloud.service.support.InvitationService;
+import com.iplion.mesync.cloud.service.support.UserService;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

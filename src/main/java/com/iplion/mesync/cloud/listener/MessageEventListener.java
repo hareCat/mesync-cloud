@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.listener;
 
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
 import com.iplion.mesync.cloud.model.DeviceNotificationType;
-import com.iplion.mesync.cloud.service.DeviceNotificationService;
+import com.iplion.mesync.cloud.service.support.DeviceNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;

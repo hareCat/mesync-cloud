@@ -1,7 +1,7 @@
 package com.iplion.mesync.cloud.repository;
 
 import com.iplion.mesync.cloud.entity.Message;
-import com.iplion.mesync.cloud.model.SyncMessageDto;
+import com.iplion.mesync.cloud.controller.dto.message.SyncMessageDto;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +12,7 @@ import java.util.List;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
     @Query(value = """
-            select new com.iplion.mesync.cloud.model.SyncMessageDto(
+            select new com.iplion.mesync.cloud.controller.dto.message.SyncMessageDto(
                 m.id,
                 m.publicId,
                 d.publicId,

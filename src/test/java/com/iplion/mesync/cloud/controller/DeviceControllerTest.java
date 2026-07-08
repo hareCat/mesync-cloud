@@ -2,8 +2,11 @@ package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.SecurityConfig;
-import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceListRequestDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceListResponseDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
+import com.iplion.mesync.cloud.service.DeviceQueryService;
 import com.iplion.mesync.cloud.service.DeviceRevocationService;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestUri;
@@ -18,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.UUID;
+import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +43,55 @@ public class DeviceControllerTest {
 
     @MockitoBean
     private DeviceRevocationService deviceRevocationService;
+
+    @MockitoBean
+    private DeviceQueryService deviceQueryService;
+
+    @Test
+    void list_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
+        var requestDto = deviceListRequestDto();
+
+        mockMvc.perform(post(TestUri.DEVICE_LIST_URI)
+                .with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+                    .buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("devices.revoke")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.status").value(403))
+            .andExpect(jsonPath("$.title").exists())
+            .andExpect(jsonPath("$.instance").exists());
+    }
+
+    @Test
+    void list_shouldReturn401_whenNoJwt() throws Exception {
+        var requestDto = deviceListRequestDto();
+
+        mockMvc.perform(post(TestUri.DEVICE_LIST_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void list_shouldReturn400_whenRequestFieldBlank() throws Exception {
+        mockMvc.perform(listMockRequest(new DeviceListRequestDto(
+                UUID.randomUUID(), UUID.randomUUID(), ""
+            )))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void list_shouldReturn200AndCallService() throws Exception {
+        var requestDto = deviceListRequestDto();
+        when(deviceQueryService.listOtherDevices(any())).thenReturn(new DeviceListResponseDto(List.of()));
+
+        mockMvc.perform(listMockRequest(requestDto))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.devices").isArray());
+
+        verify(deviceQueryService).listOtherDevices(eq(requestDto));
+    }
 
     @Test
     void revoke_shouldReturn403Forbidden_whenAuthoritiesWrong() throws Exception {
@@ -99,6 +152,14 @@ public class DeviceControllerTest {
 
     // --------------------------- helpers ---------------------------
 
+    MockHttpServletRequestBuilder listMockRequest(DeviceListRequestDto requestDto) throws Exception {
+        return post(TestUri.DEVICE_LIST_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
+                .buildMockMvcJwt()
+                .authorities(new SimpleGrantedAuthority("messages.read")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(requestDto));
+    }
+
     MockHttpServletRequestBuilder revokeMockRequest(DeviceRevokeRequestDto requestDto) throws Exception {
         return post(TestUri.REVOKE_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)
                 .buildMockMvcJwt()
@@ -113,6 +174,14 @@ public class DeviceControllerTest {
             UUID.randomUUID(),
             true,
             3,
+            UUID.randomUUID(),
+            "a".repeat(80)
+        );
+    }
+
+    public static DeviceListRequestDto deviceListRequestDto() {
+        return new DeviceListRequestDto(
+            UUID.randomUUID(),
             UUID.randomUUID(),
             "a".repeat(80)
         );

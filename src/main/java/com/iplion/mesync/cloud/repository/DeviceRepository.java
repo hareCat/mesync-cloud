@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.repository;
 
 import com.iplion.mesync.cloud.entity.Device;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceListItemDto;
 import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -38,6 +39,22 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
             and d.revokedAt is null
         """)
     List<Device> findActiveByUserAuthId(UUID authId);
+
+    @Query("""
+            select new com.iplion.mesync.cloud.controller.dto.device.DeviceListItemDto(
+                d.publicId,
+                d.deviceType,
+                d.name,
+                d.createdAt,
+                d.revokedAt,
+                d.lastActiveAt
+            )
+            from Device d
+            where d.user.id = :userId
+              and d.id != :deviceId
+            order by d.createdAt
+        """)
+    List<DeviceListItemDto> findByUserIdExcludingDeviceId(Long userId, Long deviceId);
 
     @Query("""
             select count(d) > 0

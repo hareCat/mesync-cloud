@@ -1,13 +1,13 @@
 package com.iplion.mesync.cloud.controller;
 
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
-import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
-import com.iplion.mesync.cloud.controller.dto.StoreInviteResponseDto;
-import com.iplion.mesync.cloud.controller.dto.StoreMasterKeyRequestDto;
-import com.iplion.mesync.cloud.controller.dto.StoreMasterKeyResponseDto;
-import com.iplion.mesync.cloud.controller.dto.StorePublicKeysRequestDto;
-import com.iplion.mesync.cloud.controller.dto.StorePublicKeysResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreMasterKeyRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreMasterKeyResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StorePublicKeysRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StorePublicKeysResponseDto;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

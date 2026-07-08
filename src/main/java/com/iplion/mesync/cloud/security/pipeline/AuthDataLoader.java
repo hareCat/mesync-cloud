@@ -13,9 +13,9 @@ import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
-import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
-import com.iplion.mesync.cloud.security.request.SignedAuthRequest;
-import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.SignedAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.UnregisteredDeviceAuthRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

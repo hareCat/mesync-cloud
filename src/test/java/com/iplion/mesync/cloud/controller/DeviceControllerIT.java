@@ -3,12 +3,14 @@ package com.iplion.mesync.cloud.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceListRequestDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
+import com.iplion.mesync.cloud.security.request.DeviceListAuthRequest;
 import com.iplion.mesync.cloud.security.request.DeviceRevokeAuthRequest;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
@@ -36,6 +38,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -76,6 +79,58 @@ class DeviceControllerIT extends BaseIT {
         try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
             connection.serverCommands().flushDb();
         }
+    }
+
+    @Test
+    void list_shouldReturnOtherActiveUserDevices() throws Exception {
+        var context = TestDataFactory.createDeviceListContext();
+
+        User user = TestDataFactory.saveNewUser(
+            context.authId,
+            userRepository
+        );
+        Device currentDevice = TestDataFactory.saveNewDevice(
+            context.devicePublicId,
+            user,
+            context.publicKeyBytes,
+            context.deviceName,
+            deviceRepository
+        );
+        Device otherDevice = TestDataFactory.saveNewDevice(
+            UUID.randomUUID(),
+            user,
+            TestCrypto.generateKeyPair().getPublic().getEncoded(),
+            "other " + context.deviceName,
+            deviceRepository
+        );
+        Device revokedDevice = TestDataFactory.saveNewDevice(
+            UUID.randomUUID(),
+            user,
+            TestCrypto.generateKeyPair().getPublic().getEncoded(),
+            "revoked " + context.deviceName,
+            deviceRepository
+        );
+        revokedDevice.setRevokedAt(Instant.now());
+        deviceRepository.saveAndFlush(revokedDevice);
+
+        var requestDto = TestDataFactory.deviceListRequestDto(context);
+
+        mockMvc.perform(post(TestUri.DEVICE_LIST_URI)
+                .with(TestJwtBuilder.forDevice(context.authId, currentDevice.getDeviceType())
+                    .buildMockMvcJwt()
+                    .authorities(new SimpleGrantedAuthority("messages.read")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDto)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.devices.length()").value(2))
+            .andExpect(jsonPath("$.devices[*].devicePublicId").value(containsInAnyOrder(
+                otherDevice.getPublicId().toString(),
+                revokedDevice.getPublicId().toString()
+            )))
+            .andExpect(jsonPath("$.devices[*].name").value(containsInAnyOrder(
+                otherDevice.getName(),
+                revokedDevice.getName()
+            )));
     }
 
     @Test
@@ -162,6 +217,19 @@ class DeviceControllerIT extends BaseIT {
             return context;
         }
 
+        public static TestContext createDeviceListContext() throws GeneralSecurityException {
+            KeyPair keyPair = TestCrypto.generateKeyPair();
+            TestContext context = TestDataFactory.prepareContext(keyPair);
+            byte[] payload = new DeviceListAuthRequest(
+                null,
+                context.nonce,
+                context.devicePublicId
+            ).payload();
+            context.base64Signature = sign(keyPair.getPrivate(), payload);
+
+            return context;
+        }
+
         private static TestContext prepareContext(KeyPair keyPair) {
             var context = new TestContext();
             context.authId = UUID.randomUUID();
@@ -210,6 +278,14 @@ class DeviceControllerIT extends BaseIT {
                 targetDevicePublicId,
                 true,
                 context.keyVersion + 1,
+                context.nonce,
+                context.base64Signature
+            );
+        }
+
+        public static DeviceListRequestDto deviceListRequestDto(TestContext context) {
+            return new DeviceListRequestDto(
+                context.devicePublicId,
                 context.nonce,
                 context.base64Signature
             );

@@ -2,8 +2,8 @@ package com.iplion.mesync.cloud;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.SecurityConfig;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterResponseDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterResponseDto;
 import com.iplion.mesync.cloud.controller.DeviceRegistrationController;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.service.DeviceRegistrationService;
@@ -109,8 +109,15 @@ public class KeycloakIT {
 
     @Test
     void registerDevice_shouldReturn201_whenTokenAndRolesValid() throws Exception {
+        DeviceRegisterResponseDto dto = new DeviceRegisterResponseDto(
+            UUID.randomUUID(),
+            "test device",
+            null,
+            1
+        );
+
         when(deviceRegistrationService.registerDevice(any(DeviceRegisterRequestDto.class)))
-            .thenReturn(new DeviceRegisterResponseDto(UUID.randomUUID(), "test device", null, 1));
+            .thenReturn(dto);
 
         registerDevice(getAccessToken(DeviceType.MOBILE), deviceRegisterRequestDto())
             .andExpect(status().isCreated());

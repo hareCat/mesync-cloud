@@ -4,7 +4,7 @@ import com.iplion.mesync.cloud.config.PostgresContainerConfig;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.entity.User;
-import com.iplion.mesync.cloud.model.SyncMessageDto;
+import com.iplion.mesync.cloud.controller.dto.message.SyncMessageDto;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -2,8 +2,8 @@ package com.iplion.mesync.cloud.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.iplion.mesync.cloud.BaseUnitTest;
-import com.iplion.mesync.cloud.controller.dto.DeviceRevokeRequestDto;
-import com.iplion.mesync.cloud.controller.dto.DeviceRevokeResponseDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceRevokeRequestDto;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceRevokeResponseDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.api.DeviceAlreadyRevokedException;
@@ -14,6 +14,7 @@ import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
+import com.iplion.mesync.cloud.service.support.UserService;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

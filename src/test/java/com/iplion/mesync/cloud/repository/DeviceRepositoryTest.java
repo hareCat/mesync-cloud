@@ -3,6 +3,7 @@ package com.iplion.mesync.cloud.repository;
 import com.iplion.mesync.cloud.config.PostgresContainerConfig;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.controller.dto.device.DeviceListItemDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.cache.AuthDataProjection;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
@@ -111,6 +112,45 @@ public class DeviceRepositoryTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("user1-device");
+    }
+
+    @Test
+    void findByUserIdExcludingDeviceId_shouldReturnOtherUserDevices() throws Exception {
+        User user = TestModelFactory.user();
+        User anotherUser = TestModelFactory.user();
+        em.persist(user);
+        em.persist(anotherUser);
+        em.flush();
+
+        Device currentDevice = TestModelFactory.device(user, "current-device");
+        Device otherDevice = TestModelFactory.device(user, "other-device");
+        Device revokedDevice = TestModelFactory.device(user, "revoked-device");
+        Device anotherUserDevice = TestModelFactory.device(anotherUser, "another-user-device");
+        revokedDevice.setRevokedAt(Instant.now());
+        em.persist(currentDevice);
+        em.persist(otherDevice);
+        em.persist(revokedDevice);
+        em.persist(anotherUserDevice);
+        em.flush();
+
+        em.clear();
+
+        List<DeviceListItemDto> result = deviceRepository.findByUserIdExcludingDeviceId(
+            user.getId(),
+            currentDevice.getId()
+        );
+
+        assertThat(result)
+            .extracting(DeviceListItemDto::devicePublicId, DeviceListItemDto::name)
+            .containsExactlyInAnyOrder(
+                org.assertj.core.api.Assertions.tuple(otherDevice.getPublicId(), otherDevice.getName()),
+                org.assertj.core.api.Assertions.tuple(revokedDevice.getPublicId(), revokedDevice.getName())
+            );
+        assertThat(result)
+            .filteredOn(device -> device.devicePublicId().equals(revokedDevice.getPublicId()))
+            .singleElement()
+            .extracting(DeviceListItemDto::revokedAt)
+            .isNotNull();
     }
 
     @Test

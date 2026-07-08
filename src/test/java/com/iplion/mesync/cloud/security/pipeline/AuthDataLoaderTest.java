@@ -8,7 +8,7 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.AuthContextService;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.UnregisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

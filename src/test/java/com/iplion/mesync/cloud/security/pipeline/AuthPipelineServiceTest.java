@@ -1,8 +1,8 @@
 package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
-import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
-import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.UnregisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;

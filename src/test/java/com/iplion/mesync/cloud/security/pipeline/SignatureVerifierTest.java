@@ -4,7 +4,7 @@ import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.error.CryptoException;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
-import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
