@@ -3,7 +3,7 @@ package com.iplion.mesync.cloud.security.pipeline;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.cache.AuthData;
-import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

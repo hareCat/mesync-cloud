@@ -2,9 +2,9 @@ package com.iplion.mesync.cloud.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
-import com.iplion.mesync.cloud.controller.dto.StoreInviteRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.model.DeviceType;

@@ -2,8 +2,8 @@ package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.api.AuthException;
-import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
-import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.UnregisteredDeviceAuthRequest;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityCheckResult;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;

@@ -2,7 +2,7 @@ package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.controller.dto.DeviceRegisterRequestDto;
+import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
@@ -12,7 +12,7 @@ import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.request.RegistrationAuthRequest;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
-import com.iplion.mesync.cloud.service.InvitationService;
+import com.iplion.mesync.cloud.service.support.InvitationService;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;

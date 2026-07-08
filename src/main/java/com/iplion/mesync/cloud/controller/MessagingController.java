@@ -1,9 +1,9 @@
 package com.iplion.mesync.cloud.controller;
 
-import com.iplion.mesync.cloud.controller.dto.MessagePublishRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessagePublishResponseDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncResponseDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishResponseDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncResponseDto;
 import com.iplion.mesync.cloud.service.MessagingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

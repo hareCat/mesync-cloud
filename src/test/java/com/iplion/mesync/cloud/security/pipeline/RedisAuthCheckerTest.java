@@ -6,7 +6,7 @@ import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityCheckResult;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityStore;
-import com.iplion.mesync.cloud.security.request.UnregisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.UnregisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

@@ -2,8 +2,8 @@ package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.BaseIT;
-import com.iplion.mesync.cloud.controller.dto.MessagePublishRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.entity.User;

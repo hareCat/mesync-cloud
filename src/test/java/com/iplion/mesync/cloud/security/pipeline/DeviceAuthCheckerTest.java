@@ -5,7 +5,7 @@ import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
-import com.iplion.mesync.cloud.security.request.RegisteredDeviceAuthRequest;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

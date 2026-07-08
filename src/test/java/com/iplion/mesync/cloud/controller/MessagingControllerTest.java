@@ -2,8 +2,8 @@ package com.iplion.mesync.cloud.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.SecurityConfig;
-import com.iplion.mesync.cloud.controller.dto.MessagePublishRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;

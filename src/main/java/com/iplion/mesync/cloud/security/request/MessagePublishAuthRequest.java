@@ -1,9 +1,10 @@
 package com.iplion.mesync.cloud.security.request;
 
-import com.iplion.mesync.cloud.controller.dto.MessagePublishRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishRequestDto;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;
 import com.iplion.mesync.cloud.security.crypto.PayloadBuilder;
+import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
 
 import java.time.Instant;
 import java.util.UUID;

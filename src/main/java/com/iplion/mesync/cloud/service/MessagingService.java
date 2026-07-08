@@ -1,13 +1,13 @@
 package com.iplion.mesync.cloud.service;
 
-import com.iplion.mesync.cloud.controller.dto.MessagePublishRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessagePublishResponseDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncRequestDto;
-import com.iplion.mesync.cloud.controller.dto.MessageSyncResponseDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessagePublishResponseDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncRequestDto;
+import com.iplion.mesync.cloud.controller.dto.message.MessageSyncResponseDto;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
-import com.iplion.mesync.cloud.model.SyncMessageDto;
+import com.iplion.mesync.cloud.controller.dto.message.SyncMessageDto;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.repository.MessageRepository;
 import com.iplion.mesync.cloud.repository.UserRepository;
