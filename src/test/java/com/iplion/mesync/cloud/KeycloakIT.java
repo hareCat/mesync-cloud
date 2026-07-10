@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iplion.mesync.cloud.config.SecurityConfig;
 import com.iplion.mesync.cloud.controller.dto.registration.DeviceRegisterRequestDto;
@@ -32,6 +33,7 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -83,9 +85,7 @@ public class KeycloakIT {
     void keycloak_shouldHaveRealmRolesIntoToken() {
         String token = getAccessToken(DeviceType.MOBILE);
 
-        String payload = token.split("\\.")[1];
-
-        String json = new String(Base64.getUrlDecoder().decode(payload));
+        String json = decodeJwtPayload(token);
 
         Assertions.assertTrue(
             json.contains("realm_access")
@@ -93,6 +93,29 @@ public class KeycloakIT {
                 && json.contains("messages.write")
                 && json.contains("messages.publish")
         );
+    }
+
+    @Test
+    void keycloak_shouldIssueApplicationCompatibleAccessToken() throws Exception {
+        JsonNode payload = objectMapper.readTree(decodeJwtPayload(getAccessToken(DeviceType.MOBILE)));
+
+        assertThat(payload.path("typ").asText()).isEqualTo("Bearer");
+        assertThat(payload.path("iss").asText()).isEqualTo(keycloak.getAuthServerUrl() + "/realms/mesync-test");
+        assertThat(payload.path("azp").asText()).isEqualTo(DeviceType.MOBILE.getClientId());
+        assertThat(payload.path("email").asText()).isEqualTo("test@mail.com");
+        assertThat(payload.path("email_verified").asBoolean()).isFalse();
+
+        assertThat(payload.path("sub").asText())
+            .isNotBlank()
+            .satisfies(subject -> assertThat(UUID.fromString(subject)).isNotNull());
+
+        assertThat(payload.path("realm_access").path("roles"))
+            .extracting(JsonNode::asText)
+            .containsExactlyInAnyOrder(
+                "messages.read",
+                "messages.write",
+                "messages.publish"
+            );
     }
 
     @Test
@@ -189,6 +212,10 @@ public class KeycloakIT {
             .body(Map.class);
 
         return (String) response.get("access_token");
+    }
+
+    private String decodeJwtPayload(String token) {
+        return new String(Base64.getUrlDecoder().decode(token.split("\\.")[1]));
     }
 
     private DeviceRegisterRequestDto deviceRegisterRequestDto() {

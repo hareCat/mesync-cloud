@@ -656,7 +656,7 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : false,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "phone", "profile", "roles", "email" ],
+    "defaultClientScopes" : [ "phone", "profile", "roles", "basic", "email" ],
     "optionalClientScopes" : [ ]
   }, {
     "id" : "bac66824-e9a9-4533-b095-5b0c57b6f95a",
@@ -710,7 +710,7 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : false,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "phone", "profile", "roles", "email" ],
+    "defaultClientScopes" : [ "phone", "profile", "roles", "basic", "email" ],
     "optionalClientScopes" : [ ]
   }, {
     "id" : "d65a9353-43d4-4c30-801c-7bde18887a52",
@@ -765,7 +765,7 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : false,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "phone", "profile", "roles", "email" ],
+    "defaultClientScopes" : [ "phone", "profile", "roles", "basic", "email" ],
     "optionalClientScopes" : [ ]
   }, {
     "id" : "31d02f5d-ab1c-4b73-8b8a-e65dda432e78",
@@ -817,7 +817,7 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : false,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "phone", "profile", "roles", "email" ],
+    "defaultClientScopes" : [ "phone", "profile", "roles", "basic", "email" ],
     "optionalClientScopes" : [ ]
   }, {
     "id" : "1452cc92-4f9a-47bd-b376-3816bbecb8a9",
