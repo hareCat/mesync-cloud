@@ -89,12 +89,13 @@ message records, and lets other trusted devices sync those records.
 ### Main Components
 
 - `DeviceRegistrationController` exposes first-device and invited-device registration endpoints.
-- `DeviceController` exposes device revocation endpoints.
+- `DeviceController` exposes device listing and revocation endpoints.
 - `MessagingController` exposes encrypted message publish and sync endpoints.
 - `DeviceRegistrationService` implements onboarding rules for first and additional devices.
+- `DeviceQueryService` lists the user's other devices for a trusted device.
 - `DeviceRevocationService` revokes trusted devices and can advance the user's master-key version.
 - `MessagingService` stores encrypted message records and reads sync batches.
-- `AuthService` extracts JWT data, runs Redis security checks, verifies device ownership/type, and checks signatures.
+- `AuthPipelineService` extracts JWT data, runs Redis security checks, verifies device ownership/type, and checks signatures.
 - `AuthContextService` loads user/device auth data from Caffeine or PostgreSQL.
 - `InvitationService` stores invite state, invited-device public keys, encrypted master keys, and final registration locks in Redis.
 - `DeviceService` persists devices with name-conflict retry.
@@ -142,6 +143,12 @@ JWT data used by the service:
 - `email`: stored only when verified
 - `email_verified`: controls whether email is trusted
 - `realm_access.roles`: converted to Spring authorities
+
+The API must receive a Keycloak `access_token`, not an `id_token`. The access
+token must contain `typ=Bearer`, `sub`, `azp`, and `realm_access.roles`. In
+Keycloak, device clients must not use lightweight access tokens if that removes
+`sub` from the token. The local realm also attaches the `basic` client scope to
+device clients so the built-in `sub` mapper is included in access tokens.
 
 Known device client ids:
 
@@ -243,6 +250,15 @@ MESSAGE_SYNC
 {nonce}
 ```
 
+### Device List
+
+```text
+v1
+DEVICE_LIST
+{devicePublicId}
+{nonce}
+```
+
 ### Device Revocation
 
 ```text
@@ -289,6 +305,12 @@ REVOCATION
 5. The target device auth cache entry is invalidated.
 6. After commit, Redis stores a revoked-device marker used by device-authenticated requests.
 7. If requested, the user's master-key version is advanced by exactly one version.
+
+### Device List
+
+1. A trusted device calls `POST /api/v1/devices/list`.
+2. The request is authenticated by JWT, device public id, nonce, and signature.
+3. The service returns the user's other devices and excludes the requesting device.
 
 ## API
 
@@ -421,6 +443,41 @@ Response:
 }
 ```
 
+### `POST /api/v1/devices/list`
+
+Authority: `messages.read`
+
+Returns the authenticated user's other devices, excluding the requesting device.
+The response includes active and revoked devices so clients can reconcile local
+device state.
+
+Request:
+
+```json
+{
+  "devicePublicId": "8f2dbf8b-7bf6-4ff9-b0d1-88beef7cd0ee",
+  "nonce": "7a01801f-95cb-4dc8-9461-dbd5ec9b7fbb",
+  "base64Signature": "MEUCIQ..."
+}
+```
+
+Response:
+
+```json
+{
+  "devices": [
+    {
+      "devicePublicId": "fddbe426-f388-4dbb-8efb-72b313ac47b0",
+      "deviceType": "DESKTOP",
+      "name": "Work laptop",
+      "createdAt": "2026-04-26T10:15:30Z",
+      "revokedAt": null,
+      "lastActiveAt": "2026-04-26T10:20:30Z"
+    }
+  ]
+}
+```
+
 ### `POST /api/v1/devices/revoke`
 
 Authority: `devices.revoke`
@@ -531,14 +588,14 @@ it as a Base64-encoded JSON string.
 app:
   registration:
     invite-ttl: 10m
-    invite-cooldown: 1m
+    invite-cooldown: 10s
+    nonce-ttl: 30s
     rate-limit-ttl: 10m
     attempts: 10
-    nonce-ttl: 30s
   auth:
+    nonce-ttl: 30s
     rate-limit-ttl: 60s
     attempts: 120
-    nonce-ttl: 30s
   revoke:
     ttl: 30d
   cache:
@@ -605,6 +662,19 @@ set `JWT_ISSUER_URI` to that realm:
 JWT_ISSUER_URI=http://localhost:8080/realms/mesync-test
 ```
 
+The local Keycloak realm must issue application-compatible access tokens for
+device clients:
+
+- use `access_token` in `Authorization: Bearer`, not `id_token`
+- `typ` must be `Bearer`
+- `sub` must be present and must be a UUID
+- `azp` must be one of the known device client ids
+- `realm_access.roles` must include the endpoint authority
+- lightweight access tokens must be disabled for `mesync-mobile`,
+  `mesync-browser`, `mesync-desktop`, and `mesync-device-manager`
+- the `basic` client scope must be attached to those clients so the `sub`
+  mapper is included in access tokens
+
 Start the application:
 
 ```bash
@@ -616,6 +686,32 @@ or:
 ```bash
 SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 ```
+
+## Postman
+
+A local Postman collection is available at:
+
+- `postman/mesync-cloud.postman_collection.json`
+
+The collection uses:
+
+- `baseUrl=http://localhost:8081`
+- `keycloakUrl=http://localhost:8080`
+- `jwt` as the bearer token variable
+
+Run `Auth / Get Token` first. It requests a Keycloak password-grant
+`access_token` for `mesync-mobile` and stores it into the collection variable
+`jwt`.
+
+The request bodies contain valid Ed25519 public keys and signatures for the
+static example payloads in the collection. Signatures are tied to the exact
+canonical payload. If a signed field changes, for example `nonce`,
+`devicePublicId`, `inviteToken`, `messagePublicId`, or `base64Ciphertext`, the
+`base64Signature` must be regenerated.
+
+For first-device registration, `Register Device` uses `inviteToken: null`.
+After registration, copy the returned `devicePublicId` into the device-auth
+requests and regenerate signatures for the changed payloads.
 
 Run tests:
 
@@ -636,6 +732,7 @@ The project contains:
 - Caffeine auth-context cache unit tests
 - PostgreSQL Testcontainers integration
 - Keycloak Testcontainers integration
+- Keycloak token-contract checks for `sub`, `azp`, `typ`, issuer, email claims, and realm roles
 
 This keeps the core E2EE-adjacent rules testable without relying on a running
 local identity provider for most tests.
