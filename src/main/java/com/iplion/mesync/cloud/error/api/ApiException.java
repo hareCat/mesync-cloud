@@ -3,18 +3,34 @@ package com.iplion.mesync.cloud.error.api;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-@Getter
 public abstract class ApiException extends RuntimeException {
+    @Getter
     private final HttpStatus httpStatus;
-    private final String clientMessage;
 
-    public ApiException(HttpStatus status, String internalMessage, String clientMessage) {
-        this(status, internalMessage, clientMessage, null);
+    @Getter
+    private final ApiErrorCode errorCode;
+
+    private final Object[] messageArgs;
+
+    ApiException(HttpStatus status, String logMessage, ApiErrorCode errorCode, Object... messageArgs) {
+        this(status, logMessage, errorCode, null, messageArgs);
     }
 
-    public ApiException(HttpStatus status, String internalMessage, String clientMessage, Throwable cause) {
-        super(internalMessage, cause);
-        this.clientMessage = clientMessage;
-        httpStatus = status;
+    ApiException(
+        HttpStatus status,
+        String logMessage,
+        ApiErrorCode errorCode,
+        Throwable cause,
+        Object... messageArgs
+    ) {
+        super(logMessage, cause);
+        this.errorCode = errorCode;
+        this.messageArgs = messageArgs == null ? null : messageArgs.clone();
+        this.httpStatus = status;
     }
+
+    public Object[] getMessageArgs() {
+        return messageArgs == null ? null : messageArgs.clone();
+    }
+
 }

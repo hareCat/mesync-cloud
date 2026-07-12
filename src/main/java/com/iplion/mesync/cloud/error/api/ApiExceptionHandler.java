@@ -2,8 +2,11 @@ package com.iplion.mesync.cloud.error.api;
 
 import com.iplion.mesync.cloud.logging.MdcKeys;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,20 +24,38 @@ import java.time.Instant;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class ApiExceptionHandler {
-    private static final String SAFE_5XX_MESSAGE = "Request could not be processed. Please try again later.";
+    private final MessageSource messageSource;
 
-    private ProblemDetail problemDetail(HttpStatus status, String clientMessage, HttpServletRequest request) {
-        ProblemDetail detail = ProblemDetail.forStatusAndDetail(status, clientMessage);
+    private ProblemDetail problemDetail(
+        HttpStatus status,
+        ApiErrorCode errorCode,
+        Object[] messageArgs,
+        HttpServletRequest request
+    ) {
+        String localizedMessage = resolveLocalizedMessage(errorCode, messageArgs);
+
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(status, localizedMessage);
         detail.setTitle(status.getReasonPhrase());
         detail.setInstance(URI.create(request.getRequestURI()));
         detail.setProperty("timestamp", Instant.now());
+        detail.setProperty("code", errorCode.name());
         String requestId = MDC.get(MdcKeys.REQUEST_ID);
         if (requestId != null) {
             detail.setProperty("requestId", requestId);
         }
 
         return detail;
+    }
+
+    private String resolveLocalizedMessage(ApiErrorCode errorCode, Object[] messageArgs) {
+        return messageSource.getMessage(
+            errorCode.getMessageKey(),
+            messageArgs,
+            errorCode.name(),
+            LocaleContextHolder.getLocale()
+        );
     }
 
     @ExceptionHandler(ApiException.class)
@@ -45,7 +66,7 @@ public class ApiExceptionHandler {
             log.warn(e.getMessage(), e);
         }
 
-        return problemDetail(e.getHttpStatus(), e.getClientMessage(), request);
+        return problemDetail(e.getHttpStatus(), e.getErrorCode(), e.getMessageArgs(), request);
     }
 
     // === 400: bad JSON ===
@@ -55,7 +76,8 @@ public class ApiExceptionHandler {
 
         return problemDetail(
             HttpStatus.BAD_REQUEST,
-            "Malformed JSON request",
+            ApiErrorCode.MALFORMED_JSON,
+            null,
             request
         );
     }
@@ -67,7 +89,8 @@ public class ApiExceptionHandler {
 
         return problemDetail(
             HttpStatus.BAD_REQUEST,
-            "Validation failed",
+            ApiErrorCode.VALIDATION_FAILED,
+            null,
             request
         );
     }
@@ -82,7 +105,8 @@ public class ApiExceptionHandler {
 
         return problemDetail(
             HttpStatus.BAD_REQUEST,
-            "Invalid request parameters",
+            ApiErrorCode.INVALID_REQUEST_PARAMETERS,
+            null,
             request
         );
     }
@@ -94,7 +118,8 @@ public class ApiExceptionHandler {
 
         return problemDetail(
             HttpStatus.UNAUTHORIZED,
-            "Unauthorized",
+            ApiErrorCode.UNAUTHORIZED,
+            null,
             request
         );
     }
@@ -109,18 +134,21 @@ public class ApiExceptionHandler {
 
         return problemDetail(
             HttpStatus.FORBIDDEN,
-            "Access denied",
+            ApiErrorCode.ACCESS_DENIED,
+            null,
             request
         );
     }
 
-     // === fallback ===
+    // === fallback ===
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception e, HttpServletRequest request) {
         log.error("Unexpected error", e);
 
-        return problemDetail(HttpStatus.INTERNAL_SERVER_ERROR,
-            SAFE_5XX_MESSAGE,
+        return problemDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            ApiErrorCode.INTERNAL_ERROR,
+            null,
             request
         );
     }

@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.security;
 
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
@@ -45,8 +46,9 @@ public class SecurityContextUtilsTest {
         );
 
         assertThatThrownBy(SecurityContextUtils::getJwt)
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining("JWT");
+            .isInstanceOfSatisfying(AuthException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_SECURITY_CONTEXT_ERROR)
+            );
     }
 
     // --------------------------- helpers -----------------------------------------

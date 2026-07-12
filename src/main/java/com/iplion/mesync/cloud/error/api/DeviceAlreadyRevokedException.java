@@ -6,16 +6,15 @@ import java.util.UUID;
 
 public class DeviceAlreadyRevokedException extends ApiException {
     private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
-    private static final String MESSAGE = "Device is already revoked.";
 
     public DeviceAlreadyRevokedException(UUID targetDevicePublicId) {
         super(
             STATUS,
             String.format(
-                MESSAGE + " targetDevicePublicId: %s",
+                "Device is already revoked. targetDevicePublicId: %s",
                 targetDevicePublicId
             ),
-            MESSAGE
+            ApiErrorCode.DEVICE_ALREADY_REVOKED
         );
     }
 }

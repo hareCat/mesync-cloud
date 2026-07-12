@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.security.cache.AuthData;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 class DeviceAuthCheckerTest extends BaseUnitTest {
@@ -36,8 +38,9 @@ class DeviceAuthCheckerTest extends BaseUnitTest {
         authPipelineContext.setAuthData(authData(testContext, UUID.randomUUID(), DeviceType.MOBILE));
 
         assertThatThrownBy(() -> deviceAuthChecker.deviceOwnerCheck(authPipelineContext))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining("owner");
+            .isInstanceOfSatisfying(AuthException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_DEVICE_OWNERSHIP_MISMATCH)
+            );
     }
 
     @Test
@@ -55,8 +58,9 @@ class DeviceAuthCheckerTest extends BaseUnitTest {
         authPipelineContext.setAuthData(authData(testContext, testContext.userAuthId(), DeviceType.BROWSER));
 
         assertThatThrownBy(() -> deviceAuthChecker.deviceTypeCheck(authPipelineContext))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining("type");
+            .isInstanceOfSatisfying(AuthException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_DEFAULT)
+            );
     }
 
     private AuthPipelineContext<RegisteredDeviceAuthRequest> registeredAuthPipelineContextWithAuthData(

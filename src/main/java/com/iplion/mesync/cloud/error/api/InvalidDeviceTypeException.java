@@ -4,9 +4,8 @@ import org.springframework.http.HttpStatus;
 
 public class InvalidDeviceTypeException extends ApiException {
     private static final HttpStatus STATUS = HttpStatus.BAD_REQUEST;
-    private static final String MESSAGE = "Invalid device type";
 
-    public InvalidDeviceTypeException(String internalMessage) {
-        super(STATUS, internalMessage, MESSAGE);
+    public InvalidDeviceTypeException(String logMessage) {
+        super(STATUS, logMessage, ApiErrorCode.DEVICE_INVALID_TYPE);
     }
 }

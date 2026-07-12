@@ -3,6 +3,8 @@ server:
 spring:
   application:
     name: mesync-cloud
+  messages:
+    fallback-to-system-locale: false
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:

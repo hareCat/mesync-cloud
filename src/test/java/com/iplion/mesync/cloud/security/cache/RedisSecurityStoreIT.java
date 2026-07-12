@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.security.cache;
 
 import com.iplion.mesync.cloud.BaseIT;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -187,8 +188,9 @@ public class RedisSecurityStoreIT extends BaseIT {
             Duration.ofMinutes(1),
             0
         ))
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("rate");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
 
         assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
             "nonceKey",
@@ -197,8 +199,9 @@ public class RedisSecurityStoreIT extends BaseIT {
             Duration.ofMinutes(1),
             3
         ))
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("TTL", "nonce");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
 
         assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
             "nonceKey",
@@ -207,8 +210,9 @@ public class RedisSecurityStoreIT extends BaseIT {
             Duration.ofMinutes(-1),
             3
         ))
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("TTL", "rate");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
 
     }
 

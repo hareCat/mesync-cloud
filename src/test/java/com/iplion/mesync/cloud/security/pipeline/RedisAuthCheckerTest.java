@@ -2,6 +2,7 @@ package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.config.AppProperties;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
 import com.iplion.mesync.cloud.security.cache.RedisSecurityCheckResult;
@@ -84,10 +85,9 @@ class RedisAuthCheckerTest extends BaseUnitTest {
             .thenReturn(RedisSecurityCheckResult.REVOKED);
 
         assertThatThrownBy(() -> redisAuthChecker.registeredDeviceSecurityCheck(authPipelineContext))
-            .isInstanceOfSatisfying(AuthException.class, e -> {
-                assertThat(e.getMessage()).contains("Device revoked");
-                assertThat(e.getClientMessage()).isEqualTo("Unable to verify your device.");
-            });
+            .isInstanceOfSatisfying(AuthException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_DEFAULT)
+            );
     }
 
     private AuthPipelineContext<UnregisteredDeviceAuthRequest> unregisteredAuthPipelineContextWithJwtData(

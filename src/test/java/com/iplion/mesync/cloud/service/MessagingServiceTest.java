@@ -6,6 +6,7 @@ import com.iplion.mesync.cloud.controller.dto.message.MessageSyncRequestDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.Message;
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.error.api.MessagingException;
 import com.iplion.mesync.cloud.event.MessagePublishedEvent;
@@ -107,7 +108,7 @@ class MessagingServiceTest extends BaseUnitTest {
             .isInstanceOfSatisfying(MessagingException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                 assertThat(e).hasCauseInstanceOf(IllegalArgumentException.class);
-                assertThat(e.getMessage()).contains("ciphertext");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.CRYPTOGRAPHY_DATA_INVALID);
             });
 
         verifyNoInteractions(userRepository);
@@ -129,7 +130,7 @@ class MessagingServiceTest extends BaseUnitTest {
             .isInstanceOfSatisfying(MessagingException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
                 assertThat(e).hasCauseInstanceOf(DataIntegrityViolationException.class);
-                assertThat(e.getMessage()).contains("saving");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.MESSAGE_SAVE_FAILED);
             });
     }
 
@@ -207,8 +208,9 @@ class MessagingServiceTest extends BaseUnitTest {
             .when(authPipelineService).verifyMessagingRequest(any());
 
         assertThatThrownBy(() -> messagingService.sync(request))
-            .isInstanceOf(AuthException.class)
-            .hasMessageContaining("bad");
+            .isInstanceOfSatisfying(AuthException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_DEFAULT)
+            );
     }
 
     // --------------------- helpers ---------------------

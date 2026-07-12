@@ -7,6 +7,7 @@ import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteRequestDto
 import com.iplion.mesync.cloud.controller.dto.registration.StoreInviteResponseDto;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.DeviceException;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.api.InvalidDeviceTypeException;
 import com.iplion.mesync.cloud.model.DeviceInviteData;
@@ -123,7 +124,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
 
         assertThatThrownBy(() -> deviceRegistrationService.storeInviteToken(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e ->
-                assertThat(e.getMessage()).contains("key")
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_MASTER_KEY_VERSION_MISMATCH)
             );
 
         verify(invitationService, never()).createInvite(any(), any(), any());
@@ -219,7 +220,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(e.getMessage()).contains("delete invite");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_DEFAULT);
             });
 
         verify(deviceService).saveWithRetry(any());
@@ -267,7 +268,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("public key");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_INVALID_INVITE);
             });
 
         verify(invitationService, never()).lockDeviceInviteData(any(), any());
@@ -292,7 +293,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("Master key");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_INVALID_INVITE);
             });
 
         verify(invitationService, never()).lockDeviceInviteData(any(), any());
@@ -333,7 +334,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("mobile");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_FIRST_DEVICE_TYPE);
             });
 
         verifyNoInteractions(invitationService);
@@ -357,7 +358,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("invite");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_INVALID_INVITE);
             });
 
         verifyNoInteractions(invitationService);
@@ -375,7 +376,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                     assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                    assertThat(e.getMessage()).contains("user");
+                    assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_DEFAULT);
                     assertThat(e.getCause()).isInstanceOf(IllegalStateException.class);
                 }
             );
@@ -397,7 +398,7 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         assertThatThrownBy(() -> deviceRegistrationService.registerDevice(request))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                     assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                    assertThat(e.getMessage()).contains("device");
+                    assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_DEFAULT);
                     assertThat(e.getCause()).isInstanceOf(DeviceException.class);
                 }
             );

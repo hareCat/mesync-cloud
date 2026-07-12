@@ -4,24 +4,24 @@ import org.springframework.http.HttpStatus;
 
 public class MessagingException extends ApiException {
 
-    private MessagingException(HttpStatus status, String internalMessage, String clientMessage, Throwable cause) {
-        super(status, internalMessage, clientMessage, cause);
+    private MessagingException(HttpStatus status, String logMessage, ApiErrorCode errorCode, Throwable cause) {
+        super(status, logMessage, errorCode, cause);
     }
 
-    public static MessagingException messageSaving(String internalMessage, Throwable cause) {
+    public static MessagingException messageSaving(String logMessage, Throwable cause) {
         return new MessagingException(
             HttpStatus.CONFLICT,
-            internalMessage,
-            "Unable to save the message.",
+            logMessage,
+            ApiErrorCode.MESSAGE_SAVE_FAILED,
             cause
         );
     }
 
-    public static MessagingException invalidCryptographyData(String internalMessage, Throwable cause) {
+    public static MessagingException invalidCryptographyData(String logMessage, Throwable cause) {
         return new MessagingException(
             HttpStatus.BAD_REQUEST,
-            internalMessage,
-            "Cryptography data is not valid",
+            logMessage,
+            ApiErrorCode.CRYPTOGRAPHY_DATA_INVALID,
             cause
         );
     }

@@ -6,6 +6,7 @@ import com.iplion.mesync.cloud.controller.dto.device.DeviceRevokeRequestDto;
 import com.iplion.mesync.cloud.controller.dto.device.DeviceRevokeResponseDto;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.entity.User;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.DeviceAlreadyRevokedException;
 import com.iplion.mesync.cloud.error.api.DeviceNotFoundException;
 import com.iplion.mesync.cloud.event.DeviceRevokedEvent;
@@ -124,8 +125,9 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> deviceRevocationService.revokeDevice(request))
-            .isInstanceOf(DeviceNotFoundException.class)
-            .hasMessageContaining("found");
+            .isInstanceOfSatisfying(DeviceNotFoundException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.DEVICE_NOT_FOUND)
+            );
 
         verifyNoInteractions(deviceAuthDataCache);
     }
@@ -142,8 +144,9 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
         when(deviceRepository.findByUserIdAndPublicId(any(), any())).thenReturn(Optional.of(targetDevice));
 
         assertThatThrownBy(() -> deviceRevocationService.revokeDevice(request))
-            .isInstanceOf(DeviceAlreadyRevokedException.class)
-            .hasMessageContaining("already");
+            .isInstanceOfSatisfying(DeviceAlreadyRevokedException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.DEVICE_ALREADY_REVOKED)
+            );
 
         verifyNoInteractions(deviceAuthDataCache);
     }

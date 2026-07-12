@@ -6,21 +6,19 @@ import org.springframework.http.HttpStatus;
 import java.util.UUID;
 
 public class AuthException extends ApiException {
-    private static final String DEFAULT_CLIENT_MESSAGE = "Unable to verify your device.";
-
-    private AuthException(HttpStatus status, String internalMessage, String clientMessage) {
-        super(status, internalMessage, clientMessage);
+    private AuthException(HttpStatus status, String logMessage, ApiErrorCode errorCode) {
+        super(status, logMessage, errorCode);
     }
 
-    private AuthException(HttpStatus status, String internalMessage, String clientMessage, Throwable cause) {
-        super(status, internalMessage, clientMessage, cause);
+    private AuthException(HttpStatus status, String logMessage, ApiErrorCode errorCode, Throwable cause) {
+        super(status, logMessage, errorCode, cause);
     }
 
-    public static AuthException wrongRequestData(String internalMessage, Throwable cause) {
+    public static AuthException wrongRequestData(String logMessage, Throwable cause) {
         return new AuthException(
             HttpStatus.BAD_REQUEST,
-            internalMessage,
-            DEFAULT_CLIENT_MESSAGE,
+            logMessage,
+            ApiErrorCode.AUTH_DEFAULT,
             cause
         );
     }
@@ -29,7 +27,7 @@ public class AuthException extends ApiException {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
             "Auth rate limit exceeded.",
-            "Too many requests"
+            ApiErrorCode.AUTH_RATE_LIMIT
         );
     }
 
@@ -37,7 +35,7 @@ public class AuthException extends ApiException {
         return new AuthException(
             HttpStatus.TOO_MANY_REQUESTS,
             "Nonce already used.",
-            "Replay request detected"
+            ApiErrorCode.AUTH_REPLAY
         );
     }
 
@@ -45,7 +43,7 @@ public class AuthException extends ApiException {
         return new AuthException(
             HttpStatus.FORBIDDEN,
             "Device revoked.",
-            "Unable to verify your device."
+            ApiErrorCode.AUTH_DEFAULT
         );
     }
 
@@ -53,24 +51,24 @@ public class AuthException extends ApiException {
         return new AuthException(
             HttpStatus.FORBIDDEN,
             "Device is not trusted or not found.",
-            DEFAULT_CLIENT_MESSAGE
+            ApiErrorCode.AUTH_DEFAULT
         );
     }
 
-    public static AuthException invalidCryptographyData(String internalMessage, Throwable cause) {
+    public static AuthException invalidCryptographyData(String logMessage, Throwable cause) {
         return new AuthException(
             HttpStatus.BAD_REQUEST,
-            internalMessage,
-            "Cryptography data is not valid",
+            logMessage,
+            ApiErrorCode.AUTH_INVALID_CRYPTOGRAPHY_DATA,
             cause
         );
     }
 
-    public static AuthException signatureVerificationFailed(String internalMessage, Throwable cause) {
+    public static AuthException signatureVerificationFailed(String logMessage, Throwable cause) {
         return new AuthException(
             HttpStatus.FORBIDDEN,
-            internalMessage,
-            DEFAULT_CLIENT_MESSAGE,
+            logMessage,
+            ApiErrorCode.AUTH_DEFAULT,
             cause
         );
     }
@@ -79,15 +77,15 @@ public class AuthException extends ApiException {
         return new AuthException(
             HttpStatus.FORBIDDEN,
             "Device owner mismatch.",
-            "Device owner mismatch"
+            ApiErrorCode.AUTH_DEVICE_OWNERSHIP_MISMATCH
         );
     }
 
-    public static AuthException securityContextError(String internalMessage) {
+    public static AuthException securityContextError(String logMessage) {
         return new AuthException(
             HttpStatus.INTERNAL_SERVER_ERROR,
-            internalMessage,
-            "Authentication context error"
+            logMessage,
+            ApiErrorCode.AUTH_SECURITY_CONTEXT_ERROR
         );
     }
 
@@ -95,7 +93,7 @@ public class AuthException extends ApiException {
         return new AuthException(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "There is no user with userAuthId: " + userAuthId + " in the database",
-            "User not found."
+            ApiErrorCode.AUTH_USER_NOT_FOUND
         );
     }
 
@@ -110,7 +108,7 @@ public class AuthException extends ApiException {
                 jwtDeviceType.name(),
                 dbDeviceType.name()
             ),
-            DEFAULT_CLIENT_MESSAGE
+            ApiErrorCode.AUTH_DEFAULT
         );
     }
 

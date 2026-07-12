@@ -2,6 +2,7 @@ package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.error.CryptoException;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.security.crypto.KeySignatureService;
 import com.iplion.mesync.cloud.security.request.common.RegisteredDeviceAuthRequest;
@@ -59,7 +60,7 @@ class SignatureVerifierTest extends BaseUnitTest {
         assertThatThrownBy(() -> signatureVerifier.verifySignature(authPipelineContext))
             .isInstanceOfSatisfying(AuthException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("Invalid base64 signature");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_INVALID_CRYPTOGRAPHY_DATA);
             });
     }
 
@@ -79,8 +80,7 @@ class SignatureVerifierTest extends BaseUnitTest {
         assertThatThrownBy(() -> signatureVerifier.verifySignature(authPipelineContext))
             .isInstanceOfSatisfying(AuthException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains("Signature verification failed");
-                assertThat(e.getClientMessage()).isEqualTo("Unable to verify your device.");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_DEFAULT);
             });
     }
 

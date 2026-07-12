@@ -1,6 +1,7 @@
 package com.iplion.mesync.cloud.service.support;
 
 import com.iplion.mesync.cloud.config.AppProperties;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
 import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import com.iplion.mesync.cloud.security.cache.RedisKeys;
@@ -66,7 +67,7 @@ public class InvitationServiceTest {
         )
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains("cooldown");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_COOLDOWN);
             });
     }
 
@@ -80,8 +81,9 @@ public class InvitationServiceTest {
             TestModelFactory.inviteToken(),
             DeviceType.MOBILE)
         )
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("error");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
     }
 
     @Test
@@ -95,8 +97,9 @@ public class InvitationServiceTest {
             TestModelFactory.inviteToken(),
             DeviceType.MOBILE)
         )
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("error");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
     }
 
     @Test
@@ -144,7 +147,7 @@ public class InvitationServiceTest {
         ))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains("cooldown");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_COOLDOWN);
             });
     }
 
@@ -159,8 +162,9 @@ public class InvitationServiceTest {
             "encryptionPublicKey",
             "signingPublicKey"
         ))
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("error");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
     }
 
     @Test
@@ -178,8 +182,9 @@ public class InvitationServiceTest {
             "encryptionPublicKey",
             "signingPublicKey"
         ))
-            .isInstanceOf(RedisOperationException.class)
-            .hasMessageContaining("error");
+            .isInstanceOfSatisfying(RedisOperationException.class, e ->
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
+            );
     }
 
     @Test
@@ -197,7 +202,7 @@ public class InvitationServiceTest {
         ))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("expired");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_INVALID_INVITE);
             });
     }
 
@@ -345,7 +350,7 @@ public class InvitationServiceTest {
         assertThatThrownBy(() -> invitationService.lockDeviceInviteData(authId, inviteToken))
             .isInstanceOfSatisfying(DeviceRegistrationException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                assertThat(e.getMessage()).contains("cooldown");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REGISTRATION_COOLDOWN);
             });
     }
 

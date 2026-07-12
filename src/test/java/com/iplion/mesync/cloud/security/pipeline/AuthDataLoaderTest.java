@@ -2,6 +2,7 @@ package com.iplion.mesync.cloud.security.pipeline;
 
 import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.error.InvalidTokenException;
+import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.AuthException;
 import com.iplion.mesync.cloud.logging.MdcKeys;
 import com.iplion.mesync.cloud.model.DeviceType;
@@ -65,8 +66,10 @@ class AuthDataLoaderTest extends BaseUnitTest {
         var authPipelineContext = TestPipelineFactory.registeredAuthPipelineContext(testContext);
 
         assertThatThrownBy(() -> authDataLoader.loadJwtData(authPipelineContext))
-            .isInstanceOf(AuthException.class)
-            .hasCauseInstanceOf(InvalidTokenException.class);
+            .isInstanceOfSatisfying(AuthException.class, e -> {
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_DEFAULT);
+                assertThat(e).hasCauseInstanceOf(InvalidTokenException.class);
+            });
     }
 
     @Test
@@ -132,7 +135,7 @@ class AuthDataLoaderTest extends BaseUnitTest {
         assertThatThrownBy(() -> authDataLoader.loadUnregisteredDeviceAuthData(authPipelineContext))
             .isInstanceOfSatisfying(AuthException.class, e -> {
                 assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(e.getMessage()).contains("Invalid base64 publicKey");
+                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.AUTH_INVALID_CRYPTOGRAPHY_DATA);
             });
     }
 
