@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.service;
 
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.controller.dto.device.DeviceListItemDto;
 import com.iplion.mesync.cloud.controller.dto.device.DeviceListRequestDto;
 import com.iplion.mesync.cloud.model.DeviceType;
@@ -9,10 +10,8 @@ import com.iplion.mesync.cloud.security.pipeline.AuthPipelineService;
 import com.iplion.mesync.cloud.security.request.DeviceListAuthRequest;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,8 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class DeviceQueryServiceTest {
+class DeviceQueryServiceTest extends BaseUnitTest {
     @Mock
     private DeviceRepository deviceRepository;
 

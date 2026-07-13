@@ -6,12 +6,16 @@ import com.iplion.mesync.cloud.error.api.RedisOperationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -179,41 +183,23 @@ public class RedisSecurityStoreIT extends BaseIT {
         assertThat(result).isEqualTo(RedisSecurityCheckResult.RATE_LIMIT);
     }
 
-    @Test
-    void validateSecurityLimits_shouldReject() {
+    @ParameterizedTest
+    @MethodSource("invalidSecurityLimits")
+    void validateSecurityLimits_shouldReject(
+        Duration nonceTtl,
+        Duration rateLimitTtl,
+        int rateLimit
+    ) {
         assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
             "nonceKey",
             "rateLimitKey",
-            Duration.ofMinutes(1),
-            Duration.ofMinutes(1),
-            0
+            nonceTtl,
+            rateLimitTtl,
+            rateLimit
         ))
             .isInstanceOfSatisfying(RedisOperationException.class, e ->
                 assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
             );
-
-        assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
-            "nonceKey",
-            "rateLimitKey",
-            Duration.ZERO,
-            Duration.ofMinutes(1),
-            3
-        ))
-            .isInstanceOfSatisfying(RedisOperationException.class, e ->
-                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
-            );
-
-        assertThatThrownBy(() -> redisSecurityStore.registrationSecurityCheck(
-            "nonceKey",
-            "rateLimitKey",
-            Duration.ofMinutes(1),
-            Duration.ofMinutes(-1),
-            3
-        ))
-            .isInstanceOfSatisfying(RedisOperationException.class, e ->
-                assertThat(e.getErrorCode()).isEqualTo(ApiErrorCode.REDIS_OPERATION_FAILED)
-            );
-
     }
 
     @Test
@@ -232,6 +218,14 @@ public class RedisSecurityStoreIT extends BaseIT {
 
         assertThat(beforeDelete).isEqualTo(dto);
         assertThat(afterDelete).isNull();
+    }
+
+    private static Stream<Arguments> invalidSecurityLimits() {
+        return Stream.of(
+            Arguments.of(Duration.ofMinutes(1), Duration.ofMinutes(1), 0),
+            Arguments.of(Duration.ZERO, Duration.ofMinutes(1), 3),
+            Arguments.of(Duration.ofMinutes(1), Duration.ofMinutes(-1), 3)
+        );
     }
 
 }

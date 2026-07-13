@@ -1,13 +1,14 @@
 package com.iplion.mesync.cloud.service.support;
 
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.error.api.UpdateMasterKeyVersionException;
 import com.iplion.mesync.cloud.repository.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
@@ -20,8 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-public class UserServiceTest {
+public class UserServiceTest extends BaseUnitTest {
     @Mock
     private UserRepository userRepository;
 
@@ -47,10 +47,36 @@ public class UserServiceTest {
     }
 
     @Test
-    public void syncOrCreateUser_whenNewEmailNotVerifiedOrNullOrSame_shouldReturnExistingUserWithOldEmail() {
+    public void syncOrCreateUser_whenExistingEmailHasWhitespace_shouldReturnExistingUserWithTrimmedEmail() {
+        UUID authId = UUID.randomUUID();
+        String email = "email";
+
+        User user = new User();
+        user.setAuthId(authId);
+        user.setEmail("  " + email + "  ");
+
+        when(userRepository.findByAuthId(any(UUID.class))).thenReturn(Optional.of(user));
+
+        var result = userService.syncOrCreateUser(authId, email, true);
+
+        assertThat(result.getAuthId()).isEqualTo(user.getAuthId());
+        assertThat(result.getEmail()).isEqualTo(email);
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+        "newEmail, false",
+        "NULL, true",
+        "'', true",
+        "'   ', true",
+        "oldEmail, true"
+    }, nullValues = "NULL")
+    public void syncOrCreateUser_whenEmailShouldNotBeUpdated_shouldReturnExistingUserWithOldEmail(
+        String newEmail,
+        boolean emailVerified
+    ) {
         UUID authId = UUID.randomUUID();
         String oldEmail = "oldEmail";
-        String newEmail = "newEmail";
 
         User user = new User();
         user.setAuthId(authId);
@@ -58,15 +84,7 @@ public class UserServiceTest {
 
         when(userRepository.findByAuthId(any(UUID.class))).thenReturn(Optional.of(user));
 
-        var result = userService.syncOrCreateUser(authId, newEmail, false);
-        assertThat(result.getAuthId()).isEqualTo(user.getAuthId());
-        assertThat(result.getEmail()).isEqualTo(oldEmail);
-
-        result = userService.syncOrCreateUser(authId, null, true);
-        assertThat(result.getAuthId()).isEqualTo(user.getAuthId());
-        assertThat(result.getEmail()).isEqualTo(oldEmail);
-
-        result = userService.syncOrCreateUser(authId, oldEmail, true);
+        var result = userService.syncOrCreateUser(authId, newEmail, emailVerified);
         assertThat(result.getAuthId()).isEqualTo(user.getAuthId());
         assertThat(result.getEmail()).isEqualTo(oldEmail);
     }

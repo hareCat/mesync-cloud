@@ -1,6 +1,8 @@
 package com.iplion.mesync.cloud.config;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.servlet.LocaleResolver;
 
@@ -13,7 +15,7 @@ class LocaleConfigTest {
     private final LocaleResolver localeResolver = new LocaleConfig().localeResolver();
 
     @Test
-    void localeResolverReturnsEnglish_whenAcceptLanguageIsMissing() {
+    void localeResolver_returnsEnglish_whenAcceptLanguageIsMissing() {
         MockHttpServletRequest request = request();
 
         Locale locale = localeResolver.resolveLocale(request);
@@ -21,31 +23,22 @@ class LocaleConfigTest {
         assertThat(locale).isEqualTo(Locale.ENGLISH);
     }
 
-    @Test
-    void localeResolverReturnsRussian_whenAcceptLanguageIsRu() {
-        MockHttpServletRequest request = request("ru");
+    @ParameterizedTest
+    @CsvSource({
+        "ru, ru",
+        "ru-RU, ru",
+        "fr, en",
+        "'', en"
+    })
+    void localeResolver_returnsExpectedLocale_forAcceptLanguageHeader(
+        String acceptLanguage,
+        String expectedLanguageTag
+    ) {
+        MockHttpServletRequest request = request(acceptLanguage);
 
         Locale locale = localeResolver.resolveLocale(request);
 
-        assertThat(locale).isEqualTo(Locale.forLanguageTag("ru"));
-    }
-
-    @Test
-    void localeResolverReturnsRussian_whenAcceptLanguageIsRuRu() {
-        MockHttpServletRequest request = request("ru-RU");
-
-        Locale locale = localeResolver.resolveLocale(request);
-
-        assertThat(locale).isEqualTo(Locale.forLanguageTag("ru"));
-    }
-
-    @Test
-    void localeResolverReturnsEnglish_whenAcceptLanguageIsUnsupported() {
-        MockHttpServletRequest request = request("fr");
-
-        Locale locale = localeResolver.resolveLocale(request);
-
-        assertThat(locale).isEqualTo(Locale.ENGLISH);
+        assertThat(locale).isEqualTo(Locale.forLanguageTag(expectedLanguageTag));
     }
 
     private MockHttpServletRequest request(String acceptLanguage) {

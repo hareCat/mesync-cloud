@@ -12,6 +12,9 @@ import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -23,6 +26,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -184,151 +188,54 @@ public class DeviceRegistrationControllerTest {
             .andExpect(jsonPath("$.detail", containsString("try again")));
     }
 
-    @Test
-    void register_shouldReturn400_whenRequestFieldBlank() throws Exception {
-        String inviteToken = TestModelFactory.inviteToken();
-
-        mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
-                "",
-                "a".repeat(44), Map.of(), inviteToken, UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
-                "testDevice",
-                "",
-                Map.of(), inviteToken, UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
-                "test device", "a".repeat(44), Map.of(),
-                "",
-                UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
-                "test device", "a".repeat(44), Map.of(), inviteToken, UUID.randomUUID(),
-                ""
-            )))
+    @ParameterizedTest
+    @MethodSource("blankRegisterRequests")
+    void register_shouldReturn400_whenRequestFieldBlank(DeviceRegisterRequestDto requestDto) throws Exception {
+        mockMvc.perform(registerMockRequest(requestDto))
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void storeInvite_shouldReturn400_whenRequestFieldBlank() throws Exception {
-        String inviteToken = TestModelFactory.inviteToken();
-
-        mockMvc.perform(storeInviteMockRequest(new StoreInviteRequestDto(
-                UUID.randomUUID(),
-                "",
-                1, DeviceType.MOBILE, UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storeInviteMockRequest(new StoreInviteRequestDto(
-                UUID.randomUUID(), inviteToken,
-                1, DeviceType.MOBILE, UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isCreated());
-
-        mockMvc.perform(storeInviteMockRequest(new StoreInviteRequestDto(
-                UUID.randomUUID(), inviteToken, 1, DeviceType.MOBILE, UUID.randomUUID(),
-                ""
-            )))
+    @ParameterizedTest
+    @MethodSource("blankStoreInviteRequests")
+    void storeInvite_shouldReturn400_whenRequestFieldBlank(StoreInviteRequestDto requestDto) throws Exception {
+        mockMvc.perform(storeInviteMockRequest(requestDto))
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void storePublicKeys_shouldReturn400_whenRequestFieldBlank() throws Exception {
-        String inviteToken = TestModelFactory.inviteToken();
-
-        mockMvc.perform(storePublicKeysMockRequest(new StorePublicKeysRequestDto(
-                "",
-                "a".repeat(44), "a".repeat(44), UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storePublicKeysMockRequest(new StorePublicKeysRequestDto(
-                inviteToken,
-                "", "a".repeat(44), UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storePublicKeysMockRequest(new StorePublicKeysRequestDto(
-                inviteToken,
-                "a".repeat(44), "", UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storePublicKeysMockRequest(new StorePublicKeysRequestDto(
-                inviteToken,
-                "a".repeat(44), "a".repeat(44), UUID.randomUUID(), ""
-            )))
+    @ParameterizedTest
+    @MethodSource("blankStorePublicKeysRequests")
+    void storePublicKeys_shouldReturn400_whenRequestFieldBlank(StorePublicKeysRequestDto requestDto) throws Exception {
+        mockMvc.perform(storePublicKeysMockRequest(requestDto))
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void storeMasterKey_shouldReturn400_whenRequestFieldBlank() throws Exception {
-        String inviteToken = TestModelFactory.inviteToken();
-
-        mockMvc.perform(storeMasterKeyMockRequest(new StoreMasterKeyRequestDto(
-                UUID.randomUUID(),
-                "", "a".repeat(32), 1, UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storeMasterKeyMockRequest(new StoreMasterKeyRequestDto(
-                UUID.randomUUID(),
-                inviteToken, "", 1, UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storeMasterKeyMockRequest(new StoreMasterKeyRequestDto(
-                UUID.randomUUID(),
-                inviteToken, "a".repeat(32), 1, UUID.randomUUID(), ""
-            )))
+    @ParameterizedTest
+    @MethodSource("blankStoreMasterKeyRequests")
+    void storeMasterKey_shouldReturn400_whenRequestFieldBlank(StoreMasterKeyRequestDto requestDto) throws Exception {
+        mockMvc.perform(storeMasterKeyMockRequest(requestDto))
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void register_shouldReturn400_whenInviteTokenFormatInvalid() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"ABC12", "abc123"})
+    void register_shouldReturn400_whenInviteTokenFormatInvalid(String inviteToken) throws Exception {
         mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
                 "test device",
                 "a".repeat(44),
                 Map.of(),
-                UUID.randomUUID().toString(),
-                UUID.randomUUID(),
-                "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(registerMockRequest(new DeviceRegisterRequestDto(
-                "test device",
-                "a".repeat(44),
-                Map.of(),
-                "abc123",
+                inviteToken,
                 UUID.randomUUID(),
                 "a".repeat(80)
             )))
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void storeInvite_shouldReturn400_whenInviteTokenFormatInvalid() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"ABC12", "abc123"})
+    void storeInvite_shouldReturn400_whenInviteTokenFormatInvalid(String inviteToken) throws Exception {
         mockMvc.perform(storeInviteMockRequest(new StoreInviteRequestDto(
                 UUID.randomUUID(),
-                "ABC12",
-                1,
-                DeviceType.MOBILE,
-                UUID.randomUUID(),
-                "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storeInviteMockRequest(new StoreInviteRequestDto(
-                UUID.randomUUID(),
-                "abc123",
+                inviteToken,
                 1,
                 DeviceType.MOBILE,
                 UUID.randomUUID(),
@@ -337,19 +244,11 @@ public class DeviceRegistrationControllerTest {
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void storePublicKeys_shouldReturn400_whenInviteTokenFormatInvalid() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"ABC12", "abc123"})
+    void storePublicKeys_shouldReturn400_whenInviteTokenFormatInvalid(String inviteToken) throws Exception {
         mockMvc.perform(storePublicKeysMockRequest(new StorePublicKeysRequestDto(
-                "ABC12",
-                "a".repeat(44),
-                "a".repeat(44),
-                UUID.randomUUID(),
-                "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storePublicKeysMockRequest(new StorePublicKeysRequestDto(
-                "abc123",
+                inviteToken,
                 "a".repeat(44),
                 "a".repeat(44),
                 UUID.randomUUID(),
@@ -358,21 +257,12 @@ public class DeviceRegistrationControllerTest {
             .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void storeMasterKey_shouldReturn400_whenInviteTokenFormatInvalid() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"ABC12", "abc123"})
+    void storeMasterKey_shouldReturn400_whenInviteTokenFormatInvalid(String inviteToken) throws Exception {
         mockMvc.perform(storeMasterKeyMockRequest(new StoreMasterKeyRequestDto(
                 UUID.randomUUID(),
-                "ABC12",
-                "a".repeat(32),
-                1,
-                UUID.randomUUID(),
-                "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(storeMasterKeyMockRequest(new StoreMasterKeyRequestDto(
-                UUID.randomUUID(),
-                "abc123",
+                inviteToken,
                 "a".repeat(32),
                 1,
                 UUID.randomUUID(),
@@ -507,6 +397,93 @@ public class DeviceRegistrationControllerTest {
             1,
             UUID.randomUUID(),
             "a".repeat(80)
+        );
+    }
+
+    static Stream<DeviceRegisterRequestDto> blankRegisterRequests() {
+        String inviteToken = TestModelFactory.inviteToken();
+
+        return Stream.of(
+            new DeviceRegisterRequestDto(
+                "",
+                "a".repeat(44), Map.of(), inviteToken, UUID.randomUUID(), "a".repeat(80)
+            ),
+            new DeviceRegisterRequestDto(
+                "testDevice",
+                "",
+                Map.of(), inviteToken, UUID.randomUUID(), "a".repeat(80)
+            ),
+            new DeviceRegisterRequestDto(
+                "test device", "a".repeat(44), Map.of(),
+                "",
+                UUID.randomUUID(), "a".repeat(80)
+            ),
+            new DeviceRegisterRequestDto(
+                "test device", "a".repeat(44), Map.of(), inviteToken, UUID.randomUUID(),
+                ""
+            )
+        );
+    }
+
+    static Stream<StoreInviteRequestDto> blankStoreInviteRequests() {
+        String inviteToken = TestModelFactory.inviteToken();
+
+        return Stream.of(
+            new StoreInviteRequestDto(
+                UUID.randomUUID(),
+                "",
+                1, DeviceType.MOBILE, UUID.randomUUID(), "a".repeat(80)
+            ),
+            new StoreInviteRequestDto(
+                UUID.randomUUID(), inviteToken, 1, DeviceType.MOBILE, UUID.randomUUID(),
+                ""
+            )
+        );
+    }
+
+    static Stream<StorePublicKeysRequestDto> blankStorePublicKeysRequests() {
+        String inviteToken = TestModelFactory.inviteToken();
+
+        return Stream.of(
+            new StorePublicKeysRequestDto(
+                "",
+                "a".repeat(44), "a".repeat(44), UUID.randomUUID(), "a".repeat(80)
+            ),
+            new StorePublicKeysRequestDto(
+                inviteToken,
+                "",
+                "a".repeat(44), UUID.randomUUID(), "a".repeat(80)
+            ),
+            new StorePublicKeysRequestDto(
+                inviteToken, "a".repeat(44),
+                "",
+                UUID.randomUUID(), "a".repeat(80)
+            ),
+            new StorePublicKeysRequestDto(
+                inviteToken, "a".repeat(44), "a".repeat(44), UUID.randomUUID(),
+                ""
+            )
+        );
+    }
+
+    static Stream<StoreMasterKeyRequestDto> blankStoreMasterKeyRequests() {
+        String inviteToken = TestModelFactory.inviteToken();
+
+        return Stream.of(
+            new StoreMasterKeyRequestDto(
+                UUID.randomUUID(),
+                "",
+                "a".repeat(32), 1, UUID.randomUUID(), "a".repeat(80)
+            ),
+            new StoreMasterKeyRequestDto(
+                UUID.randomUUID(), inviteToken,
+                "",
+                1, UUID.randomUUID(), "a".repeat(80)
+            ),
+            new StoreMasterKeyRequestDto(
+                UUID.randomUUID(), inviteToken, "a".repeat(32), 1, UUID.randomUUID(),
+                ""
+            )
         );
     }
 

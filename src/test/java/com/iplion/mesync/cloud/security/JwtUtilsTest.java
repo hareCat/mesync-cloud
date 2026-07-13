@@ -5,9 +5,12 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.JwtUserData;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -26,18 +29,9 @@ class JwtUtilsTest {
             .isEqualTo(TEST_SUBJECT_UUID);
     }
 
-    @Test
-    void extractSubjectUuid_throwsForMissingSubject() {
-        Jwt jwt = TestJwtBuilder.custom().buildJwt();
-
-        assertThatThrownBy(() -> JwtUtils.extractSubjectUuid(jwt))
-            .isInstanceOf(InvalidTokenException.class);
-    }
-
-    @Test
-    void extractSubjectUuid_throwsForBlankSubject() {
-        Jwt jwt = TestJwtBuilder.custom().subject("  ").buildJwt();
-
+    @ParameterizedTest
+    @MethodSource("missingOrBlankSubjectJwts")
+    void extractSubjectUuid_throwsForMissingOrBlankSubject(Jwt jwt) {
         assertThatThrownBy(() -> JwtUtils.extractSubjectUuid(jwt))
             .isInstanceOf(InvalidTokenException.class);
     }
@@ -97,24 +91,29 @@ class JwtUtilsTest {
         assertThat(result.emailVerified()).isFalse();
     }
 
-    @Test
-    void extractUserData_throwsForBlankClientId() {
-        Jwt jwt = TestJwtBuilder.custom()
-            .withSubject(TEST_SUBJECT_UUID)
-            .claim("azp", "  ")
-            .buildJwt();
-
+    @ParameterizedTest
+    @MethodSource("missingOrBlankClientIdJwts")
+    void extractUserData_throwsForMissingOrBlankClientId(Jwt jwt) {
         assertThatThrownBy(() -> JwtUtils.extractUserData(jwt))
             .isInstanceOf(InvalidTokenException.class);
     }
 
-    @Test
-    void extractUserData_throwsForMissingClientId() {
-        Jwt jwt = TestJwtBuilder.custom()
-            .withSubject(TEST_SUBJECT_UUID)
-            .buildJwt();
+    static Stream<Jwt> missingOrBlankSubjectJwts() {
+        return Stream.of(
+            TestJwtBuilder.custom().buildJwt(),
+            TestJwtBuilder.custom().subject("  ").buildJwt()
+        );
+    }
 
-        assertThatThrownBy(() -> JwtUtils.extractUserData(jwt))
-            .isInstanceOf(InvalidTokenException.class);
+    static Stream<Jwt> missingOrBlankClientIdJwts() {
+        return Stream.of(
+            TestJwtBuilder.custom()
+                .withSubject(TEST_SUBJECT_UUID)
+                .buildJwt(),
+            TestJwtBuilder.custom()
+                .withSubject(TEST_SUBJECT_UUID)
+                .claim("azp", "  ")
+                .buildJwt()
+        );
     }
 }

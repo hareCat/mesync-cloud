@@ -16,19 +16,22 @@ public class UserService {
     private final UserRepository userRepository;
 
     @Transactional
-    public User syncOrCreateUser(UUID authId, String email, boolean isEmailVerified) {
+    public User syncOrCreateUser(UUID authId, String email, boolean emailVerified) {
         return userRepository.findByAuthId(authId)
             .map(existingUser -> {
-                if (isEmailVerified && email != null && !email.equals(existingUser.getEmail())) {
-                    existingUser.setEmail(email);
+                String newEmail = resolveEmailUpdate(email, emailVerified, existingUser.getEmail());
+
+                if (newEmail != null) {
+                    existingUser.setEmail(newEmail);
                 }
+
                 return existingUser;
             })
             .orElseGet(() -> {
                 try {
                     User user = new User();
                     user.setAuthId(authId);
-                    user.setEmail(isEmailVerified ? email : null);
+                    user.setEmail(resolveEmailUpdate(email, emailVerified, null));
                     return userRepository.save(user);
                 } catch (DataIntegrityViolationException e) {
                     return userRepository.findByAuthId(authId)
@@ -52,6 +55,15 @@ public class UserService {
         user.setKeyVersion(newMasterKeyVersion);
 
         userRepository.save(user);
+    }
+
+    private String resolveEmailUpdate(String email, boolean emailVerified, String oldEmail) {
+        if (!emailVerified || email == null || email.isBlank()) {
+            return null;
+        }
+
+        String normalizedEmail = email.trim();
+        return normalizedEmail.equals(oldEmail) ? null : normalizedEmail;
     }
 
 }

@@ -11,6 +11,8 @@ import com.iplion.mesync.cloud.service.MessagingService;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -22,6 +24,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -113,31 +116,10 @@ public class MessagingControllerTest {
             .andExpect(jsonPath("$.detail", containsString("try again")));
     }
 
-    @Test
-    void publish_shouldReturn400_whenRequestFieldBlank() throws Exception {
-        mockMvc.perform(publishMockRequest(new MessagePublishRequestDto(
-                UUID.randomUUID(), UUID.randomUUID(),
-                "",
-                MessageType.SMS, MessageDirection.INCOMING, Instant.now(), 1,
-                "b".repeat(16), UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(publishMockRequest(new MessagePublishRequestDto(
-                UUID.randomUUID(), UUID.randomUUID(), "address",
-                MessageType.SMS, MessageDirection.INCOMING, Instant.now(), 1,
-                "",
-                UUID.randomUUID(), "a".repeat(80)
-            )))
-            .andExpect(status().isBadRequest());
-
-        mockMvc.perform(publishMockRequest(new MessagePublishRequestDto(
-                UUID.randomUUID(), UUID.randomUUID(),
-                "address",
-                MessageType.SMS, MessageDirection.INCOMING, Instant.now(), 1,
-                "b".repeat(16), UUID.randomUUID(),
-                ""
-            )))
+    @ParameterizedTest
+    @MethodSource("invalidPublishRequests")
+    void publish_shouldReturn400_whenRequestFieldBlank(MessagePublishRequestDto requestDto) throws Exception {
+        mockMvc.perform(publishMockRequest(requestDto))
             .andExpect(status().isBadRequest());
     }
 
@@ -216,6 +198,28 @@ public class MessagingControllerTest {
             100,
             UUID.randomUUID(),
             "a".repeat(80)
+        );
+    }
+
+    static Stream<MessagePublishRequestDto> invalidPublishRequests() {
+        return Stream.of(
+            new MessagePublishRequestDto(
+                UUID.randomUUID(), UUID.randomUUID(),
+                "",
+                MessageType.SMS, MessageDirection.INCOMING, Instant.now(), 1, "b".repeat(16),
+                UUID.randomUUID(), "a".repeat(80)
+            ),
+            new MessagePublishRequestDto(
+                UUID.randomUUID(), UUID.randomUUID(), "address", MessageType.SMS, MessageDirection.INCOMING,
+                Instant.now(), 1,
+                "",
+                UUID.randomUUID(), "a".repeat(80)
+            ),
+            new MessagePublishRequestDto(
+                UUID.randomUUID(), UUID.randomUUID(), "address", MessageType.SMS, MessageDirection.INCOMING,
+                Instant.now(), 1, "b".repeat(16), UUID.randomUUID(),
+                ""
+            )
         );
     }
 

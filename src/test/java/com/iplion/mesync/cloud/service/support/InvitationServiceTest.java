@@ -1,5 +1,6 @@
 package com.iplion.mesync.cloud.service.support;
 
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.config.AppProperties;
 import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.DeviceRegistrationException;
@@ -11,9 +12,7 @@ import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.time.Duration;
@@ -29,8 +28,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-public class InvitationServiceTest {
+public class InvitationServiceTest extends BaseUnitTest {
     @Mock
     RedisSecurityStore redisSecurityStore;
 

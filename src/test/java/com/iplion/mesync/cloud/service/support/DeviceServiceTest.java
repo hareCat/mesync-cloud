@@ -1,16 +1,15 @@
 package com.iplion.mesync.cloud.service.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iplion.mesync.cloud.BaseUnitTest;
 import com.iplion.mesync.cloud.entity.Device;
 import com.iplion.mesync.cloud.error.DeviceException;
 import com.iplion.mesync.cloud.repository.DeviceRepository;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
@@ -21,8 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
-class DeviceServiceTest {
+class DeviceServiceTest extends BaseUnitTest {
     @Mock
     private DeviceRepository deviceRepository;
 

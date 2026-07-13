@@ -61,7 +61,7 @@ public class TestJwtBuilder {
             .claims(c -> c.putAll(claims))
             .headers(c -> c.putAll(headers));
 
-        if (subject != null && !subject.isEmpty()) {
+        if (subject != null) {
             builder.subject(subject);
         }
 
