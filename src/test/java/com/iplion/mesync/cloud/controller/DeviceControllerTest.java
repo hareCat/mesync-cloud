@@ -150,7 +150,6 @@ public class DeviceControllerTest {
         verify(deviceRevocationService).revokeDevice(eq(requestDto));
     }
 
-    // --------------------------- helpers ---------------------------
 
     MockHttpServletRequestBuilder listMockRequest(DeviceListRequestDto requestDto) throws Exception {
         return post(TestUri.DEVICE_LIST_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)

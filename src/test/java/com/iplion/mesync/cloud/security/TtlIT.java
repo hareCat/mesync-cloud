@@ -14,13 +14,11 @@ import com.iplion.mesync.cloud.security.request.MessageSyncAuthRequest;
 import com.iplion.mesync.cloud.security.request.StoreInviteAuthRequest;
 import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
+import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -31,10 +29,8 @@ import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.awaitility.Awaitility.await;
@@ -58,12 +54,6 @@ class TtlIT extends BaseIT {
     @Autowired
     UserRepository userRepository;
 
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    RedisTemplate<String, Object> redisTemplate;
-
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
         registry.add("app.registration.invite-cooldown", () -> "1s");
@@ -73,19 +63,6 @@ class TtlIT extends BaseIT {
         registry.add("app.auth.nonce-ttl", () -> "1s");
         registry.add("app.auth.rate-limit-ttl", () -> "1s");
         registry.add("app.auth.attempts", () -> "2");
-    }
-
-    @AfterEach
-    void cleanUp() {
-        jdbcTemplate.execute("""
-                TRUNCATE TABLE devices, users
-                RESTART IDENTITY
-                CASCADE
-            """);
-
-        try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
-            connection.serverCommands().flushDb();
-        }
     }
 
     @Test
@@ -175,7 +152,6 @@ class TtlIT extends BaseIT {
             .andExpect(jsonPath("$.detail").value("Cryptography data is not valid")));
     }
 
-    // --------------------------- helpers --------------------------
 
     private ResultActions storeInvite(
         DeviceContext context,
@@ -274,20 +250,15 @@ class TtlIT extends BaseIT {
     private DeviceContext saveUserWithDevice() throws GeneralSecurityException {
         KeyPair keyPair = TestCrypto.generateKeyPair();
 
-        User user = new User();
-        user.setAuthId(UUID.randomUUID());
-        userRepository.saveAndFlush(user);
-
-        Device device = new Device();
-        device.setPublicId(UUID.randomUUID());
-        device.setUser(user);
-        device.setDeviceType(DeviceType.MOBILE);
-        device.setName("test name");
-        device.setPublicKeyBytes(keyPair.getPublic().getEncoded());
-        device.setKeyCreatedAt(Instant.now());
-        device.setLastActiveAt(Instant.now());
-        device.setExtras(Map.of("platform", "android"));
-        deviceRepository.saveAndFlush(device);
+        User user = TestModelFactory.saveUser(UUID.randomUUID(), userRepository);
+        Device device = TestModelFactory.saveMobileDevice(
+            UUID.randomUUID(),
+            user,
+            "test name",
+            keyPair.getPublic().getEncoded(),
+            Map.of("platform", "android"),
+            deviceRepository
+        );
 
         return new DeviceContext(user, device, keyPair);
     }

@@ -6,18 +6,20 @@ import com.iplion.mesync.cloud.entity.User;
 import com.iplion.mesync.cloud.model.DeviceType;
 import com.iplion.mesync.cloud.model.MessageDirection;
 import com.iplion.mesync.cloud.model.MessageType;
+import com.iplion.mesync.cloud.repository.DeviceRepository;
+import com.iplion.mesync.cloud.repository.UserRepository;
 import com.iplion.mesync.cloud.security.cache.AuthData;
 import com.iplion.mesync.cloud.security.cache.DeviceAuthData;
 import com.iplion.mesync.cloud.security.cache.UserAuthData;
 
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 public final class TestModelFactory {
-    private static final Instant NOW = Instant.now();
-    private static final int MASTER_KEY_VERSION = 1;
-    private static final DeviceType DEVICE_TYPE = DeviceType.MOBILE;
+    private static final int DEFAULT_MASTER_KEY_VERSION = 1;
+    private static final DeviceType DEFAULT_DEVICE_TYPE = DeviceType.MOBILE;
 
     public static User user() {
         return user(UUID.randomUUID());
@@ -30,6 +32,13 @@ public final class TestModelFactory {
         return user;
     }
 
+    public static User saveUser(UUID authId, UserRepository userRepository) {
+        User user = user(authId);
+        userRepository.saveAndFlush(user);
+
+        return user;
+    }
+
     public static Device device(User user) throws NoSuchAlgorithmException {
         return device(user, UUID.randomUUID().toString());
     }
@@ -38,16 +47,65 @@ public final class TestModelFactory {
         Device device = new Device();
         device.setPublicId(UUID.randomUUID());
         device.setUser(user);
-        device.setDeviceType(DEVICE_TYPE);
+        device.setDeviceType(DEFAULT_DEVICE_TYPE);
         device.setName(name);
         device.setPublicKeyBytes(TestCrypto.generateKeyPair().getPublic().getEncoded());
-        device.setKeyCreatedAt(NOW);
+        device.setKeyCreatedAt(Instant.now());
 
         return device;
     }
 
+    public static Device device(
+        UUID publicId,
+        User user,
+        DeviceType deviceType,
+        String name,
+        byte[] publicKeyBytes,
+        Map<String, String> extras
+    ) {
+        Instant now = Instant.now();
+
+        Device device = new Device();
+        device.setPublicId(publicId);
+        device.setUser(user);
+        device.setDeviceType(deviceType);
+        device.setName(name);
+        device.setPublicKeyBytes(publicKeyBytes);
+        device.setKeyCreatedAt(now);
+        device.setLastActiveAt(now);
+        device.setExtras(extras);
+
+        return device;
+    }
+
+    public static Device saveDevice(
+        UUID publicId,
+        User user,
+        DeviceType deviceType,
+        String name,
+        byte[] publicKeyBytes,
+        Map<String, String> extras,
+        DeviceRepository deviceRepository
+    ) {
+        Device device = device(publicId, user, deviceType, name, publicKeyBytes, extras);
+        deviceRepository.saveAndFlush(device);
+
+        return device;
+    }
+
+    public static Device saveMobileDevice(
+        UUID publicId,
+        User user,
+        String name,
+        byte[] publicKeyBytes,
+        Map<String, String> extras,
+        DeviceRepository deviceRepository
+    ) {
+        return saveDevice(publicId, user, DeviceType.MOBILE, name, publicKeyBytes, extras, deviceRepository);
+    }
+
     public static UserAuthData userAuthData() {
-        return new UserAuthData(1L, UUID.randomUUID(), MASTER_KEY_VERSION);
+        return new UserAuthData(1L, UUID.randomUUID(), DEFAULT_MASTER_KEY_VERSION);
     }
 
     public static DeviceAuthData deviceAuthData(UUID ownerAuthId) throws NoSuchAlgorithmException {
@@ -55,7 +113,7 @@ public final class TestModelFactory {
             1L,
             UUID.randomUUID(),
             ownerAuthId,
-            DEVICE_TYPE,
+            DEFAULT_DEVICE_TYPE,
             TestCrypto.generateKeyPair().getPublic()
         );
     }
@@ -77,8 +135,8 @@ public final class TestModelFactory {
         message.setAddress("+995 123 456 789");
         message.setMessageType(MessageType.SMS);
         message.setDirection(MessageDirection.INCOMING);
-        message.setOccurredAt(NOW);
-        message.setKeyVersion(MASTER_KEY_VERSION);
+        message.setOccurredAt(Instant.now());
+        message.setKeyVersion(DEFAULT_MASTER_KEY_VERSION);
         message.setCiphertext(new byte[44]);
 
         return message;

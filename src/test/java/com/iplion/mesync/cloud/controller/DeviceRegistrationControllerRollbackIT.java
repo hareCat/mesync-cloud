@@ -17,12 +17,9 @@ import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,11 +27,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,25 +57,6 @@ class DeviceRegistrationControllerRollbackIT extends BaseIT {
 
     @Autowired
     UserRepository userRepository;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    RedisTemplate<String, Object> redisTemplate;
-
-    @AfterEach
-    void cleanUp() {
-        jdbcTemplate.execute("""
-                TRUNCATE TABLE devices, users
-                RESTART IDENTITY
-                CASCADE
-            """);
-
-        try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
-            connection.serverCommands().flushDb();
-        }
-    }
 
     @Test
     void register_shouldRollbackDeviceSave_whenInviteDeleteFails() throws Exception {
@@ -178,19 +154,16 @@ class DeviceRegistrationControllerRollbackIT extends BaseIT {
             DeviceRepository deviceRepository,
             UserRepository userRepository
         ) {
-            User user = TestModelFactory.user(context.authId);
-            userRepository.saveAndFlush(user);
-
-            Device device = new Device();
-            device.setPublicId(devicePublicId);
-            device.setUser(user);
-            device.setDeviceType(context.deviceType);
-            device.setName(context.deviceName);
-            device.setPublicKeyBytes(publicKeyBytes);
-            device.setKeyCreatedAt(Instant.now());
-            device.setLastActiveAt(Instant.now());
-            device.setExtras(context.extras);
-            deviceRepository.saveAndFlush(device);
+            User user = TestModelFactory.saveUser(context.authId, userRepository);
+            TestModelFactory.saveDevice(
+                devicePublicId,
+                user,
+                context.deviceType,
+                context.deviceName,
+                publicKeyBytes,
+                context.extras,
+                deviceRepository
+            );
         }
 
         static DeviceRegisterRequestDto deviceRegisterRequestDto(TestContext context, KeyPair keyPair) {

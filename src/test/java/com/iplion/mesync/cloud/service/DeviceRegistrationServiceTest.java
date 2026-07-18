@@ -406,7 +406,6 @@ class DeviceRegistrationServiceTest extends BaseUnitTest {
         verify(keySignatureService).extractPublicKeyBytes(any());
     }
 
-    // --------------------- helpers ---------------------
 
     private record TestContext(
         User user,

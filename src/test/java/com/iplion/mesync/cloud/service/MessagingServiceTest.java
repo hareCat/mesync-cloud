@@ -213,7 +213,6 @@ class MessagingServiceTest extends BaseUnitTest {
             );
     }
 
-    // --------------------- helpers ---------------------
 
     private MessageSyncRequestDto messageSyncRequestDto(long lastMessageId, int limit) {
         return new MessageSyncRequestDto(

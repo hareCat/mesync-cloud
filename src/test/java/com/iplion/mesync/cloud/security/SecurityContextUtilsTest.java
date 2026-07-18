@@ -51,7 +51,6 @@ public class SecurityContextUtilsTest {
             );
     }
 
-    // --------------------------- helpers -----------------------------------------
 
     private Jwt jwt() {
         return TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE).buildJwt();

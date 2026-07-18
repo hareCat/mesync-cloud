@@ -158,7 +158,6 @@ public class MessagingControllerTest {
         verify(messagingService).sync(eq(requestDto));
     }
 
-    // --------------------------- helpers ---------------------------
 
     MockHttpServletRequestBuilder publishMockRequest(MessagePublishRequestDto requestDto) throws Exception {
         return post(TestUri.PUBLISH_URI).with(TestJwtBuilder.forDevice(UUID.randomUUID(), DeviceType.MOBILE)

@@ -20,12 +20,9 @@ import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,7 +33,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,25 +55,6 @@ class MessagingControllerIT extends BaseIT {
 
     @Autowired
     MessageRepository messageRepository;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
-
-    @AfterEach
-    void cleanUp() {
-        jdbcTemplate.execute("""
-                TRUNCATE TABLE devices, users
-                RESTART IDENTITY
-                CASCADE
-            """);
-
-        try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
-            connection.serverCommands().flushDb();
-        }
-    }
 
     @Test
     void publish_shouldReturn201CreatedAndPublishNewMessage() throws Exception {
@@ -204,7 +181,6 @@ class MessagingControllerIT extends BaseIT {
             .andExpect(jsonPath("$.messages[1].devicePublicId").value(Matchers.nullValue()));
     }
 
-    // --------------------------- helpers ------------------------
 
     private static class TestContext {
         User user;
@@ -233,8 +209,7 @@ class MessagingControllerIT extends BaseIT {
         ) {
             var context = new TestContext();
 
-            User user = TestModelFactory.user();
-            userRepository.saveAndFlush(user);
+            User user = TestModelFactory.saveUser(UUID.randomUUID(), userRepository);
             context.user = user;
 
             Device device = device(user, "test name", keyPair.getPublic().getEncoded());
@@ -324,16 +299,14 @@ class MessagingControllerIT extends BaseIT {
         }
 
         public static Device device(User user, String name, byte[] publicKeyBytes) {
-            Device device = new Device();
-            device.setUser(user);
-            device.setDeviceType(DeviceType.MOBILE);
-            device.setName(name);
-            device.setPublicKeyBytes(publicKeyBytes);
-            device.setKeyCreatedAt(Instant.now());
-            device.setLastActiveAt(Instant.now());
-            device.setExtras(Map.of("platform", "android"));
-
-            return device;
+            return TestModelFactory.device(
+                UUID.randomUUID(),
+                user,
+                DeviceType.MOBILE,
+                name,
+                publicKeyBytes,
+                Map.of("platform", "android")
+            );
         }
 
     }

@@ -23,23 +23,18 @@ import com.iplion.mesync.cloud.testUtils.TestCrypto;
 import com.iplion.mesync.cloud.testUtils.TestJwtBuilder;
 import com.iplion.mesync.cloud.testUtils.TestModelFactory;
 import com.iplion.mesync.cloud.testUtils.TestUri;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,25 +61,6 @@ class DeviceRegistrationControllerIT extends BaseIT {
 
     @Autowired
     UserRepository userRepository;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
-
-    @AfterEach
-    void cleanUp() {
-        jdbcTemplate.execute("""
-                TRUNCATE TABLE devices, users
-                RESTART IDENTITY
-                CASCADE
-            """);
-
-        try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
-            connection.serverCommands().flushDb();
-        }
-    }
 
     @Test
     void storeInvite_shouldReturn201CreatedAndStoreInviteInRedis() throws Exception {
@@ -170,14 +146,14 @@ class DeviceRegistrationControllerIT extends BaseIT {
         DeviceType trustedDeviceType = DeviceType.MOBILE;
         DeviceType invitedDeviceType = DeviceType.BROWSER;
 
-        User trustedUser = TestDataFactory.saveNewUser(context.authId, userRepository);
-        TestDataFactory.saveNewDevice(
-            context,
+        User trustedUser = TestModelFactory.saveUser(context.authId, userRepository);
+        TestModelFactory.saveDevice(
             trustedDevicePublicId,
             trustedUser,
-            trustedDeviceKeyPair.getPublic().getEncoded(),
             trustedDeviceType,
             "trusted device",
+            trustedDeviceKeyPair.getPublic().getEncoded(),
+            context.extras,
             deviceRepository
         );
 
@@ -231,14 +207,14 @@ class DeviceRegistrationControllerIT extends BaseIT {
         DeviceType trustedDeviceType = DeviceType.MOBILE;
         DeviceType invitedDeviceType = DeviceType.BROWSER;
 
-        User trustedUser = TestDataFactory.saveNewUser(context.authId, userRepository);
-        TestDataFactory.saveNewDevice(
-            context,
+        User trustedUser = TestModelFactory.saveUser(context.authId, userRepository);
+        TestModelFactory.saveDevice(
             trustedDevicePublicId,
             trustedUser,
-            trustedDeviceKeyPair.getPublic().getEncoded(),
             trustedDeviceType,
             "trusted device",
+            trustedDeviceKeyPair.getPublic().getEncoded(),
+            context.extras,
             deviceRepository
         );
 
@@ -297,14 +273,14 @@ class DeviceRegistrationControllerIT extends BaseIT {
         DeviceType trustedDeviceType = DeviceType.MOBILE;
         DeviceType invitedDeviceType = DeviceType.BROWSER;
 
-        User trustedUser = TestDataFactory.saveNewUser(context.authId, userRepository);
-        TestDataFactory.saveNewDevice(
-            context,
+        User trustedUser = TestModelFactory.saveUser(context.authId, userRepository);
+        TestModelFactory.saveDevice(
             trustedDevicePublicId,
             trustedUser,
-            trustedDeviceKeyPair.getPublic().getEncoded(),
             trustedDeviceType,
             "trusted device",
+            trustedDeviceKeyPair.getPublic().getEncoded(),
+            context.extras,
             deviceRepository
         );
 
@@ -533,7 +509,6 @@ class DeviceRegistrationControllerIT extends BaseIT {
         assertThat(inviteData).isNotNull();
     }
 
-    // --------------------------- helpers ------------------------
 
     private static class TestDataFactory {
         public static class TestContext {
@@ -605,59 +580,19 @@ class DeviceRegistrationControllerIT extends BaseIT {
             TestContext context,
             UUID devicePublicId,
             byte[] publicKeyBytes,
-            DeviceType deviceType,
             DeviceRepository deviceRepository,
             UserRepository userRepository
         ) {
-            User user = saveNewUser(context.authId, userRepository);
-            saveNewDevice(context, devicePublicId, user, publicKeyBytes, deviceType, context.deviceName, deviceRepository);
-        }
-
-        public static void saveNewUserWithDevice(
-            TestContext context,
-            UUID devicePublicId,
-            byte[] publicKeyBytes,
-            DeviceRepository deviceRepository,
-            UserRepository userRepository
-        ) {
-            saveNewUserWithDevice(
-                context,
+            User user = TestModelFactory.saveUser(context.authId, userRepository);
+            TestModelFactory.saveDevice(
                 devicePublicId,
-                publicKeyBytes,
+                user,
                 context.deviceType,
-                deviceRepository,
-                userRepository
+                context.deviceName,
+                publicKeyBytes,
+                context.extras,
+                deviceRepository
             );
-        }
-
-        public static User saveNewUser(UUID authId, UserRepository userRepository) {
-            User user = TestModelFactory.user(authId);
-            userRepository.saveAndFlush(user);
-
-            return user;
-        }
-
-        public static Device saveNewDevice(
-            TestContext context,
-            UUID devicePublicId,
-            User user,
-            byte[] publicKeyBytes,
-            DeviceType deviceType,
-            String deviceName,
-            DeviceRepository deviceRepository
-        ) {
-            Device device = new Device();
-            device.setPublicId(devicePublicId);
-            device.setUser(user);
-            device.setDeviceType(deviceType);
-            device.setName(deviceName);
-            device.setPublicKeyBytes(publicKeyBytes);
-            device.setKeyCreatedAt(Instant.now());
-            device.setLastActiveAt(Instant.now());
-            device.setExtras(context.extras);
-            deviceRepository.saveAndFlush(device);
-
-            return device;
         }
 
         public static DeviceRegisterRequestDto deviceRegisterRequestDto(TestContext context, KeyPair keyPair) {

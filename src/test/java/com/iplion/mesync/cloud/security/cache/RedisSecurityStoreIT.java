@@ -3,18 +3,14 @@ package com.iplion.mesync.cloud.security.cache;
 import com.iplion.mesync.cloud.BaseIT;
 import com.iplion.mesync.cloud.error.api.ApiErrorCode;
 import com.iplion.mesync.cloud.error.api.RedisOperationException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -23,16 +19,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 public class RedisSecurityStoreIT extends BaseIT {
     @Autowired
     private RedisSecurityStore redisSecurityStore;
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
-
-    @AfterEach
-    void cleanUp() {
-        Assertions.assertNotNull(redisTemplate.getConnectionFactory());
-        try (var connection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
-            connection.serverCommands().flushDb();
-        }
-    }
 
     @Test
     public void deviceAuthSecurityCheck_shouldPass() {

@@ -151,7 +151,6 @@ class DeviceRevocationServiceTest extends BaseUnitTest {
         verifyNoInteractions(deviceAuthDataCache);
     }
 
-    // --------------------- helpers ---------------------
 
     public static DeviceRevokeRequestDto deviceRevokeRequestDto(UUID targetDevicePublicId) {
         return deviceRevokeRequestDto(targetDevicePublicId, false, 1);
